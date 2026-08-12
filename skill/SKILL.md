@@ -1,9 +1,9 @@
 ---
-name: mathproof-red-team
+name: mathproof-skill
 description: Construct, audit, explain, or research mathematical proofs with correctness-first reasoning. Use when solving proof problems; checking a submitted proof; locating the first unsupported step; finding missing assumptions or counterexamples; explaining a proof pedagogically; researching named, recent, or uncertain theorems; or preparing an informal argument for formalization.
 ---
 
-# MathProof Red Team
+# MathProof Skill
 
 Treat plausibility as insufficient. Establish each material step from assumptions or earlier results, and try to falsify the argument before accepting it.
 
@@ -41,7 +41,7 @@ When a step requires an absent property, mark the gap. Do not retrofit the prope
 5. **Post-audit.** Recheck implication direction, existence, domains, theorem hypotheses, limit exchanges, equality claims, and all divisions or cancellations.
 6. **Give a verdict.** Use one of the statuses below and separate diagnosis from any proposed repair.
 
-Read [adversarial-redteaming.md](references/adversarial-redteaming.md) for the detailed attack battery. Read [proof-techniques-and-heuristics.md](references/proof-techniques-and-heuristics.md) only when selecting or comparing proof techniques.
+Read [adversarial-proof-auditing.md](references/adversarial-proof-auditing.md) for the detailed attack battery. Read [proof-techniques-and-heuristics.md](references/proof-techniques-and-heuristics.md) only when selecting or comparing proof techniques.
 
 ## Verdicts
 

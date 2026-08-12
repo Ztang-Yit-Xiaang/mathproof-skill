@@ -2,12 +2,12 @@
 
 ## 推荐标题
 
-**我给 AI 加了一个「数学证明红队」：先找漏洞，再允许它证明**
+**我给 AI 加了一个「数学证明审计 Skill」：先找漏洞，再允许它证明**
 
 备选：
 
 - AI 做数学最危险的不是不会算，而是「错得很像对的」
-- 我不想让 AI 继续硬圆证明了，所以写了一个 Proof Red Team
+- 我不想让 AI 继续硬圆证明了，所以写了一个 Proof Audit Skill
 - 让 AI 学会否定自己：我的数学证明审计 Skill 开源了
 
 ## 正文
@@ -16,7 +16,7 @@
 
 **中间有一步根本推不出来，后面的公式却依然可以写得非常漂亮。**
 
-所以我做了一个开源的数学证明 Skill：**MathProof Red Team**。
+所以我做了一个开源的数学证明 Skill：**MathProof Skill**。
 
 它不会一看到题目就急着证明，而是先做三件事：
 
@@ -46,7 +46,7 @@ f'(x)>0 \;\not\Rightarrow\; f(x)>0.
 
 GitHub：`https://github.com/Ztang-Yit-Xiaang/mathproof-skill`
 
-欢迎大家贡献反例、隐藏假设案例，或者拿自己的证明来红队测试。
+欢迎大家贡献反例、隐藏假设案例，或者拿自己的证明来做审计测试。
 
 ## 推荐标签
 
@@ -62,9 +62,9 @@ GitHub：`https://github.com/Ztang-Yit-Xiaang/mathproof-skill`
 
 副标题：
 
-我给 AI 加了一个「数学证明红队」
+我给 AI 加了一个「数学证明审计 Skill」
 
-小字：MathProof Red Team · Open Source v0.1.0
+小字：MathProof Skill · Open Source v0.1.0
 
 ### 第 2 页：问题
 
@@ -106,13 +106,13 @@ Claim
 ↓  
 Assumptions  
 ↓  
-Red Team  
+Proof Audit
 ↓  
 Dependency Map  
 ↓  
 Proof  
 ↓  
-Red Team Again
+Final Audit
 
 ### 第 5 页：核心机制一
 
@@ -148,7 +148,7 @@ Red Team Again
 
 ### 第 8 页：开源
 
-**MathProof Red Team v0.1.0**
+**MathProof Skill v0.1.0**
 
 - 4 种模式
 - 5 种审计结论

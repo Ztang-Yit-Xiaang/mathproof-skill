@@ -1,10 +1,10 @@
-# Adversarial Red-Teaming & Fallacy Detection Protocol
+# Adversarial Proof Auditing & Fallacy Detection Protocol
 
 This protocol provides systematic guidelines for auditing mathematical proofs, catching subtle logical fallacies, testing edge cases, and conducting counterexample searches before finalizing any proof.
 
 ## Contents
 
-1. Red-teaming mindset
+1. Adversarial auditing mindset
 2. Boundary and edge-case battery
 3. Common fallacies
 4. Minimal counterexample template
@@ -12,9 +12,9 @@ This protocol provides systematic guidelines for auditing mathematical proofs, c
 
 ---
 
-## 1. The Red-Teaming Mindset
+## 1. The Adversarial Auditing Mindset
 
-Adversarial red-teaming treats every material step as requiring independent support. The auditor actively attacks assertions and unstated assumptions while remaining willing to return `VALID` when the argument survives the checks.
+Adversarial proof auditing treats every material step as requiring independent support. The auditor actively attacks assertions and unstated assumptions while remaining willing to return `VALID` when the argument survives the checks.
 
 ```
                   ┌───────────────────────────────┐

@@ -5,7 +5,7 @@
 
 > A correctness-first AI skill that tries to break a mathematical proof before it accepts it.
 
-AI-generated proofs often fail in a dangerous way: the algebra looks polished, but one unsupported implication is quietly buried in the middle. MathProof Red Team changes the workflow from “reach the requested conclusion” to “verify that every dependency is earned.”
+AI-generated proofs often fail in a dangerous way: the algebra looks polished, but one unsupported implication is quietly buried in the middle. MathProof Skill changes the workflow from “reach the requested conclusion” to “verify that every dependency is earned.”
 
 It is **not a formal theorem prover** and does **not guarantee correctness**. It is a structured system for reducing hidden logical errors, locating the first failure, and separating diagnosis from repair.
 
@@ -73,20 +73,20 @@ mathproof-skill/
 
 ## Install
 
-Copy the `skill/` directory into your agent's personal skills directory and name the destination `mathproof-red-team`. The resulting install should have `SKILL.md` at its root:
+Copy the `skill/` directory into your agent's personal skills directory and name the destination `mathproof-skill`. The resulting install should have `SKILL.md` at its root:
 
 ```text
-mathproof-red-team/
+mathproof-skill/
 ├── SKILL.md
 └── references/
 ```
 
-Then ask the agent to use `@mathproof-red-team` on a proof problem or proof audit.
+Then ask the agent to use `@mathproof-skill` on a proof problem or proof audit.
 
 ## Try it
 
 ```text
-Use @mathproof-red-team in AUDIT mode. Number the material steps,
+Use @mathproof-skill in AUDIT mode. Number the material steps,
 identify the first unsupported step, and do not repair it until after
 you give a verdict:
 

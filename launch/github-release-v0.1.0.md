@@ -1,4 +1,4 @@
-# MathProof Red Team v0.1.0
+# MathProof Skill v0.1.0
 
 First experimental release of a correctness-first AI skill for constructing, explaining, researching, and adversarially auditing mathematical proofs.
 
@@ -21,6 +21,6 @@ This project is not a formal theorem prover and does not guarantee correctness. 
 Ask your agent:
 
 ```text
-Use @mathproof-red-team in AUDIT mode. Identify the first unsupported
+Use @mathproof-skill in AUDIT mode. Identify the first unsupported
 step and do not repair the proof until after giving a verdict.
 ```
