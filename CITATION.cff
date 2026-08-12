@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use MathProof Red Team, please cite this repository."
+title: "MathProof Red Team"
+type: software
+authors:
+  - family-names: "Ztang"
+    given-names: "Yit Xiaang"
+    email: "ztangyitxiaang@gmail.com"
+version: 0.1.0
+date-released: 2026-08-12
+license: MIT
+repository-code: "https://github.com/Ztang-Yit-Xiaang/mathproof-skill"
+url: "https://github.com/Ztang-Yit-Xiaang/mathproof-skill"
