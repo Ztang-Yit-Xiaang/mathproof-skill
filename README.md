@@ -1,4 +1,4 @@
-# MathProof Red Team
+# MathProof Skill
 
 [![Validate](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
