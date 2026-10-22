@@ -1,6 +1,7 @@
 # MathProof Skill
 
 [![Validate](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/validate.yml)
+[![Lean](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/lean.yml/badge.svg)](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/lean.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > A correctness-first AI skill that tries to break a mathematical proof before it accepts it.
@@ -31,6 +32,116 @@ f'(x)>0 \quad\Longrightarrow\quad f(x)>0.
 **Audit: `INVALID`**
 
 The premise establishes that \(f\) is increasing, not that its values are positive. Let \(f(x)=x\) on \((-2,-1)\). Then \(f'(x)=1>0\), while \(f(x)<0\) throughout the domain.
+
+## Examples
+
+Each example below is an evaluation case. The Lean code is the file in `lean/MathProofSkill/Evals/`, and the output is from a real run of `skill/scripts/lean_check.py` (paths shortened).
+
+### 1. Refuting a plausible claim: `INVALID` · `LEAN-CHECKED`
+
+> *Claim.* Every continuous function on \((0,1)\) attains a maximum.
+
+**First unsupported step:** applying the extreme value theorem, which needs a compact domain; \((0,1)\) is bounded but not closed. **Counterexample:** \(f(x)=x\) has no maximum on \((0,1)\).
+
+```lean
+def Claim : Prop :=
+  ∀ f : ℝ → ℝ, ContinuousOn f (Ioo 0 1) → ∃ x ∈ Ioo (0 : ℝ) 1, IsMaxOn f (Ioo 0 1) x
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  obtain ⟨x, ⟨hx0, hx1⟩, hmax⟩ := h id continuousOn_id
+  have hy : (x + 1) / 2 ∈ Ioo (0 : ℝ) 1 := ⟨by linarith, by linarith⟩
+  have : (x + 1) / 2 ≤ x := hmax hy
+  linarith
+```
+
+```text
+PASS: lean/MathProofSkill/Evals/Analysis001.lean
+  MathProofSkill.Evals.Analysis001.Claim : Prop
+    := ∀ (f : ℝ → ℝ), ContinuousOn f (Set.Ioo 0 1) → ∃ x ∈ Set.Ioo 0 1, IsMaxOn f (Set.Ioo 0 1) x
+  MathProofSkill.Evals.Analysis001.claim_false : ¬MathProofSkill.Evals.Analysis001.Claim
+    axioms: propext, Classical.choice, Quot.sound
+```
+
+The checker prints the full body of `Claim`, so the reader can confirm that the refuted statement is the informal one and not a weaker look-alike.
+
+### 2. Accepting a correct proof: `VALID` · `LEAN-CHECKED`
+
+> *Claim.* The square of an even integer is even. *Proof.* \(n=2k\Rightarrow n^2=2(2k^2)\).
+
+A skeptical auditor must also accept correct work. The Lean proof follows the informal witness argument, but with one encoding detail the fidelity check catches: Mathlib defines `Even n` as \(\exists r,\ n=r+r\), not \(n=2r\).
+
+```lean
+theorem even_sq (n : ℤ) (h : Even n) : Even (n ^ 2) := by
+  obtain ⟨k, rfl⟩ := h          -- n = k + k
+  exact ⟨2 * k ^ 2, by ring⟩    -- (k + k)^2 = 2k^2 + 2k^2
+```
+
+```text
+PASS: lean/MathProofSkill/Evals/Number001.lean
+  MathProofSkill.Evals.Number001.even_sq : ∀ (n : ℤ), Even n → Even (n ^ 2)
+    axioms: propext
+```
+
+### 3. A probability trap: `INVALID` · `LEAN-CHECKED`
+
+> *Claim.* For every square-integrable \(X\), \(\mathbb{E}[X^2]=(\mathbb{E}[X])^2\).
+
+**Counterexample:** \(X=\pm1\) with probability \(1/2\) each, so \(\mathbb{E}[X]=0\) but \(\mathbb{E}[X^2]=1\). The Lean file builds that probability space (the uniform measure on `Bool`), proves `X` is in \(L^2\), computes both moments, and derives `¬ Claim`:
+
+```lean
+theorem mean_X : ∫ b, X b ∂P = 0 := by rw [integral_P]; norm_num [X]
+theorem second_moment_X : ∫ b, X b ^ 2 ∂P = 1 := by rw [integral_P]; norm_num [X]
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  have := h X X_memLp
+  rw [mean_X, second_moment_X] at this
+  norm_num at this
+```
+
+```text
+PASS: lean/MathProofSkill/Evals/Probability003.lean
+  MathProofSkill.Evals.Probability003.claim_false : ¬MathProofSkill.Evals.Probability003.Claim
+    axioms: propext, Classical.choice, Quot.sound
+```
+
+### 4. Honest scope: `VALID` · `LEAN-CHECKED (partial: simple graphs)`
+
+> *Claim.* In a finite undirected graph, the degrees sum to twice the number of edges.
+
+Mathlib's `SimpleGraph` has no loops or multi-edges, so the Lean theorem covers only part of the informal claim. The skill reports that instead of claiming full coverage:
+
+```text
+PASS: lean/MathProofSkill/Evals/Combinatorics001.lean
+  MathProofSkill.Evals.Combinatorics001.handshake : ∀ {V : Type u_1} [inst : Fintype V] [DecidableEq V]
+      (G : SimpleGraph V) [inst_2 : DecidableRel G.Adj], ∑ v, G.degree v = 2 * G.edgeFinset.card
+```
+
+| Informal | Lean | Match |
+| --- | --- | --- |
+| finite graph | `[Fintype V]` | faithful |
+| undirected graph | `SimpleGraph V` | **partial**: excludes loops and multi-edges |
+| sum of degrees = 2·edges | `∑ v, G.degree v = 2 * G.edgeFinset.card` | faithful |
+
+### 5. Catching a fake proof: checker `FAIL`
+
+A `sorry` hidden behind a custom tactic contains no literal `sorry`, so searching the source does not find it. The axiom audit does:
+
+```lean
+macro "trust_me" : tactic => `(tactic| exact sorryAx _ false)
+theorem t (n : Nat) : n * 1 = n := by trust_me
+```
+
+```text
+FAIL: tests/lean_check/fail_hidden_sorry.lean
+  ✗ Lean warning: …fail_hidden_sorry.lean:3:8: warning: declaration uses `sorry`
+  ✗ t depends on non-standard axioms: sorryAx
+```
+
+The same audit rejects custom `axiom`s and `native_decide` (which trusts compiled code). See [`tests/lean_check/`](tests/lean_check/) for every case.
+
+More worked audits, including fidelity tables, are in [`examples/`](examples/).
 
 ## Four modes
 
