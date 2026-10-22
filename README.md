@@ -4,6 +4,8 @@
 [![Lean](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/lean.yml/badge.svg)](https://github.com/Ztang-Yit-Xiaang/mathproof-skill/actions/workflows/lean.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **Have a well-defined problem? This skill helps you prove it or disprove it, and checks the answer in Lean.**
+>
 > A correctness-first AI skill that tries to break a mathematical proof before it accepts it.
 
 **Website:** https://ztang-yit-xiaang.github.io/mathproof-skill/
