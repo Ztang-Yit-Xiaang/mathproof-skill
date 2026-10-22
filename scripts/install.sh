@@ -4,7 +4,7 @@
 #     Claude Code          ~/.claude/skills
 #     Codex                ~/.codex/skills
 #     Antigravity (IDE)    ~/.gemini/antigravity/skills
-#     Antigravity CLI agy  ~/.gemini/antigravity-cli/skills
+#     Antigravity CLI agy  ~/.gemini/config/skills (global skills) and ~/.gemini/antigravity-cli/skills
 #     shared Agent Skills  ~/.agents/skills
 #   An older `mathproof-debug` copy (same skill, pre-rename) is moved to ~/.mathproof/backup/<stamp>/.
 #   ~/.mathproof/lean is linked to this repository's lean/ project, so lean_check.py finds Mathlib.
@@ -20,7 +20,8 @@ TARGETS=(
   "Claude Code|$HOME/.claude/skills"
   "Codex|$HOME/.codex/skills"
   "Antigravity IDE|$HOME/.gemini/antigravity/skills"
-  "Antigravity CLI (agy)|$HOME/.gemini/antigravity-cli/skills"
+  "Antigravity CLI (agy)|$HOME/.gemini/config/skills"
+  "Antigravity CLI (agy, legacy dir)|$HOME/.gemini/antigravity-cli/skills"
   "Agent Skills (shared)|$HOME/.agents/skills"
 )
 
