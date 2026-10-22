@@ -1,13 +1,26 @@
 cff-version: 1.2.0
 message: "If you use MathProof Skill, please cite this repository."
 title: "MathProof Skill"
+abstract: >-
+  A correctness-first skill for AI agents (Claude Code, Codex, Antigravity) that
+  constructs and audits mathematical proofs: it locates the first unsupported step,
+  searches for counterexamples, and machine-checks verdicts in Lean 4 with Mathlib,
+  using a checker that rejects sorry, custom axioms, native_decide, and kernel bypasses.
 type: software
 authors:
   - family-names: "Ztang"
     given-names: "Yit Xiaang"
     email: "ztangyitxiaang@gmail.com"
-version: 0.2.0
-date-released: 2026-08-12
+version: 0.2.1
+date-released: 2026-10-22
 license: MIT
 repository-code: "https://github.com/Ztang-Yit-Xiaang/mathproof-skill"
-url: "https://github.com/Ztang-Yit-Xiaang/mathproof-skill"
+url: "https://ztang-yit-xiaang.github.io/mathproof-skill/"
+keywords:
+  - formal verification
+  - Lean 4
+  - Mathlib
+  - theorem proving
+  - proof checking
+  - AI agents
+  - large language models
