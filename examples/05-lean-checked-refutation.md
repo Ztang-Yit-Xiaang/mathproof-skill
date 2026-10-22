@@ -4,17 +4,17 @@
 
 Audit this argument, and verify your verdict in Lean:
 
-> Let \(f:\mathbb{R}\to\mathbb{R}\) be differentiable with \(f'(x_0)=0\). Then \(x_0\) is a critical point, so \(f\) attains its global minimum at \(x_0\).
+> Let $f:\mathbb{R}\to\mathbb{R}$ be differentiable with $f'(x_0)=0$. Then $x_0$ is a critical point, so $f$ attains its global minimum at $x_0$.
 
 ## Expected audit
 
 **Verdict: `INVALID`** · **Lean status: `LEAN-CHECKED`**
 
-**First unsupported step.** "\(x_0\) is a critical point, so \(f\) attains its global minimum at \(x_0\)."
+**First unsupported step.** "$`x_0`$ is a critical point, so $f$ attains its global minimum at $x_0$."
 
 **Why it fails.** Stationarity is a necessary condition for an interior minimum of a differentiable function, not a sufficient one.
 
-**Counterexample.** \(f(x)=-x^2\) is differentiable and \(f'(0)=0\), but \(f(1)=-1<0=f(0)\).
+**Counterexample.** $f(x)=-x^2$ is differentiable and $f'(0)=0$, but $f(1)=-1<0=f(0)$.
 
 **Lean verification.**
 
@@ -42,8 +42,8 @@ PASS: lean/MathProofSkill/Evals/Optimization001.lean
 
 | Informal | Lean | Match |
 | --- | --- | --- |
-| \(f:\mathbb{R}\to\mathbb{R}\) differentiable | `f : ℝ → ℝ`, `Differentiable ℝ f` | faithful |
-| \(f'(x_0)=0\) | `deriv f x = 0` | faithful (differentiability is assumed, so `deriv` is not a junk value) |
-| global minimum at \(x_0\) | `IsMinOn f univ x` | faithful |
+| $f:\mathbb{R}\to\mathbb{R}$ differentiable | `f : ℝ → ℝ`, `Differentiable ℝ f` | faithful |
+| $f'(x_0)=0$ | `deriv f x = 0` | faithful (differentiability is assumed, so `deriv` is not a junk value) |
+| global minimum at $x_0$ | `IsMinOn f univ x` | faithful |
 
-**Repair.** Add convexity: for a differentiable convex \(f\), \(f'(x_0)=0\) does imply a global minimum. The one-variable version is machine-checked as `isMinOn_of_deriv_eq_zero` in `lean/MathProofSkill/Evals/Optimization002.lean`.
+**Repair.** Add convexity: for a differentiable convex $f$, $f'(x_0)=0$ does imply a global minimum. The one-variable version is machine-checked as `isMinOn_of_deriv_eq_zero` in `lean/MathProofSkill/Evals/Optimization002.lean`.

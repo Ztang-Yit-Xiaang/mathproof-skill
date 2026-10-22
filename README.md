@@ -25,13 +25,13 @@ The distinctive rule is simple:
 
 **Proposed reasoning**
 
-\[
+$$
 f'(x)>0 \quad\Longrightarrow\quad f(x)>0.
-\]
+$$
 
 **Audit: `INVALID`**
 
-The premise establishes that \(f\) is increasing, not that its values are positive. Let \(f(x)=x\) on \((-2,-1)\). Then \(f'(x)=1>0\), while \(f(x)<0\) throughout the domain.
+The premise establishes that $f$ is increasing, not that its values are positive. Let $f(x)=x$ on $(-2,-1)$. Then $f'(x)=1>0$, while $f(x)<0$ throughout the domain.
 
 ## Examples
 
@@ -39,9 +39,9 @@ Each example below is an evaluation case. The Lean code is the file in `lean/Mat
 
 ### 1. Refuting a plausible claim: `INVALID` · `LEAN-CHECKED`
 
-> *Claim.* Every continuous function on \((0,1)\) attains a maximum.
+> *Claim.* Every continuous function on $(0,1)$ attains a maximum.
 
-**First unsupported step:** applying the extreme value theorem, which needs a compact domain; \((0,1)\) is bounded but not closed. **Counterexample:** \(f(x)=x\) has no maximum on \((0,1)\).
+**First unsupported step:** applying the extreme value theorem, which needs a compact domain; $(0,1)$ is bounded but not closed. **Counterexample:** $f(x)=x$ has no maximum on $(0,1)$.
 
 ```lean
 def Claim : Prop :=
@@ -67,9 +67,9 @@ The checker prints the full body of `Claim`, so the reader can confirm that the 
 
 ### 2. Accepting a correct proof: `VALID` · `LEAN-CHECKED`
 
-> *Claim.* The square of an even integer is even. *Proof.* \(n=2k\Rightarrow n^2=2(2k^2)\).
+> *Claim.* The square of an even integer is even. *Proof.* $n=2k\Rightarrow n^2=2(2k^2)$.
 
-A skeptical auditor must also accept correct work. The Lean proof follows the informal witness argument, but with one encoding detail the fidelity check catches: Mathlib defines `Even n` as \(\exists r,\ n=r+r\), not \(n=2r\).
+A skeptical auditor must also accept correct work. The Lean proof follows the informal witness argument, but with one encoding detail the fidelity check catches: Mathlib defines `Even n` as $\exists r,\ n=r+r$, not $n=2r$.
 
 ```lean
 theorem even_sq (n : ℤ) (h : Even n) : Even (n ^ 2) := by
@@ -85,9 +85,9 @@ PASS: lean/MathProofSkill/Evals/Number001.lean
 
 ### 3. A probability trap: `INVALID` · `LEAN-CHECKED`
 
-> *Claim.* For every square-integrable \(X\), \(\mathbb{E}[X^2]=(\mathbb{E}[X])^2\).
+> *Claim.* For every square-integrable $X$, $\mathbb{E}[X^2]=(\mathbb{E}[X])^2$.
 
-**Counterexample:** \(X=\pm1\) with probability \(1/2\) each, so \(\mathbb{E}[X]=0\) but \(\mathbb{E}[X^2]=1\). The Lean file builds that probability space (the uniform measure on `Bool`), proves `X` is in \(L^2\), computes both moments, and derives `¬ Claim`:
+**Counterexample:** $X=\pm1$ with probability $1/2$ each, so $\mathbb{E}[X]=0$ but $\mathbb{E}[X^2]=1$. The Lean file builds that probability space (the uniform measure on `Bool`), proves `X` is in $L^2$, computes both moments, and derives `¬ Claim`:
 
 ```lean
 theorem mean_X : ∫ b, X b ∂P = 0 := by rw [integral_P]; norm_num [X]

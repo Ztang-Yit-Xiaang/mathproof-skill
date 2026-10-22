@@ -32,11 +32,11 @@
 
 例如：
 
-\[
+$$
 f'(x)>0 \;\not\Rightarrow\; f(x)>0.
-\]
+$$
 
-导数为正只能说明函数递增，不能说明函数值为正。取 \(f(x)=x\)，定义域为 \((-2,-1)\)，就有 \(f'(x)=1>0\)，但 \(f(x)<0\)。
+导数为正只能说明函数递增，不能说明函数值为正。取 $f(x)=x$，定义域为 $(-2,-1)$，就有 $f'(x)=1>0$，但 $f(x)<0$。
 
 目前它支持四种模式：证明、审计、解释和定理检索；也会专门检查矩阵分析、概率、优化和渐近推导中常见的逻辑跳步。
 
@@ -82,17 +82,17 @@ GitHub：`https://github.com/Ztang-Yit-Xiaang/mathproof-skill`
 
 大公式：
 
-\[
+$$
 f'(x)>0 \quad\not\Rightarrow\quad f(x)>0
-\]
+$$
 
 解释：
 
-取 \(f(x)=x\)，\(x\in(-2,-1)\)。
+取 $f(x)=x$，$`x\in(-2,-1)`$。
 
-\[
+$$
 f'(x)=1>0,\qquad f(x)<0.
-\]
+$$
 
 结论：导数为正说明递增，不说明函数值为正。
 
@@ -140,9 +140,9 @@ Final Audit
 
 三组大字：
 
-- symmetric \(\ne\) PSD
-- stationarity \(\ne\) global optimum
-- approximation \(\ne\) equality
+- symmetric $\ne$ PSD
+- stationarity $\ne$ global optimum
+- approximation $\ne$ equality
 
 小字：还检查概率独立性、极限交换、秩与零空间、必要与充分条件等。
 
