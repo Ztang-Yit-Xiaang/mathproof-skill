@@ -14,6 +14,17 @@ AI-generated proofs often fail in a dangerous way: the algebra looks polished, b
 
 The reasoning is informal, and an informal audit does **not guarantee correctness**. To check results, the skill uses **Lean 4 with Mathlib**: it formalizes the claim (or its negation), checks that the formal statement says what the informal one says, proves it, and runs a checker that rejects `sorry`, custom axioms, and kernel bypasses. Only a check that passes counts as machine-checked.
 
+## Why not just ask an LLM?
+
+A chatbot gives a fluent answer you must still check yourself, and rarely says it is unsure. MathProof Skill adds:
+
+- **The exact first failing step plus a counterexample**, pinpointing where reasoning breaks down rather than offering vague skepticism.
+- **A Lean 4 proof or refutation checked by the kernel**, where the checker rejects `sorry`, custom axioms, and `native_decide`.
+- **A fidelity check comparing the Lean statement with the original question**, ensuring it cannot quietly prove an easier theorem.
+- **Honest labels** (`LEAN-CHECKED (partial)`, `NOT FORMALIZED`, `UNVERIFIED`) instead of a confident guess.
+
+In short: you trust the proof checker, not the prose.
+
 ## The core idea
 
 ```text
