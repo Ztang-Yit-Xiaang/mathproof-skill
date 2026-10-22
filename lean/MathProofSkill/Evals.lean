@@ -13,6 +13,7 @@ import MathProofSkill.Evals.Logic002
 import MathProofSkill.Evals.Number001
 import MathProofSkill.Evals.Optimization001
 import MathProofSkill.Evals.Optimization002
+import MathProofSkill.Evals.Optimization003
 import MathProofSkill.Evals.Probability001
 import MathProofSkill.Evals.Probability002
 import MathProofSkill.Evals.Probability003

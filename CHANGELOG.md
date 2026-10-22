@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added Example 6 and eval case `optimization-003`: the $O(1/k)$ rate of gradient descent for convex $L$-smooth functions on a real Hilbert space (Nesterov, Thm 2.1.14), machine-checked in Lean from Mathlib's definitions alone. The formal proof shows the minimizer hypothesis is unnecessary.
+- `validate_evals.py` now accepts Lean names ending in a prime (e.g. `gd_rate'`).
+- README and examples use GitHub math delimiters (`$`, `$$`) so formulas render.
+
 ## 0.2.0 — 2026-10-21
 
 - Added Lean 4 / Mathlib machine checking as a workflow step, with a protocol in `skill/references/lean-verification.md`: statement-first formalization, a fidelity table, encoding traps (junk values, coercions, bundled Mathlib definitions), and four Lean statuses (`LEAN-CHECKED`, `LEAN-CHECKED (partial)`, `LEAN-FAILED`, `NOT FORMALIZED`).

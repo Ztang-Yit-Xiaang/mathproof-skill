@@ -63,7 +63,7 @@ def check_lean(line_number: int, verdict: object, lean: object) -> list[str]:
         return errors
     source = path.read_text(encoding="utf-8")
     for d in decls:
-        if not re.search(rf"^\s*(?:theorem|lemma|def|noncomputable def|abbrev)\s+{re.escape(d)}\b", source, re.M):
+        if not re.search(rf"^\s*(?:theorem|lemma|def|noncomputable def|abbrev)\s+{re.escape(d)}(?![\w'])", source, re.M):
             errors.append(f"{where}: {rel} does not declare {d!r}")
     return errors
 

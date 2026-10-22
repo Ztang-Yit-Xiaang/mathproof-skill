@@ -141,6 +141,43 @@ FAIL: tests/lean_check/fail_hidden_sorry.lean
 
 The same audit rejects custom `axiom`s and `native_decide` (which trusts compiled code). See [`tests/lean_check/`](tests/lean_check/) for every case.
 
+### 6. A graduate-level proof: the $O(1/k)$ rate of gradient descent · `VALID` · `LEAN-CHECKED`
+
+> *Theorem* (Nesterov, *Lectures on Convex Optimization*, Thm 2.1.14). Let $f$ be convex and differentiable on a real Hilbert space, with $L$-Lipschitz gradient. Gradient descent $x_{k+1}=x_k-\frac1L\nabla f(x_k)$ satisfies
+> $$f(x_k)-f(x^\star)\le\frac{L\,\|x_0-x^\star\|^2}{2k}\qquad(k\ge1).$$
+
+The skill proves it in **PROVE** mode as a chain of named lemmas, each mirrored by a Lean theorem:
+
+| Step | Statement | Lean |
+| --- | --- | --- |
+| Descent lemma | $f(y)\le f(x)+\langle\nabla f(x),y-x\rangle+\frac L2\|y-x\|^2$ | `descent_lemma` |
+| First-order convexity | $f(x)+\langle\nabla f(x),y-x\rangle\le f(y)$ | `convex_first_order` |
+| Sufficient decrease | $f(x_{k+1})\le f(x_k)-\frac1{2L}\|\nabla f(x_k)\|^2$ | `sufficient_decrease` |
+| One-step progress | $f(x_{k+1})-f^\star\le\frac L2(\|x_k-x^\star\|^2-\|x_{k+1}-x^\star\|^2)$ | `one_step` |
+| Lyapunov bound | $\Phi_k=k(f(x_k)-f^\star)+\frac L2\|x_k-x^\star\|^2$ is nonincreasing | `lyapunov` |
+| Rate | $k(f(x_k)-f^\star)\le\frac L2\|x_0-x^\star\|^2$ | `gd_rate`, `gd_rate'` |
+
+Nothing beyond Mathlib's definitions is assumed: the descent lemma is derived from `LipschitzWith L (∇ f)` with a mean-value argument along the segment, and first-order convexity from `ConvexOn` by restricting $f$ to a line.
+
+```lean
+theorem gd_rate' {f : E → ℝ} {L : ℝ≥0} (hL0 : 0 < L) (hf : Differentiable ℝ f)
+    (hL : LipschitzWith L (∇ f)) (x : ℕ → E)
+    (hx : ∀ k, x (k + 1) = x k - (1 / (L : ℝ)) • ∇ f (x k))
+    (hconv : ConvexOn ℝ univ f) {xstar : E} (k : ℕ) (hk : 0 < k) :
+    f (x k) - f xstar ≤ L * ‖x 0 - xstar‖ ^ 2 / (2 * k)
+```
+
+```text
+PASS: lean/MathProofSkill/Evals/Optimization003.lean
+  …Optimization003.gd_rate' : … → ConvexOn ℝ Set.univ f → ∀ {xstar : E} (k : ℕ), 0 < k →
+      f (x k) - f xstar ≤ ↑L * ‖x 0 - xstar‖ ^ 2 / (2 * ↑k)
+    axioms: propext, Classical.choice, Quot.sound
+```
+
+**What the formal proof found.** The hypothesis "$`x^\star`$ is a minimizer" is never used: Lean's linter flagged it as unused. The bound holds for every reference point $x^\star$; minimality only matters for reading $f(x_k)-f(x^\star)$ as the optimality gap. The formal theorem omits the hypothesis, which makes it strictly stronger. The fidelity check also caught a junk-value trap: Lean defines $a/0=0$, so the primary theorem is stated division-free and the textbook form is derived only for $k\ge1$.
+
+The full write-up, with proofs of every lemma, the post-audit, and the fidelity table, is [Example 6](examples/06-gradient-descent-rate.md).
+
 More worked audits, including fidelity tables, are in [`examples/`](examples/).
 
 ## Four modes
