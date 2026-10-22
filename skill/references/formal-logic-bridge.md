@@ -26,14 +26,11 @@ INFORMAL PROSE                  LEAN 4 TACTIC
 
 #### Illustrative Lean 4 Mapping
 
-This snippet illustrates tactic alignment. Compile formal code against the repository's declared Lean and mathlib versions before treating it as machine-checked evidence.
+This snippet is machine-checked as `lean/MathProofSkill/Evals/Number001.lean` in the repository. Never treat formal code as evidence until `scripts/lean_check.py` passes on it; see [lean-verification.md](lean-verification.md).
 ```lean
-theorem even_square (n : ℤ) (h : Even n) : Even (n^2) := by
-  rcases h with ⟨k, rfl⟩
-  use 2 * k^2
-  calc
-    (2 * k)^2 = 4 * k^2     := by ring
-            _ = 2 * (2 * k^2) := by ring
+theorem even_sq (n : ℤ) (h : Even n) : Even (n ^ 2) := by
+  obtain ⟨k, rfl⟩ := h
+  exact ⟨2 * k ^ 2, by ring⟩
 ```
 
 ---
