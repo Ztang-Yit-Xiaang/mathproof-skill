@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MathProof Skill — break a proof before you trust it</title>
+<meta name="description" content="A correctness-first AI agent skill for mathematical proofs. It audits every step adversarially, finds the first unsupported implication, and machine-checks results in Lean 4 with Mathlib. Works with Claude Code, Codex, and Antigravity.">
+<meta name="keywords" content="AI proof checking, Lean 4, Mathlib, formal verification, agent skill, Claude Code, Codex, Antigravity, proof audit, counterexample, convex optimization, gradient descent">
+<link rel="canonical" href="https://ztang-yit-xiaang.github.io/mathproof-skill/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MathProof Skill — break a proof before you trust it">
+<meta property="og:description" content="An AI agent skill that audits proofs step by step and machine-checks them in Lean 4. 21 benchmark cases, all Lean-checked, including the O(1/k) rate of gradient descent.">
+<meta property="og:url" content="https://ztang-yit-xiaang.github.io/mathproof-skill/">
+<meta name="twitter:card" content="summary">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231d3b6a'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11' stroke='%23fff' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"MathProof Skill","description":"A correctness-first AI agent skill for constructing and auditing mathematical proofs, with Lean 4 / Mathlib machine checking.","codeRepository":"https://github.com/Ztang-Yit-Xiaang/mathproof-skill","programmingLanguage":["Lean","Python"],"license":"https://opensource.org/licenses/MIT","version":"0.2.0","author":{"@type":"Person","name":"Yit Xiaang Ztang"}}
+</script>
+<style>
+:root{
+  --bg:#fbfaf7; --surface:#ffffff; --sunk:#f3f1ec; --ink:#1b1d22; --ink-2:#4a4f5a; --ink-3:#7a808c;
+  --line:#e4e1d9; --accent:#1d3b6a; --accent-ink:#ffffff; --accent-soft:#e7edf6;
+  --ok:#1f7a4d; --ok-soft:#e5f3eb; --bad:#b4342d; --bad-soft:#fbe9e7; --warn:#97650d; --warn-soft:#fbf1dc;
+  --code-bg:#f5f3ee; --shadow:0 1px 2px rgba(20,22,30,.05),0 6px 24px rgba(20,22,30,.06);
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --sans:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111317; --surface:#181b21; --sunk:#14161b; --ink:#e9e7e2; --ink-2:#b4b6bd; --ink-3:#868a94;
+    --line:#2a2e37; --accent:#8fb3ec; --accent-ink:#0f1726; --accent-soft:#1c2738;
+    --ok:#6cc79a; --ok-soft:#16281f; --bad:#f08a80; --bad-soft:#2d1917; --warn:#e2b45e; --warn-soft:#2b2312;
+    --code-bg:#15181d; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.25);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;line-height:1.2;margin:0}
+h2{font-size:clamp(1.6rem,3.2vw,2.2rem);margin-bottom:.4em}
+h3{font-size:1.2rem}
+p{margin:.6em 0}
+code,pre{font-family:var(--mono);font-size:.86em}
+:not(pre)>code{background:var(--sunk);border:1px solid var(--line);padding:.08em .35em;border-radius:5px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;line-height:1.55;margin:.8em 0}
+.lede{color:var(--ink-2);font-size:1.08rem;max-width:68ch}
+.eyebrow{font:600 .74rem/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:.9em}
+section{padding-block:72px;border-top:1px solid var(--line)}
+
+/* nav */
+nav.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;align-items:center;gap:20px;height:56px}
+.brand{font:700 1.05rem var(--serif);color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:9px}
+.brand svg{flex:none}
+nav.top .links{margin-left:auto;display:flex;gap:18px;align-items:center}
+nav.top .links a{color:var(--ink-2);text-decoration:none;font-size:.92rem}
+nav.top .links a:hover{color:var(--ink)}
+@media (max-width:640px){nav.top .links a.opt{display:none}}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:9px;font:600 .95rem var(--sans);text-decoration:none;border:1px solid transparent;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{border-color:var(--line);color:var(--ink);background:var(--surface)}
+.btn:hover{filter:brightness(1.08)}
+
+/* hero */
+.hero{padding-block:76px 64px;border-top:0}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(2.2rem,5.4vw,3.6rem);font-weight:700}
+.hero h1 em{font-style:italic;color:var(--accent);font-weight:600}
+.hero .lede{margin-top:18px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.badges span{font:500 .8rem var(--sans);color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:3px 11px;background:var(--surface)}
+
+/* audit card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.audit{padding:22px 22px 18px}
+.audit .lbl{font:600 .72rem var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.audit .claim{font-family:var(--serif);font-size:1.12rem;margin:.35em 0 1em}
+.step{display:flex;gap:12px;padding:9px 0;border-top:1px dashed var(--line);font-size:.95rem}
+.step .n{font:500 .8rem var(--mono);color:var(--ink-3);width:22px;flex:none;padding-top:2px}
+.step.bad{background:var(--bad-soft);margin-inline:-22px;padding-inline:22px;border-top-color:transparent}
+.step.bad .n{color:var(--bad)}
+.why{font-size:.86rem;color:var(--bad);margin-top:3px}
+.verdict{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tag{font:600 .74rem var(--mono);padding:4px 9px;border-radius:6px;letter-spacing:.02em}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.neutral{background:var(--sunk);color:var(--ink-2)}
+
+/* problem */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.rule{border-left:3px solid var(--accent);padding:6px 0 6px 18px;font-family:var(--serif);font-size:1.18rem;color:var(--ink);margin:1.2em 0}
+
+/* pipeline */
+.pipe{display:flex;flex-wrap:wrap;gap:0;margin-top:28px;counter-reset:s}
+.pipe .st{flex:1 1 150px;position:relative;padding:16px 16px 16px 16px;background:var(--surface);border:1px solid var(--line);margin:-1px 0 0 -1px}
+.pipe .st:first-child{border-radius:12px 0 0 12px}
+.pipe .st:last-child{border-radius:0 12px 12px 0;background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+@media (max-width:820px){.pipe .st,.pipe .st:first-child,.pipe .st:last-child{border-radius:0;flex-basis:50%}}
+.st b{display:block;font:600 .95rem var(--sans);margin-bottom:3px}
+.st b::before{counter-increment:s;content:counter(s) " ";font:500 .78rem var(--mono);color:var(--ink-3);margin-right:4px}
+.st span{font-size:.86rem;color:var(--ink-2);line-height:1.45;display:block}
+
+/* examples tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:26px 0 0}
+.tabs button{font:500 .9rem var(--sans);padding:8px 14px;border-radius:9px 9px 0 0;border:1px solid var(--line);border-bottom:0;background:var(--sunk);color:var(--ink-2);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:600;position:relative;top:1px}
+.panel{padding:24px;border-radius:0 12px 12px 12px}
+.panel blockquote{margin:0 0 .8em;font-family:var(--serif);font-size:1.1rem}
+.panel .verdict{margin:0 0 12px}
+.out{color:var(--ink-2)}
+.out .pass{color:var(--ok);font-weight:600}
+.out .fail{color:var(--bad);font-weight:600}
+
+/* showcase */
+.lemmas{width:100%;border-collapse:collapse;font-size:.95rem}
+.lemmas th,.lemmas td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.lemmas th{font:600 .74rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.lemmas td:last-child{white-space:nowrap}
+.tablebox{overflow-x:auto;margin-top:18px}
+.theorem{padding:24px 26px;margin-top:22px}
+.theorem .hd{font:600 .78rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.theorem p{font-family:var(--serif);font-size:1.08rem}
+.found{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+@media (max-width:820px){.found{grid-template-columns:1fr}}
+.found .card{padding:20px 22px}
+.found h3{font-size:1.08rem;margin-bottom:.3em}
+
+/* checker */
+.checks{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:10px}
+.checks li{display:flex;gap:10px;align-items:flex-start}
+.checks li::before{content:"";flex:none;width:18px;height:18px;margin-top:4px;border-radius:5px;background:var(--ok-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' stroke='%231f7a4d' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") center/14px no-repeat}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px}
+@media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:18px}
+.stat b{display:block;font:700 2rem/1.1 var(--serif);color:var(--accent)}
+.stat span{font-size:.88rem;color:var(--ink-2)}
+
+/* install */
+.agents{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+@media (max-width:720px){.agents{grid-template-columns:1fr}}
+.agents .card{padding:16px 18px}
+.agents code{font-size:.8rem}
+.copy{position:relative}
+.copy button{position:absolute;top:8px;right:8px;font:500 .78rem var(--sans);padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+
+footer{border-top:1px solid var(--line);padding-block:36px 48px;color:var(--ink-3);font-size:.9rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
+.katex{font-size:1.04em}
+.hero-grid>*,.two>*,.found>*,.agents>*{min-width:0}
+.katex-display{overflow-x:auto;overflow-y:hidden}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor" style="color:var(--accent)"/><path d="M9 16.5l4.5 4.5L23 11" stroke="var(--bg)" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      MathProof Skill
+    </a>
+    <div class="links">
+      <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#examples">Examples</a>
+      <a class="opt" href="#showcase">Showcase</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">An open-source skill for AI agents · Lean 4 + Mathlib</div>
+      <h1>Break a proof <em>before</em> you trust it.</h1>
+      <p class="lede">AI-written proofs fail quietly: the algebra looks polished, but one unsupported implication is buried in the middle. MathProof Skill makes your agent audit every step adversarially, find the <strong>first</strong> step that isn't earned, and then machine-check the result in Lean.</p>
+      <div class="cta">
+        <a class="btn primary" href="#install">Install in one command</a>
+        <a class="btn ghost" href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.88.87 2.34.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 1 8 3.87c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="badges"><span>Claude Code</span><span>Codex</span><span>Antigravity</span><span>MIT licensed</span></div>
+    </div>
+
+    <div class="card audit" aria-label="Example audit">
+      <div class="lbl">Submitted proof</div>
+      <div class="claim">Every continuous function on $(0,1)$ attains a maximum.</div>
+      <div class="step"><span class="n">1</span><div>Let $f$ be continuous on $(0,1)$.</div></div>
+      <div class="step bad"><span class="n">2</span><div>By the extreme value theorem, $f$ attains a maximum.
+        <div class="why">✗ First unsupported step: EVT needs a compact domain; $(0,1)$ is not closed.</div></div></div>
+      <div class="step"><span class="n">3</span><div>Counterexample: $f(x)=x$ has no maximum on $(0,1)$.</div></div>
+      <div class="verdict"><span class="tag bad">INVALID</span><span class="tag ok">LEAN-CHECKED</span><span class="tag neutral">axioms: propext, choice, Quot.sound</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="wrap two">
+    <div>
+      <div class="eyebrow">The problem</div>
+      <h2>Fluent is not the same as correct.</h2>
+      <p>Language models are trained to reach the requested conclusion. Ask one for a proof and you usually get one, even when the claim is false. The failure is rarely an arithmetic slip. It is a theorem applied outside its hypotheses, a limit swapped without justification, an "obviously" that isn't.</p>
+      <p>And an informal audit, however careful, is still informal. So the skill doesn't stop there.</p>
+    </div>
+    <div>
+      <div class="eyebrow">The rule</div>
+      <div class="rule">When a step is challenged, freeze the proof immediately before it and re-derive the step using only facts already available. Later algebra cannot rescue an unsupported step.</div>
+      <p>Then formalize. A passing Lean check, with only the standard axioms, is the only thing the skill calls <em>machine-checked</em>. And because a correct proof of the wrong statement verifies nothing, every check comes with a fidelity table comparing the Lean statement to the informal one.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow">How it works</div>
+    <h2>A pipeline that tries to say no.</h2>
+    <p class="lede">Four modes — <code>PROVE</code>, <code>AUDIT</code>, <code>EXPLAIN</code>, <code>RESEARCH</code> — share one workflow. Every verdict carries a Lean status.</p>
+    <div class="pipe">
+      <div class="st"><b>Assumptions</b><span>Type every object; write down every hypothesis.</span></div>
+      <div class="st"><b>Adversarial audit</b><span>Hunt edge cases and counterexamples first.</span></div>
+      <div class="st"><b>Dependency map</b><span>Each step cites only what is already earned.</span></div>
+      <div class="st"><b>Proof</b><span>Construct, or inspect without silent repair.</span></div>
+      <div class="st"><b>Second audit</b><span>Attack the finished argument again.</span></div>
+      <div class="st"><b>Lean check</b><span>Formalize, prove, audit axioms and fidelity.</span></div>
+    </div>
+    <div class="verdict" style="margin-top:22px">
+      <span class="tag ok">VALID</span><span class="tag bad">INVALID</span><span class="tag warn">CONDITIONALLY VALID</span><span class="tag warn">INCOMPLETE</span><span class="tag neutral">UNVERIFIED</span>
+      <span style="width:12px"></span>
+      <span class="tag ok">LEAN-CHECKED</span><span class="tag warn">LEAN-CHECKED (partial)</span><span class="tag bad">LEAN-FAILED</span><span class="tag neutral">NOT FORMALIZED</span>
+    </div>
+  </div>
+</section>
+
+<section id="examples">
+  <div class="wrap">
+    <div class="eyebrow">Examples</div>
+    <h2>Real runs, real checker output.</h2>
+    <p class="lede">Each example is a benchmark case. The Lean code lives in <code>lean/MathProofSkill/Evals/</code>, and the output is from <code>lean_check.py</code>.</p>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" aria-controls="ex1">Refuting a claim</button>
+      <button role="tab" aria-selected="false" aria-controls="ex2">Accepting a proof</button>
+      <button role="tab" aria-selected="false" aria-controls="ex3">Probability trap</button>
+      <button role="tab" aria-selected="false" aria-controls="ex4">Honest scope</button>
+      <button role="tab" aria-selected="false" aria-controls="ex5">Fake proof</button>
+    </div>
+
+    <div class="card panel" id="ex1" role="tabpanel">
+      <div class="verdict"><span class="tag bad">INVALID</span><span class="tag ok">LEAN-CHECKED</span></div>
+      <blockquote>Every continuous function on $(0,1)$ attains a maximum.</blockquote>
+      <p>The extreme value theorem needs a compact domain. The skill formalizes the claim itself and proves its negation, using $f=\mathrm{id}$:</p>
+<pre><code>def Claim : Prop :=
+  ∀ f : ℝ → ℝ, ContinuousOn f (Ioo 0 1) → ∃ x ∈ Ioo (0 : ℝ) 1, IsMaxOn f (Ioo 0 1) x
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  obtain ⟨x, ⟨hx0, hx1⟩, hmax⟩ := h id continuousOn_id
+  have hy : (x + 1) / 2 ∈ Ioo (0 : ℝ) 1 := ⟨by linarith, by linarith⟩
+  have : (x + 1) / 2 ≤ x := hmax hy
+  linarith</code></pre>
+<pre class="out"><code><span class="pass">PASS</span>: lean/MathProofSkill/Evals/Analysis001.lean
+  …Analysis001.Claim : Prop
+    := ∀ (f : ℝ → ℝ), ContinuousOn f (Set.Ioo 0 1) → ∃ x ∈ Set.Ioo 0 1, IsMaxOn f (Set.Ioo 0 1) x
+  …Analysis001.claim_false : ¬…Analysis001.Claim
+    axioms: propext, Classical.choice, Quot.sound</code></pre>
+      <p>The checker prints the body of <code>Claim</code>, so you can confirm the refuted statement is the informal one and not a weaker look-alike.</p>
+    </div>
+
+    <div class="card panel" id="ex2" role="tabpanel" hidden>
+      <div class="verdict"><span class="tag ok">VALID</span><span class="tag ok">LEAN-CHECKED</span></div>
+      <blockquote>The square of an even integer is even. <em>Proof:</em> $n=2k\Rightarrow n^2=2(2k^2)$.</blockquote>
+      <p>A skeptical auditor must also accept correct work. The fidelity check catches one encoding detail: Mathlib defines <code>Even n</code> as $\exists r,\ n=r+r$, not $n=2r$.</p>
+<pre><code>theorem even_sq (n : ℤ) (h : Even n) : Even (n ^ 2) := by
+  obtain ⟨k, rfl⟩ := h          -- n = k + k
+  exact ⟨2 * k ^ 2, by ring⟩    -- (k + k)^2 = 2k^2 + 2k^2</code></pre>
+    </div>
+
+    <div class="card panel" id="ex3" role="tabpanel" hidden>
+      <div class="verdict"><span class="tag bad">INVALID</span><span class="tag ok">LEAN-CHECKED</span></div>
+      <blockquote>For every square-integrable $X$, $\mathbb{E}[X^2]=(\mathbb{E}[X])^2$.</blockquote>
+      <p>Counterexample: $X=\pm1$ with probability $\tfrac12$ each, so $\mathbb{E}[X]=0$ but $\mathbb{E}[X^2]=1$. The Lean file builds that probability space, proves $X\in L^2$, computes both moments, and derives <code>¬ Claim</code>:</p>
+<pre><code>theorem mean_X : ∫ b, X b ∂P = 0 := by rw [integral_P]; norm_num [X]
+theorem second_moment_X : ∫ b, X b ^ 2 ∂P = 1 := by rw [integral_P]; norm_num [X]
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  have := h X X_memLp
+  rw [mean_X, second_moment_X] at this
+  norm_num at this</code></pre>
+    </div>
+
+    <div class="card panel" id="ex4" role="tabpanel" hidden>
+      <div class="verdict"><span class="tag ok">VALID</span><span class="tag warn">LEAN-CHECKED (partial: simple graphs)</span></div>
+      <blockquote>In a finite undirected graph, the degrees sum to twice the number of edges.</blockquote>
+      <p>Mathlib's <code>SimpleGraph</code> has no loops or multi-edges, so the Lean theorem covers only part of the claim. The skill says so instead of overclaiming:</p>
+      <div class="tablebox"><table class="lemmas">
+        <tr><th>Informal</th><th>Lean</th><th>Match</th></tr>
+        <tr><td>finite graph</td><td><code>[Fintype V]</code></td><td>faithful</td></tr>
+        <tr><td>undirected graph</td><td><code>SimpleGraph V</code></td><td><strong>partial</strong>: no loops or multi-edges</td></tr>
+        <tr><td>sum of degrees = 2·edges</td><td><code>∑ v, G.degree v = 2 * G.edgeFinset.card</code></td><td>faithful</td></tr>
+      </table></div>
+    </div>
+
+    <div class="card panel" id="ex5" role="tabpanel" hidden>
+      <div class="verdict"><span class="tag bad">checker FAIL</span></div>
+      <blockquote>A <code>sorry</code> hidden behind a custom tactic.</blockquote>
+      <p>The source contains no literal <code>sorry</code>, so a text search misses it. The axiom audit does not:</p>
+<pre><code>macro "trust_me" : tactic => `(tactic| exact sorryAx _ false)
+theorem t (n : Nat) : n * 1 = n := by trust_me</code></pre>
+<pre class="out"><code><span class="fail">FAIL</span>: tests/lean_check/fail_hidden_sorry.lean
+  ✗ Lean warning: declaration uses `sorry`
+  ✗ t depends on non-standard axioms: sorryAx</code></pre>
+      <p>The same audit rejects custom <code>axiom</code>s and <code>native_decide</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="showcase">
+  <div class="wrap">
+    <div class="eyebrow">Graduate-level showcase</div>
+    <h2>The $O(1/k)$ rate of gradient descent, machine-checked.</h2>
+    <p class="lede">One of the most-cited results in first-order optimization, proved in <code>PROVE</code> mode as a chain of named lemmas, each mirrored by a Lean theorem. Nothing is assumed beyond Mathlib's definitions of convexity and Lipschitz continuity.</p>
+
+    <div class="card theorem">
+      <div class="hd">Theorem · Nesterov, <em>Lectures on Convex Optimization</em>, Thm 2.1.14</div>
+      <p>Let $f$ be convex and differentiable on a real Hilbert space, with $L$-Lipschitz gradient. Gradient descent $x_{k+1}=x_k-\frac1L\nabla f(x_k)$ satisfies</p>
+      <p style="text-align:center">$$f(x_k)-f(x^\star)\;\le\;\frac{L\,\|x_0-x^\star\|^2}{2k}\qquad(k\ge1).$$</p>
+    </div>
+
+    <div class="tablebox"><table class="lemmas">
+      <tr><th>Step</th><th>Statement</th><th>Lean</th></tr>
+      <tr><td>Descent lemma</td><td>$f(y)\le f(x)+\langle\nabla f(x),y-x\rangle+\frac L2\|y-x\|^2$</td><td><code>descent_lemma</code></td></tr>
+      <tr><td>First-order convexity</td><td>$f(x)+\langle\nabla f(x),y-x\rangle\le f(y)$</td><td><code>convex_first_order</code></td></tr>
+      <tr><td>Sufficient decrease</td><td>$f(x_{k+1})\le f(x_k)-\frac1{2L}\|\nabla f(x_k)\|^2$</td><td><code>sufficient_decrease</code></td></tr>
+      <tr><td>One-step progress</td><td>$f(x_{k+1})-f^\star\le\frac L2\bigl(\|x_k-x^\star\|^2-\|x_{k+1}-x^\star\|^2\bigr)$</td><td><code>one_step</code></td></tr>
+      <tr><td>Lyapunov bound</td><td>$\Phi_k=k(f(x_k)-f^\star)+\frac L2\|x_k-x^\star\|^2$ is nonincreasing</td><td><code>lyapunov</code></td></tr>
+      <tr><td>Rate</td><td>$k\,(f(x_k)-f^\star)\le\frac L2\|x_0-x^\star\|^2$</td><td><code>gd_rate</code>, <code>gd_rate'</code></td></tr>
+    </table></div>
+
+<pre><code>theorem gd_rate' {f : E → ℝ} {L : ℝ≥0} (hL0 : 0 &lt; L) (hf : Differentiable ℝ f)
+    (hL : LipschitzWith L (∇ f)) (x : ℕ → E)
+    (hx : ∀ k, x (k + 1) = x k - (1 / (L : ℝ)) • ∇ f (x k))
+    (hconv : ConvexOn ℝ univ f) {xstar : E} (k : ℕ) (hk : 0 &lt; k) :
+    f (x k) - f xstar ≤ L * ‖x 0 - xstar‖ ^ 2 / (2 * k)</code></pre>
+<pre class="out"><code><span class="pass">PASS</span>: lean/MathProofSkill/Evals/Optimization003.lean
+  …Optimization003.gd_rate' : … → ∀ {xstar : E} (k : ℕ), 0 &lt; k →
+      f (x k) - f xstar ≤ ↑L * ‖x 0 - xstar‖ ^ 2 / (2 * ↑k)
+    axioms: propext, Classical.choice, Quot.sound</code></pre>
+
+    <div class="found">
+      <div class="card">
+        <h3>Lean found a redundant hypothesis</h3>
+        <p>"$x^\star$ is a minimizer" is never used — Lean's linter flagged it. The bound holds for <em>every</em> reference point $x^\star$; minimality only matters for reading $f(x_k)-f(x^\star)$ as the optimality gap. The formal theorem drops it and is strictly stronger.</p>
+      </div>
+      <div class="card">
+        <h3>The fidelity check caught a junk value</h3>
+        <p>Lean defines $a/0=0$, so a naive statement "for all $k$" would be true at $k=0$ for the wrong reason. The primary theorem is stated division-free, and the textbook form is derived only for $k\ge1$.</p>
+      </div>
+    </div>
+    <p style="margin-top:18px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/examples/06-gradient-descent-rate.md">Read the full write-up →</a> &nbsp;·&nbsp; <a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/lean/MathProofSkill/Evals/Optimization003.lean">Lean source (≈170 lines) →</a></p>
+  </div>
+</section>
+
+<section id="checker">
+  <div class="wrap two">
+    <div>
+      <div class="eyebrow">The checker</div>
+      <h2>What "machine-checked" means here.</h2>
+<pre><code>python3 skill/scripts/lean_check.py File.lean --require main_theorem</code></pre>
+      <p>A check passes only if all of these hold. Anything else is reported as <span class="tag bad">LEAN-FAILED</span> or <span class="tag neutral">NOT FORMALIZED</span>, never quietly upgraded.</p>
+    </div>
+    <ul class="checks">
+      <li><span>The file compiles against pinned Lean 4 and Mathlib.</span></li>
+      <li><span>No <code>sorry</code> anywhere, including behind macros.</span></li>
+      <li><span>Every declaration depends only on <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code> — no custom axioms, no <code>native_decide</code>.</span></li>
+      <li><span>No kernel bypasses: <code>implemented_by</code>, <code>@[extern]</code>, <code>unsafe</code>, <code>debug.skipKernelTC</code>.</span></li>
+      <li><span>Every required theorem exists, and its elaborated statement is printed for the fidelity table.</span></li>
+      <li><span>Junk values flagged: <code>x / 0 = 0</code>, truncated <code>ℕ</code> subtraction, <code>deriv</code> of non-differentiable functions.</span></li>
+    </ul>
+  </div>
+  <div class="wrap">
+    <div class="stats">
+      <div class="card stat"><b>21</b><span>benchmark cases</span></div>
+      <div class="card stat"><b>21</b><span>formalized and checked in Lean</span></div>
+      <div class="card stat"><b>7</b><span>adversarial checker tests</span></div>
+      <div class="card stat"><b>3</b><span>agents supported</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="eyebrow">Install</div>
+    <h2>One command, every agent on your machine.</h2>
+    <div class="copy">
+<pre><code id="cmd">git clone https://github.com/Ztang-Yit-Xiaang/mathproof-skill.git
+cd mathproof-skill && ./scripts/install.sh</code></pre>
+      <button type="button" data-copy="cmd">Copy</button>
+    </div>
+    <p>The installer finds each agent you have and links the Lean project so the checker can find Mathlib. Re-run to update; <code>scripts/uninstall.sh</code> reverses it. Lean needs <a href="https://lean-lang.org/install">elan</a>.</p>
+    <div class="agents">
+      <div class="card"><b>Claude Code</b><br><code>~/.claude/skills</code></div>
+      <div class="card"><b>Codex</b><br><code>~/.codex/skills</code></div>
+      <div class="card"><b>Antigravity</b><br><code>~/.gemini/config/skills</code></div>
+    </div>
+    <p style="margin-top:22px">Then ask your agent:</p>
+<pre><code>Use @mathproof-skill to audit this proof and machine-check the verdict in Lean.</code></pre>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>MathProof Skill v0.2.0 · MIT License · by Yit Xiaang Ztang</div>
+    <div><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill">GitHub</a> · <a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/releases">Releases</a> · <a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/CITATION.cff">Cite</a></div>
+  </div>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.body, {
+      delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+  var tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () {
+      tabs.forEach(function (o) {
+        o.setAttribute("aria-selected", o === t ? "true" : "false");
+        document.getElementById(o.getAttribute("aria-controls")).hidden = o !== t;
+      });
+    });
+  });
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var text = document.getElementById(b.dataset.copy).innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        b.textContent = "Copied";
+        setTimeout(function () { b.textContent = "Copy"; }, 1500);
+      });
+    });
+  });
+});
+</script>
+</body>
+</html>

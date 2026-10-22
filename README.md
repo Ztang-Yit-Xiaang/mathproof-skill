@@ -6,6 +6,8 @@
 
 > A correctness-first AI skill that tries to break a mathematical proof before it accepts it.
 
+**Website:** https://ztang-yit-xiaang.github.io/mathproof-skill/
+
 AI-generated proofs often fail in a dangerous way: the algebra looks polished, but one unsupported implication is quietly buried in the middle. MathProof Skill changes the workflow from “reach the requested conclusion” to “verify that every dependency is earned.”
 
 The reasoning is informal, and an informal audit does **not guarantee correctness**. To check results, the skill uses **Lean 4 with Mathlib**: it formalizes the claim (or its negation), checks that the formal statement says what the informal one says, proves it, and runs a checker that rejects `sorry`, custom axioms, and kernel bypasses. Only a check that passes counts as machine-checked.
