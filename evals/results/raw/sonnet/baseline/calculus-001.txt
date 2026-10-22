@@ -1,0 +1,13 @@
+**The proof does not establish the claim, and the claim itself is false.**
+
+**Step 1** is just the hypothesis, so it is fine.
+
+**Step 2** is justified. If f'>0 throughout an interval I, then by the Mean Value Theorem f is strictly increasing on I. This assumes f is differentiable on I, which the hypothesis already implies.
+
+**Step 3** is the first unjustified step. Being strictly increasing says nothing about the sign of f. It only says that f(a) < f(b) when a < b. A strictly increasing function can take negative values everywhere on I.
+
+**Counterexample:** Let f(x) = x on I = (-1, 0). Then f'(x) = 1 > 0 everywhere on I, but f(x) < 0 on I. Another is f(x) = x − 10 on any interval, which has f' = 1 > 0 yet is negative on (0, 1).
+
+The conclusion f > 0 would need an extra hypothesis, for example f(a) ≥ 0 at the left endpoint a of I (with I = [a, b) or similar) and a restriction to x > a. Without something like that, the claim fails.
+
+{"verdict": "INVALID", "first_bad_step": 3}

@@ -1,0 +1,29 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** The claim is that there exists δ > 0 such that sin x = x for every x with 0 < |x| < δ. This is an exact equality on a punctured neighborhood of 0.
+
+**Step 1.** "sin x ~ x as x → 0" is true. It means sin x / x → 1, which is the standard limit. No issue here.
+
+**First unsupported step: Step 2.**
+
+**Why it fails.** Asymptotic equivalence says only that the ratio tends to 1. It does not say the two functions are equal anywhere nearby. Step 2 treats `f ~ g` as if it gave `f = g` locally, and that implication is false in general (for example, x² ~ x² + x³ at 0, but they differ at every nonzero x).
+
+**Counterexample to the claim itself.** The claim is false, not just badly argued. For x ≠ 0 with |x| < π, write the Taylor expansion with the Lagrange remainder:
+
+sin x = x − x³/6 + (x⁵/120)·cos(ξ) for some ξ between 0 and x.
+
+A cleaner route is to use the alternating-series bound for 0 < x < 1: the terms x^(2k+1)/(2k+1)! decrease, so
+
+x − sin x ≥ x³/6 − x⁵/120 = (x³/120)(20 − x²) > 0.
+
+So sin x < x for every x in (0, 1). Equivalently, g(x) = x − sin x satisfies g(0) = 0 and g'(x) = 1 − cos x > 0 on (0, 2π), so g is strictly positive on (0, 2π). Hence sin x ≠ x at every nonzero x in (0, 2π), and by oddness also on (−2π, 0). No punctured neighborhood of 0 on which sin x = x exists. (In fact, x = 0 is the only real solution of sin x = x.)
+
+**Lean verification.** `NOT FORMALIZED`. The argument is a short standard fact, and I did not run the Lean checker. The refutation above is an informal audit only. In Mathlib, `Real.sin_lt` (`0 < x → sin x < x`) is the relevant lemma I would use, but I have not verified its exact name or signature here.
+
+**Repair (labeled, separate from the diagnosis).** The true statements are:
+- sin x / x → 1 as x → 0, i.e. sin x ~ x.
+- sin x = x + O(x³) as x → 0; more precisely, |sin x − x| ≤ |x|³/6 for all real x.
+
+The original claim cannot be repaired without changing its meaning from equality to asymptotic equivalence.
+
+{"verdict": "INVALID", "first_bad_step": 2}

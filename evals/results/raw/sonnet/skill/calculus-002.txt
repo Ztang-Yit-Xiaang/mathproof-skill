@@ -1,0 +1,21 @@
+**Verdict: VALID** (Lean status: NOT FORMALIZED)
+
+**Claim and assumptions.** Let f : [0,1] → ℝ be continuous. The target is ∃ x₀ ∈ [0,1] with f(x₀) ≥ f(x) for all x ∈ [0,1]. The only hypotheses are that f is continuous and that the domain is [0,1].
+
+**Step-by-step check**
+
+1. **[0,1] is compact.** This is Heine–Borel: [0,1] is closed and bounded in ℝ. It is a standard theorem that needs no extra hypotheses.
+2. **f([0,1]) is compact in ℝ.** A continuous image of a compact set is compact. This uses exactly the hypotheses (f continuous, domain compact from step 1).
+3. **A nonempty compact subset of ℝ contains its supremum.**
+   - *Nonemptiness:* f([0,1]) is nonempty because [0,1] is nonempty. The proof does not say this, but it is immediate.
+   - *Existence of the supremum:* a compact subset of ℝ is bounded, so a nonempty one has a finite supremum.
+   - *Membership:* the set is closed, so it contains its supremum.
+   - *Conclusion:* the supremum is f(x₀) for some x₀ ∈ [0,1], and that x₀ is a maximizer.
+
+**First unsupported step.** None. The only gap is the unstated nonemptiness in step 3, which is trivially true and does not affect the verdict.
+
+**Counterexample or missing assumption.** None. The theorem is the standard Extreme Value Theorem. Compactness is essential, since f(x) = x on (0,1) has no maximum, but here it is supplied by step 1.
+
+**Lean verification.** I did not formalize or run this in the current session, so no machine-check claim is made. The statement is a direct instance of Mathlib's `IsCompact.exists_isMaxOn`, applied to `isCompact_Icc` and a `ContinuousOn` hypothesis. The "VALID" verdict rests on the informal audit alone.
+
+{"verdict": "VALID", "first_bad_step": null}

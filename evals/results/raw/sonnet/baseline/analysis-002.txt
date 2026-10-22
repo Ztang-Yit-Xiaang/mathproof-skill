@@ -1,0 +1,18 @@
+**The claim is false as stated, so the proof cannot establish it.**
+
+Pointwise convergence alone does not allow exchanging limit and integral. Counterexample on [0,1]: f_n(x) = n·1_{(0,1/n)}(x). Then f_n(x) → 0 for every x, so f = 0 and ∫f = 0. But ∫f_n = 1 for all n, so lim ∫f_n = 1 ≠ 0.
+
+**Step-by-step audit:**
+
+1. Setup: fine. It only states the hypothesis (pointwise convergence). It does not assume integrability of f_n or f, or any further condition.
+2. "Integrate both sides of the pointwise limit": this is the first unjustified step. The pointwise relation f_n(x) → f(x) holds at each x, and integrating it presupposes that ∫ commutes with lim, which is exactly what is to be proved. Nothing in the hypotheses or step 1 supports it. Even the integrability of f_n and f is not given.
+3. The conclusion follows only if step 2 is granted, so it inherits the gap.
+
+The exchange does hold under extra hypotheses, for example:
+- uniform convergence on [0,1] (with f_n Riemann integrable),
+- the Dominated Convergence Theorem (|f_n| ≤ g with g integrable),
+- the Monotone Convergence Theorem (0 ≤ f_n ↑ f).
+
+The proof invokes none of these, so the claim as stated is not established.
+
+{"verdict": "INVALID", "first_bad_step": 2}

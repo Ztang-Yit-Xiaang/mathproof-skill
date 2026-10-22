@@ -1,0 +1,13 @@
+**Verdict: INVALID.** The proof does not establish the claim, and the claim is false.
+
+- **Step 1** restates the hypothesis that f'(x) > 0 on I. It is justified.
+- **Step 2** is justified. Since f is differentiable on I with f' > 0, the Mean Value Theorem gives f(b) - f(a) = f'(c)(b - a) > 0 for any a < b in I, so f is strictly increasing.
+- **Step 3** is the first unjustified step. A strictly increasing function need not be positive anywhere. Strict monotonicity only says the function's values increase. It does not fix their sign.
+
+**Counterexample to the claim:** Let f(x) = x on I = (-1, 1). Then f'(x) = 1 > 0 on I, but f(0) = 0, so f(x) > 0 fails at x = 0 (and f is negative on (-1, 0)).
+
+The claim could be repaired by adding a hypothesis that fixes the sign, for example f(a) > 0 at some point a ∈ I. With that, step 3 would become "f(x) > f(a) > 0 for x > a", but that is a different claim and needs the extra hypothesis.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 3}
+```

@@ -1,0 +1,18 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** The claim is "for all a, b, if a = b then 2 = 1". The hypothesis a = b is satisfiable, and the conclusion 2 = 1 is false. So the claim can only hold if no pair a, b satisfies a = b, which is not the case.
+
+**Counterexample to the claim.** Take a = b = 1. The hypothesis holds and the conclusion 2 = 1 fails, so the claim itself is false and no proof can establish it.
+
+**Step-by-step check.**
+- Step 1 is the hypothesis.
+- Step 2 is valid: multiply both sides of a = b by a.
+- Step 3 is valid: subtracting b² from both sides of a² = ab gives a² − b² = ab − b², which factors as (a−b)(a+b) = b(a−b).
+- **Step 4 is the first unjustified step.** Cancelling a−b requires a−b ≠ 0. By the hypothesis a = b, we have a−b = 0, so step 4 divides by zero. From (a−b)(a+b) = b(a−b) you can only conclude a−b = 0 or a+b = b, and the first disjunct is exactly the assumption. The proof has no way to rule it out. Step 4 contradicts the hypothesis it relies on.
+- Step 5 inherits the invalid step 4. Even if you grant a+b = b, the further division by b to get 2 = 1 also needs b ≠ 0, which the proof never establishes.
+
+**Missing assumption.** No natural extra assumption repairs it. Requiring a ≠ b makes the cancellation legitimate but contradicts the hypothesis a = b, so the argument would be vacuous and could not reach step 5 as written.
+
+**Lean verification.** NOT FORMALIZED. I did not run the checker here. The refutation is trivial by hand (a = b = 1), and a Lean check would only confirm `¬ (∀ a b : ℝ, a = b → (2:ℝ) = 1)`.
+
+{"verdict": "INVALID", "first_bad_step": 4}

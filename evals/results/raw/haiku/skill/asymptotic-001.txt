@@ -1,0 +1,15 @@
+**Verdict: INVALID.** The claim is false, and the proof fails at step 2.
+
+**Step 1 is justified.** The limit sin x / x → 1 as x → 0 is standard, so sin x ~ x holds.
+
+**Step 2 is not justified.** Asymptotic equivalence means only that the ratio tends to 1. It does not give equality, and it says nothing about any neighborhood of 0. The inference from "~" to "=" on a neighborhood is a non sequitur.
+
+**The claim itself is false.** For every x > 0, sin x < x. To see this, let f(x) = x − sin x. Then f(0) = 0 and f'(x) = 1 − cos x ≥ 0, with f' vanishing only at multiples of 2π. So f is strictly increasing on [0, ∞), which gives f(x) > 0 for x > 0. Concretely, sin 0.1 ≈ 0.0998334 ≠ 0.1. So there is no punctured neighborhood of 0 on which sin x = x; the equality fails at every nonzero x near 0.
+
+**What is true:** sin x = x − x³/6 + O(x⁵), so |sin x − x| ≤ |x|³/6 for all real x. The error is small near 0 but never zero for x ≠ 0.
+
+This audit is a diagnosis by hand. I did not formalize the claim in Lean 4, since the refutation is elementary and you did not ask for machine checking.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 2}
+```

@@ -1,0 +1,18 @@
+**Audit**
+
+1. **Spectral theorem.** A is real symmetric, so A = QΛQᵀ with Q real orthogonal and Λ real diagonal. Justified.
+
+2. **Nonnegative eigenvalues.** For the eigenvector q_i (the i-th column of Q), q_iᵀAq_i = λ_i ‖q_i‖² = λ_i ≥ 0 by PSD. Justified. The proof states this without the one-line computation, but it follows directly from the hypotheses.
+
+3. **Definition of B.** Since λ_i ≥ 0 by step 2, each √λ_i is a well-defined nonnegative real, so B is a well-defined real matrix. Justified.
+
+4. **Properties of B.** All three conclusions follow from the construction:
+   - Symmetric: Bᵀ = Q diag(√λ_i)ᵀ Qᵀ = B.
+   - B² = Q diag(√λ_i) QᵀQ diag(√λ_i) Qᵀ = Q diag(λ_i) Qᵀ = A, using QᵀQ = I.
+   - PSD: xᵀBx = ‖diag(λ_i^{1/4}) Qᵀx‖² ≥ 0, or equivalently, the eigenvalues √λ_i of B are nonnegative.
+
+   The proof asserts these without the computations, which is terse but not a gap, since each is a routine one-line verification from the preceding steps.
+
+**Conclusion.** The proof establishes the claim. No step relies on anything beyond the hypotheses and earlier steps. The only weakness is that steps 2 and 4 omit short verifications, and these are standard.
+
+{"verdict": "VALID", "first_bad_step": null}

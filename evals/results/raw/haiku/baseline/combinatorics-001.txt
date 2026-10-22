@@ -1,0 +1,11 @@
+The proof establishes the claim.
+
+**Step 1** is a plan: it counts vertex-edge incidences by summing degrees over vertices. Since $\deg(v)$ is the number of incidences at $v$, with a loop at $v$ contributing 2, $\sum_v \deg(v)$ is exactly the total number of incidences.
+
+**Step 2** is justified by the definition of degree. Each non-loop edge $\{u,w\}$ has two endpoints, so it contributes one incidence at $u$ and one at $w$. A loop at $v$ contributes two incidences at $v$, which matches the convention that $\deg(v)$ counts loops twice. Parallel edges are handled the same way, since each copy is a separate edge with its own two incidences. The proof does not write out this bijection between incidences and edge-endpoints, but it is immediate from the definitions.
+
+**Step 3** follows from steps 1 and 2. The total number of incidences is counted two ways: by vertices, it is $\sum_v \deg(v)$; by edges, it is $2|E|$. Equating the two counts gives $\sum_v \deg(v) = 2|E|$.
+
+The claim's hypotheses do not explicitly settle loops, so the result depends on the loop convention. Step 2 states that convention, which is the standard one, so the argument is complete under it. Without it (for example, if a loop counted once), the identity would fail, so the convention is a genuine hypothesis that the proof makes explicit.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,17 @@
+**Verdict: VALID** (Lean status: NOT FORMALIZED)
+
+**Claim and assumptions.** X and Y are integrable random variables on the same probability space (implicit in writing X+Y). The target is that E is linear, i.e. E[aX+bY] = aE[X] + bE[Y], with no independence or correlation hypothesis.
+
+**Step check.**
+1. This is a hypothesis, so it is fine. It also supplies what step 2 needs: X, Y ∈ L¹ implies X+Y ∈ L¹ by the triangle inequality, so E[X+Y] is well defined.
+2. E[X] = ∫X dP, and the Lebesgue integral is linear on L¹(P). The identity ∫(X+Y) dP = ∫X dP + ∫Y dP is proved from the integral's construction (simple functions, then monotone limits, then positive and negative parts). That construction never uses the joint law of (X, Y), so the step is justified.
+3. This is a correct remark, not an inference. Independence matters for E[XY] = E[X]E[Y], which is multiplicative, not additive.
+
+**Attacks tried.**
+- **Counterexample:** take Y = X, which is maximally dependent. Then E[X+X] = 2E[X], as expected. No counterexample can exist, since the integral's linearity doesn't reference dependence.
+- **Missing integrability:** if X and Y were not integrable, E[X] + E[Y] could be ∞ − ∞. Step 1 excludes this.
+- **Scope:** the proof writes out only the case a = b = 1. However, the fact it cites, linearity of the integral, covers general a and b equally, so this is terseness rather than a gap.
+
+**Lean verification.** I did not formalize or machine-check this. The statement is a direct instance of Mathlib's `MeasureTheory.integral_add` (with `integral_smul` for scalars). The verdict rests on the informal audit above, not on a checker run.
+
+{"verdict": "VALID", "first_bad_step": null}

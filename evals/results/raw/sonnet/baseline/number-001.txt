@@ -1,0 +1,9 @@
+**Audit**
+
+1. Even means divisible by 2, so n = 2k for some integer k. This is the definition of even, and it is justified.
+2. n² = (2k)² = 4k² = 2(2k²). The algebra is correct.
+3. k is an integer, so k² is an integer, and 2k² is an integer. Therefore n² = 2·(an integer), which is even by definition. This is justified.
+
+Every step follows from the hypothesis and the earlier steps, and the conclusion matches the claim. Step 3 doesn't spell out that k² is an integer because integers are closed under multiplication, but that is a standard fact and not a gap.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,9 @@
+The proof establishes the claim. Each step follows from the one before it:
+
+1. **Justified.** This is the definition of "n is even": there exists an integer k with n = 2k.
+2. **Justified.** Squaring gives n² = (2k)² = 4k² by expanding the square. Factoring gives 4k² = 2(2k²). Both are correct algebra.
+3. **Justified.** 2k² is an integer because k is an integer and integers are closed under multiplication and addition. So n² = 2·(2k²) matches the definition of even.
+
+The hypotheses (n is an even integer) are used in step 1, and the conclusion (n² is even) is reached in step 3. No step assumes anything beyond the hypotheses or the earlier steps.
+
+{"verdict": "VALID", "first_bad_step": null}

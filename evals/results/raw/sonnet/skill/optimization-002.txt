@@ -1,0 +1,16 @@
+**Verdict: VALID.** Every step follows from the hypotheses and the earlier steps. The only wrinkle is the wording of step 3.
+
+**Claim and assumptions.** f is differentiable and μ-strongly convex with μ > 0, on ℝⁿ or on an open convex domain. x* is a point with ∇f(x*) = 0. The target is that f(y) > f(x*) for every y ≠ x*.
+
+**Step-by-step check**
+
+1. For differentiable f, the first-order form of μ-strong convexity is f(y) ≥ f(x) + ∇f(x)ᵀ(y−x) + (μ/2)‖y−x‖² for all x, y in the domain. This is a standard equivalent of strong convexity, and it holds at x = x*. Justified.
+2. ∇f(x*) = 0 is the definition of a stationary point. Justified.
+3. Substituting step 2 into step 1 gives f(y) ≥ f(x*) + (μ/2)‖y−x*‖², which is correct. The phrase "with strict inequality for y ≠ x*" is loosely worded. The displayed bound is a "≥", and equality can occur, for example when f is exactly a quadratic. What is true, and what step 4 needs, is that f(y) ≥ f(x*) + (μ/2)‖y−x*‖² > f(x*) for y ≠ x*, because μ > 0. Read this way, it is justified.
+4. f(y) > f(x*) for all y ≠ x* means x* is a global minimizer, and no other point can attain the minimum value. Existence is not an issue, since x* is given.
+
+**First unsupported step.** None. The step 3 wording is a presentational flaw, not a logical gap.
+
+**Lean verification.** NOT FORMALIZED. I did not run the Lean checker for this audit, so the verdict rests on the informal check above.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,13 @@
+**Audit**
+
+The overall strategy is the standard one (Extreme Value Theorem via compactness), and each cited fact is true. The question is whether each step is justified.
+
+1. [0,1] is compact: true by Heine–Borel (closed and bounded in R). Justified.
+
+2. The continuous image of a compact set is compact: a standard theorem, and f is continuous on [0,1] by hypothesis. Justified.
+
+3. "A nonempty compact subset of R contains its supremum": true. A compact K ⊂ R is bounded, so sup K exists when K is nonempty, and K is closed, so sup K ∈ K. The proof does not state that f([0,1]) is nonempty, but this is immediate since [0,1] is nonempty and f is defined on it. The step then concludes that some x₀ has f(x₀) = sup f([0,1]), which is precisely a maximum. The omitted nonemptiness check is trivial and follows from the hypotheses, and the compressed reasoning (bounded gives a supremum, closed gives membership) is a standard fact. This is a sufficiently justified step.
+
+**Conclusion:** The proof establishes the claim. Each step follows from the hypotheses and standard theorems, with only trivial details (nonemptiness of the image, why a compact set contains its supremum) left implicit.
+
+{"verdict": "VALID", "first_bad_step": null}

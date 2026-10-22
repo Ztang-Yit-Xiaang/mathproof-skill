@@ -1,0 +1,21 @@
+## Verdict: INVALID
+
+The proof does not establish the claim, and the claim is false. Take a = b = 1: the hypothesis holds, but 2 = 1 is false.
+
+## Step-by-step audit
+
+1. **Assume a = b.** Hypothesis. Justified.
+2. **a² = ab.** Multiply both sides of a = b by a. Justified.
+3. **(a − b)(a + b) = b(a − b).** Subtract b² from both sides of step 2. The left side is a² − b² = (a − b)(a + b), and the right side is ab − b² = b(a − b). Justified.
+4. **Cancel a − b to get a + b = b.** This is the first unjustified step. Cancelling a factor is valid only when that factor is nonzero. Hypothesis 1 gives a − b = 0, so the cancellation divides by zero. The equation (a − b)X = (a − b)Y does not imply X = Y when a − b = 0. Nothing earlier establishes a − b ≠ 0, and the hypothesis implies the opposite.
+5. **2b = b, hence 2 = 1.** Also unjustified, and it depends on step 4. Even granting a + b = b, the step 2b = b to 2 = 1 divides by b, which needs b ≠ 0. The hypothesis does not supply that, since b = 0 satisfies a = b.
+
+## Notes
+
+- Steps 1–3 are valid. The error is a single illegitimate cancellation in step 4.
+- Repair: the argument can only show that, if a = b, then (a − b)(a + b − b) = 0 holds trivially. It gives no information about 2 = 1. Any valid route to a contradiction would need an extra hypothesis that rules out a = b, which the claim does not have.
+- **Lean status:** NOT FORMALIZED. I did not run the Lean checker here. The flaw is a single division by zero, which is easy to confirm by hand with the counterexample a = b = 1.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 4}
+```

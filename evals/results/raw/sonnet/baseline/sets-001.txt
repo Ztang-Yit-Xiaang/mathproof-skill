@@ -1,0 +1,11 @@
+**The claim is false**, so no proof can establish it. A counterexample is S = (0, 1). It is nonempty and bounded, but it has no minimum: for any x in S, x/2 is in S and smaller. Its infimum is 0, which is not in S.
+
+**Step-by-step audit**
+
+1. "Let S be nonempty and bounded below." This is fine. It follows from the hypothesis that S is bounded, though it uses only half of it.
+2. "By completeness, inf S exists." This is justified. A nonempty set that is bounded below has a greatest lower bound in R.
+3. "Therefore inf S belongs to S and is its minimum." This is not justified. Completeness gives only that the infimum exists. It does not say the infimum is an element of S. That holds only when S is closed below, or when it contains its infimum for some other reason. The step fails on (0, 1), where inf S = 0 is not in S.
+
+The first unjustified step is step 3. The claim is false as stated. A correct version would be "every nonempty bounded-below subset of R has an infimum," or "every nonempty finite (or closed and bounded) subset of R has a minimum."
+
+{"verdict": "INVALID", "first_bad_step": 3}

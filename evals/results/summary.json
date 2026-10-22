@@ -1,0 +1,797 @@
+{
+  "cases": 21,
+  "runs": {
+    "haiku/baseline": {
+      "completed": 21,
+      "verdict_ok": 21,
+      "step_ok": 21,
+      "both_ok": 21,
+      "false_accept": 0,
+      "rows": [
+        {
+          "id": "logic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "logic-002",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "number-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "algebra-001",
+          "verdict": "INVALID",
+          "first_bad_step": 4,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-002",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-003",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "asymptotic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "sets-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "combinatorics-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "topology-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        }
+      ]
+    },
+    "haiku/skill": {
+      "completed": 21,
+      "verdict_ok": 19,
+      "step_ok": 20,
+      "both_ok": 19,
+      "false_accept": 0,
+      "rows": [
+        {
+          "id": "logic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "logic-002",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "number-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "algebra-001",
+          "verdict": "INVALID",
+          "first_bad_step": 4,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-002",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-003",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-002",
+          "verdict": "INCOMPLETE",
+          "first_bad_step": null,
+          "verdict_ok": false,
+          "step_ok": true,
+          "both_ok": false,
+          "false_accept": false
+        },
+        {
+          "id": "probability-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "asymptotic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "sets-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "combinatorics-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "topology-001",
+          "verdict": "INCOMPLETE",
+          "first_bad_step": 2,
+          "verdict_ok": false,
+          "step_ok": false,
+          "both_ok": false,
+          "false_accept": false
+        }
+      ]
+    },
+    "sonnet/baseline": {
+      "completed": 21,
+      "verdict_ok": 20,
+      "step_ok": 20,
+      "both_ok": 20,
+      "false_accept": 0,
+      "rows": [
+        {
+          "id": "logic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "logic-002",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "number-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "algebra-001",
+          "verdict": "INVALID",
+          "first_bad_step": 4,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-002",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-002",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": false,
+          "step_ok": false,
+          "both_ok": false,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-003",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "asymptotic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "sets-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "combinatorics-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "topology-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        }
+      ]
+    },
+    "sonnet/skill": {
+      "completed": 21,
+      "verdict_ok": 21,
+      "step_ok": 21,
+      "both_ok": 21,
+      "false_accept": 0,
+      "rows": [
+        {
+          "id": "logic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "logic-002",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "number-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "algebra-001",
+          "verdict": "INVALID",
+          "first_bad_step": 4,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "calculus-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "analysis-002",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "linear-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "optimization-003",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-002",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "probability-003",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "asymptotic-001",
+          "verdict": "INVALID",
+          "first_bad_step": 2,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "sets-001",
+          "verdict": "INVALID",
+          "first_bad_step": 3,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "combinatorics-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        },
+        {
+          "id": "topology-001",
+          "verdict": "VALID",
+          "first_bad_step": null,
+          "verdict_ok": true,
+          "step_ok": true,
+          "both_ok": true,
+          "false_accept": false
+        }
+      ]
+    }
+  }
+}

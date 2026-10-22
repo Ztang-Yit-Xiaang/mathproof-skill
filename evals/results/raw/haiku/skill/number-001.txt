@@ -1,0 +1,14 @@
+**Verdict:** VALID
+
+**Claim and assumptions:** For every integer $n$, if $n$ is even then $n^2$ is even. Here $n$ is an integer, and "even" means $n = 2k$ for some integer $k$.
+
+**Step check:**
+1. Definition of even. This is the hypothesis, so it is justified.
+2. $(2k)^2 = 4k^2 = 2(2k^2)$. This is ring arithmetic over the integers, so it is justified.
+3. $2k^2$ is an integer because $k$ is an integer and the integers are closed under multiplication. So $n^2 = 2m$ with $m = 2k^2 \in \mathbb{Z}$, which is the definition of even. This is justified.
+
+No step is unsupported, and the proof establishes the claim as stated.
+
+**Lean status:** NOT FORMALIZED. The argument is elementary integer algebra, and I did not run the Lean checker. A formal version would be a one-line `Even.pow` or `decide`-style argument in Mathlib, but the informal audit above is what the verdict rests on.
+
+{"verdict": "VALID", "first_bad_step": null}

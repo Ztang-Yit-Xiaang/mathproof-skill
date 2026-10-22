@@ -1,0 +1,16 @@
+**Verdict: VALID**
+
+**Claim and assumptions:** For every integer n, if n is even then n² is even. Even means n = 2m for some integer m. The only hypothesis is that n is an even integer.
+
+**Step check:**
+1. Valid. This is the definition of "even" applied to the hypothesis, and it gives an integer k with n = 2k.
+2. Valid. n² = (2k)² = 4k² = 2(2k²). This is plain ring algebra with no division or cancellation, and it holds for all k, including k = 0.
+3. Valid. Integers are closed under multiplication, so 2k² is an integer. Then n² = 2·(2k²) has the form 2m with m an integer, which is the definition of even.
+
+The quantifiers are in order: k is introduced from the hypothesis before it is used, and nothing is chosen that might not exist. No step needs an assumption beyond the hypothesis and the earlier steps. The edge case n = 0 works, since 0 = 2·0 and 0² = 2·0. Negative n also works, because the algebra never uses the sign of k.
+
+**Lean verification:** NOT FORMALIZED. I did not set up a Lake/Mathlib project or run the checker, since that needs a one-time Mathlib download that I'd ask about first. The audit above is therefore informal and not machine-checked. A faithful statement would be `theorem sq_even (n : ℤ) (h : Even n) : Even (n^2)`, which `Even.pow` or `by obtain ⟨k, rfl⟩ := h; exact ⟨2*k^2, by ring⟩` should discharge. I have not run either.
+
+**Repair:** None needed.
+
+{"verdict": "VALID", "first_bad_step": null}

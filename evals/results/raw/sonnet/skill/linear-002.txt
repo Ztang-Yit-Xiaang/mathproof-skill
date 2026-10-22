@@ -1,0 +1,21 @@
+**Verdict: VALID** (Lean status: NOT FORMALIZED, no Lean check was run, so this is an informal audit only.)
+
+**Claim and assumptions:** A is a real n×n matrix with A = Aᵀ and xᵀAx ≥ 0 for all real x. The target is a real B with B = Bᵀ, B PSD, and B² = A.
+
+**Step-by-step check:**
+
+1. **Spectral theorem.** A real symmetric matrix is orthogonally diagonalizable over ℝ, so A = QΛQᵀ with Q real orthogonal and Λ real diagonal. The hypotheses are exactly those of the theorem. Justified.
+2. **λᵢ ≥ 0.** Since Λ = QᵀAQ, we get λᵢ = eᵢᵀΛeᵢ = (Qeᵢ)ᵀA(Qeᵢ) ≥ 0 by PSD. The proof states this without the one-line computation, but it follows from step 1 and the hypothesis. Justified.
+3. **Definition of B.** Each √λᵢ is a real number because of step 2, so B is a well-defined real matrix. Justified.
+4. **Properties of B.** Let D = diag(√λᵢ). Each property follows from QᵀQ = I and step 2:
+   - Symmetry: Bᵀ = Q Dᵀ Qᵀ = QDQᵀ = B.
+   - Square: B² = QDQᵀQDQᵀ = QD²Qᵀ = QΛQᵀ = A.
+   - PSD: xᵀBx = (Qᵀx)ᵀD(Qᵀx) = Σ √λᵢ yᵢ² ≥ 0, where y = Qᵀx.
+
+   The proof asserts these without showing them, but each is a short computation from the earlier steps. Justified.
+
+**First unsupported step:** none. The proof is terse, since steps 2 and 4 omit routine computations, but nothing is false or relies on an absent hypothesis. No properties such as invertibility or positive definiteness are used beyond the stated ones. The claim only asserts existence, so it does not need uniqueness of the root.
+
+**Counterexample or missing assumption:** none. The claim is a standard true theorem.
+
+{"verdict": "VALID", "first_bad_step": null}

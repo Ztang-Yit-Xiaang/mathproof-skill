@@ -1,0 +1,13 @@
+**Audit**
+
+The claim is false as stated. The direction "divisible by 2 ⟹ divisible by 6" fails: n = 2 is divisible by 2 but not by 6. So the biconditional does not hold, and no valid proof of it exists.
+
+Step by step:
+
+- Step 1: Assumes n is divisible by 6, which is a legitimate start for the forward direction (6 | n ⟹ 2 | n).
+- Step 2: Correct. n = 6k = 2(3k), so 2 | n. This proves only the forward direction.
+- Step 3: Not justified. The biconditional requires both directions, and the converse (2 | n ⟹ 6 | n) was never addressed. It is also false (counterexample n = 2), so it cannot be established.
+
+The first unjustified step is therefore step 3, where the proof concludes the biconditional after proving only one direction.
+
+{"verdict": "INVALID", "first_bad_step": 3}

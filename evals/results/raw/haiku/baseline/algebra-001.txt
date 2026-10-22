@@ -1,0 +1,12 @@
+**Verdict: INVALID.** The proof does not establish the claim.
+
+**Steps 1–3 are justified.**
+- Step 1 is the hypothesis.
+- Step 2 follows from step 1 by multiplying both sides by $a$: $a\cdot a = a\cdot b$.
+- Step 3 follows from step 2 by subtracting $b^2$ from both sides: $a^2 - b^2 = ab - b^2$, which factors as $(a-b)(a+b) = b(a-b)$.
+
+**Step 4 is the first unjustified step.** It cancels the factor $a-b$ to get $a+b=b$. Cancellation is valid only when $a-b \neq 0$. The hypothesis $a=b$ gives $a-b=0$, so the step divides by zero. Nothing in the hypotheses or earlier steps justifies this. The equation in step 3 is $0 \cdot (a+b) = 0 \cdot b$, which is true for every $a$ and $b$ and yields no information.
+
+Step 5 inherits the error. The conclusion $2=1$ is false, so the argument is unsound, and the gap is the illegal cancellation in step 4.
+
+{"verdict": "INVALID", "first_bad_step": 4}

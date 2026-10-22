@@ -1,0 +1,21 @@
+**Verdict: INVALID.** The claim is false, and the proof fails at step 2.
+
+**Claim and assumptions.** For a real symmetric matrix $A \in \mathbb{R}^{n\times n}$, the claim is that $x^\top A x \ge 0$ for all $x \in \mathbb{R}^n$. The hypothesis is only symmetry.
+
+**First unsupported step: step 2.** Step 1 is correct by the spectral theorem: a real symmetric matrix has real eigenvalues. Step 2 then infers that the eigenvalues are nonnegative, which does not follow. Realness of the eigenvalues says nothing about their sign, and the hypothesis (symmetry) does not give nonnegativity.
+
+**Counterexample.** Let
+$$A = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}.$$
+$A$ is real and symmetric, with eigenvalues $1$ and $-1$. For $x = (0,1)^\top$,
+$$x^\top A x = -1 < 0,$$
+so $A$ is not PSD.
+
+**Step 3.** The inference from step 2 to step 3 is valid in itself. If $A = Q\Lambda Q^\top$ with $Q$ orthogonal, then $x^\top A x = \sum_i \lambda_i y_i^2$ where $y = Q^\top x$, so nonnegative eigenvalues would give nonnegativity of the quadratic form. The error is therefore confined to step 2, and step 3 inherits a false premise.
+
+**Repair (after diagnosis).** The correct statements are:
+- A real symmetric matrix is PSD if and only if all its eigenvalues are nonnegative.
+- The claim becomes true if "PSD" is added as a hypothesis, or if "symmetric" is replaced by "symmetric with all eigenvalues $\ge 0$."
+
+**Lean status: NOT FORMALIZED.** The counterexample is elementary and checked by hand: $x^\top A x = -1$ for $x = (0,1)^\top$. I did not run the Lean checker, since no formal statement was requested.
+
+{"verdict": "INVALID", "first_bad_step": 2}

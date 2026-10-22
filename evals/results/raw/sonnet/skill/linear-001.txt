@@ -1,0 +1,18 @@
+**Verdict:** `INVALID`
+
+**Claim and assumptions:** A is a real n×n matrix with A = Aᵀ. The target is xᵀAx ≥ 0 for all x ∈ ℝⁿ. The proof assumes nothing beyond symmetry.
+
+**Step check**
+1. Correct. By the spectral theorem, a real symmetric matrix has real eigenvalues.
+2. **First unsupported step.** "Real" does not imply "nonnegative." Nothing in the hypotheses, and nothing in step 1, bounds the eigenvalues below by 0.
+3. Its conclusion is correct only if step 2 holds. The step is the right equivalence (for symmetric A, xᵀAx ≥ 0 for all x iff all eigenvalues are ≥ 0), but it inherits step 2's gap.
+
+**Counterexample:** Take A = −I₂ = [[−1, 0], [0, −1]]. It is real and symmetric, with eigenvalues −1, −1. For x = (1, 0)ᵀ, xᵀAx = −1 < 0. So A is not PSD, and the claim itself is false, not just this proof of it.
+
+**Why it fails:** The proof confuses "eigenvalues are real," which is what symmetry gives, with "eigenvalues are ≥ 0," which is what PSD requires. Symmetric does not imply PSD.
+
+**Repair (separate from the diagnosis):** A true statement in the same spirit is: for real symmetric A, A is PSD iff every eigenvalue of A is ≥ 0. Another is: for any real matrix B, BᵀB is symmetric and PSD, since xᵀBᵀBx = ‖Bx‖² ≥ 0.
+
+**Lean verification:** `NOT FORMALIZED`. I did not run the checker in this session. The refutation is a one-line numeric check by hand, and the counterexample above can be verified directly.
+
+{"verdict": "INVALID", "first_bad_step": 2}

@@ -1,0 +1,15 @@
+**Audit**
+
+The claim is the handshake lemma, and the proof is the standard double-counting argument. It is sketched but sound.
+
+- **Step 1:** Let I be the set of incidences (v, e, end) where an edge end attaches to v. Summing degrees over vertices counts each incidence once, so sum_v deg(v) = |I|. Under the standard convention, deg(v) is the number of edge-ends at v, which makes this step justified.
+- **Step 2:** Each edge has exactly two ends. For a non-loop edge, the two ends are at distinct endpoints. For a loop, both ends are at the same vertex, which is why the loop is counted twice, matching the degree convention. So |I| = 2|E|. This is justified, and the convention is stated explicitly in the step.
+- **Step 3:** Combining steps 1 and 2 gives sum_v deg(v) = 2|E|. Finiteness ensures the sums are finite. This follows directly.
+
+**Minor remarks, not errors:**
+- The proof does not spell out that "incidence" means edge-end. This is a matter of exposition and does not affect validity.
+- For simple graphs the loop clause is vacuous. For multigraphs the argument still holds, since parallel edges are counted separately.
+
+No step is unjustified, so the proof establishes the claim.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,13 @@
+**Audit**
+
+The claim is that E[X+Y] = E[X] + E[Y] holds without independence. The proof is short but sound.
+
+- **Step 1:** Setting X and Y as integrable random variables is the correct hypothesis. Integrability (E|X|, E|Y| < ∞) is what makes the expectations finite and the sum well-defined. It is a hypothesis of the setup, not an unjustified assumption.
+- **Step 2:** X+Y is integrable, since E|X+Y| ≤ E|X| + E|Y| < ∞. Linearity of the Lebesgue integral on integrable functions over the same probability space gives E[X+Y] = E[X] + E[Y]. This is a standard theorem, and its proof uses only additivity of the integral. It never uses the joint distribution beyond the fact that X and Y are defined on a common probability space.
+- **Step 3:** This follows from step 2, because no independence appears anywhere in the argument.
+
+The proof is terse and cites linearity of the integral without proving it, but that is a standard result, not a gap. The implicit requirement that X and Y live on the same probability space is part of the usual meaning of "random variables" in this context.
+
+Every step is justified, so the proof establishes the claim.
+
+{"verdict": "VALID", "first_bad_step": null}

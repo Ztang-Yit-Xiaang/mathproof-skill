@@ -1,0 +1,7 @@
+The proof does not establish the claim, and the claim is false. Take n = 2: it is even, but 2 is not divisible by 4.
+
+Step 1 is true (4k = 2(2k), so anything divisible by 4 is even), but it states the converse of what the claim needs. Step 2 only introduces an even n, which is fine. Step 3 then asserts that n is divisible by 4, but nothing in the earlier steps supports this. Step 1 gives no route from "even" to "divisible by 4." Going from "A implies B" and "B holds" to "A holds" is affirming the consequent, which is invalid reasoning.
+
+The first unjustified step is therefore step 3.
+
+{"verdict": "INVALID", "first_bad_step": 3}

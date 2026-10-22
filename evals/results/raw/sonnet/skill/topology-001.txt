@@ -1,0 +1,22 @@
+**Verdict: VALID.** Lean status: NOT FORMALIZED, since I did not run the Lean protocol in this session. The statement is Mathlib's `IsCompact.image`.
+
+**Claim and assumptions.** Let f : K → Y be continuous with K compact, meaning every open cover of K has a finite subcover. The target is that f(K) is compact. The proof's setup implicitly uses that f is continuous and defined on K.
+
+**Step-by-step check**
+
+1. *Let 𝒰 be an open cover of f(K).* This is the standard start, and it is fine whether the sets are open in Y or in the subspace f(K). In the subspace case, f is still continuous as a map into f(K).
+2. *The sets f⁻¹(U) for U ∈ 𝒰 form an open cover of K.*
+   - Each f⁻¹(U) is open because f is continuous. This is the only place continuity is used.
+   - They cover K because any x ∈ K has f(x) ∈ f(K) ⊆ ⋃𝒰, so f(x) ∈ U for some U ∈ 𝒰, and then x ∈ f⁻¹(U).
+3. *Compactness of K gives a finite subcover.* This applies the definition of compactness to the cover from step 2, giving U₁, …, Uₙ ∈ 𝒰 with K ⊆ ⋃ f⁻¹(Uᵢ). This is the only place compactness of K is used.
+4. *The corresponding U₁, …, Uₙ cover f(K).* For y ∈ f(K), write y = f(x) with x ∈ K. Then x ∈ f⁻¹(Uᵢ) for some i, so y ∈ Uᵢ. This is terse, but the one-line argument follows from the previous step.
+
+**Post-audit.**
+- The implication direction is correct: the preimage of a cover is a cover, and a finite subcover of the preimages pushes forward to a finite subcover of the image.
+- Surjectivity of f onto f(K) is automatic, so nothing extra is needed.
+- No Hausdorff or other assumption is required.
+- The only gap is that step 4 is stated without its justification, which is stylistic and not logical.
+
+No step is unsupported, and no counterexample or missing assumption exists.
+
+{"verdict": "VALID", "first_bad_step": null}

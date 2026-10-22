@@ -1,0 +1,17 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** f is differentiable on an interval I with f'(x) > 0 for all x in I. The target is f(x) > 0 for all x in I.
+
+**First unsupported step: Step 3.**
+
+- Step 1 only restates the hypothesis.
+- Step 2 is justified. If f' > 0 on an interval, the mean value theorem gives f(b) − f(a) = f'(c)(b − a) > 0 for a < b, so f is strictly increasing.
+- Step 3 does not follow. A positive derivative controls how f changes, not its sign. Being strictly increasing says nothing about whether f is positive anywhere.
+
+**Counterexample.** Take f(x) = x on I = (−1, 1). Then f'(x) = 1 > 0 everywhere on I, but f(0) = 0 and f(−1/2) < 0, so the conclusion fails. The claim itself is false, so no repair of the proof can work.
+
+**Missing assumption.** Step 3 would need a base-point condition. For example, if I = [a, b) and f(a) ≥ 0, then f(x) > f(a) ≥ 0 for x > a. That gives positivity only on I minus its left endpoint, and it must be added as a hypothesis.
+
+**Lean verification.** NOT FORMALIZED. No Lake/Mathlib project is set up here, and creating one needs a one-time Mathlib download that I would ask about first. This verdict rests on the explicit counterexample, which is elementary to check by hand.
+
+{"verdict": "INVALID", "first_bad_step": 3}

@@ -1,0 +1,19 @@
+**Verdict: INVALID.** The claim is false, so no valid proof of it exists.
+
+**Claim and assumptions:** For every integer n, if n is even then 4 divides n. The domain is the integers.
+
+**First unsupported step: Step 3.** Step 3 concludes that n is divisible by 4 from two premises:
+- Step 1 states the converse of what is needed: divisible by 4 implies even. Knowing "A implies B" does not license "B implies A".
+- Step 2 only says n is even.
+
+Nothing in the argument connects evenness to divisibility by 4, so Step 3 is unjustified. Step 1 is true, but it is irrelevant to the conclusion.
+
+**Counterexample:** n = 2. It is even (2 = 2·1), but 4 does not divide 2, since 2/4 is not an integer. Every hypothesis holds and the conclusion fails.
+
+The correct statement is that every even integer is divisible by 2, which follows from the definition of "even". Another true statement is that every multiple of 4 is even.
+
+**Lean verification:** Not run in this session. The counterexample is decidable by inspection (`¬ (4 ∣ 2)`), so a formal check would add little. A full Lean check of the refutation can be provided if needed.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 3}
+```

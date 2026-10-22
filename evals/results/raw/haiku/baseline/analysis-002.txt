@@ -1,0 +1,17 @@
+**Verdict: INVALID.** The claim is false as stated, and the proof fails at step 2.
+
+**Step 1** is a fair restatement of the hypothesis. It does not add integrability of the f_n or f, which a full proof would need to state, but that is not the main gap.
+
+**Step 2** is the first unjustified step. "Integrate both sides of the pointwise limit" presupposes that the limit can be moved inside the integral, which is exactly the conclusion in step 3. Pointwise convergence says only that f_n(x) → f(x) for each x. It says nothing about ∫f_n, so it does not justify lim ∫f_n = ∫f.
+
+**Counterexample.** On [0,1], let f_n = n·1_{(0,1/n)}. Then f_n(x) → 0 for every x, so f_n converges pointwise to f ≡ 0. But ∫₀¹ f_n = 1 for every n, while ∫₀¹ f = 0. The limit and integral cannot be exchanged here.
+
+**What would justify the exchange.** Either of these hypotheses would make step 2 valid:
+- **Uniform convergence** on [0,1] (with f_n Riemann integrable), which gives |∫f_n − ∫f| ≤ sup|f_n − f| → 0.
+- **Dominated convergence:** |f_n| ≤ g with g integrable, which gives lim ∫f_n = ∫f by the DCT (with f_n measurable).
+
+Monotone convergence (f_n increasing, nonnegative) also works. Without one of these, the interchange can fail.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 2}
+```

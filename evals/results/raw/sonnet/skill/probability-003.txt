@@ -1,0 +1,19 @@
+**Verdict: INVALID**
+
+**Claim and assumptions:** X is a real random variable with E[X²] < ∞. The target is E[X²] = (E[X])² for every such X.
+
+**First unsupported step: Step 2.**
+- Step 1 is true: t ↦ t² is continuous.
+- Step 2 does not follow from Step 1. Continuity of f gives f(E[X]) = E[f(X)] only in special cases, such as f affine or X almost surely constant. For a general continuous f, continuity gives no interchange of expectation and f.
+- Jensen's inequality is the relevant fact for f(t) = t². It is convex, so E[X²] ≥ (E[X])², with equality exactly when X is almost surely constant.
+- Step 3 depends entirely on Step 2.
+
+**Counterexample:** Let X ~ Bernoulli(1/2). It is bounded, so it is square-integrable. Then E[X²] = 1/2, but (E[X])² = 1/4. The claim is false as stated.
+
+**Exact relation:** E[X²] − (E[X])² = Var(X). So the claim holds precisely when Var(X) = 0, that is, when X is almost surely constant.
+
+**Lean verification:** NOT FORMALIZED. I did not run a Lean check in this session, so the counterexample is verified by hand only.
+
+**Repair (separate from the diagnosis):** A true statement is "for square-integrable X, E[X²] = (E[X])² + Var(X)", or the Jensen inequality E[X²] ≥ (E[X])². The original equality is true only under the added hypothesis that X is a.s. constant.
+
+{"verdict": "INVALID", "first_bad_step": 2}

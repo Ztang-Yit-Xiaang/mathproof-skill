@@ -1,0 +1,16 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** The claim is for an arbitrary differentiable f: every point x* with ∇f(x*) = 0 is a global minimum. No convexity, or any other structural hypothesis, is given.
+
+**First unsupported step: Step 2.** "∇f(x*) = 0, therefore x* is a local minimum" does not follow. Stationarity is only a first-order necessary condition for a local minimum. It does not distinguish minima, maxima, and saddle or inflection points. Step 3 is also unsupported: even a genuine local minimum need not be global without extra structure such as convexity. But Step 2 fails first.
+
+**Counterexamples** (all differentiable, with a stationary point that is not a global minimum):
+- f(x) = x³ at x* = 0: f′(0) = 0, but 0 is an inflection point, not even a local minimum, since f(−ε) < f(0).
+- f(x) = −x² at x* = 0: a stationary point that is the global maximum.
+- f(x) = x⁴ − 2x² has stationary points at 0, ±1. The point x* = 0 is a local maximum, while ±1 are global minima. Replacing it with f(x) = x⁴ − 2x² + x gives a local minimum that is not global, which defeats Step 3 separately.
+
+**Missing assumptions.** The weakest natural repair is to assume f is convex (and differentiable). Then ∇f(x*) = 0 gives f(y) ≥ f(x*) + ∇f(x*)ᵀ(y − x*) = f(x*) for all y, so x* is a global minimum. This also works for invex functions, where every stationary point is a global minimum by definition. This is a repair and not part of the supplied proof. The claim as stated is false.
+
+**Lean verification.** `NOT FORMALIZED`: the refutation is a one-line elementary counterexample (x³ at 0), checked by hand above, and I did not run the Lean checker in this session. No claim of machine-checking is made.
+
+{"verdict": "INVALID", "first_bad_step": 2}

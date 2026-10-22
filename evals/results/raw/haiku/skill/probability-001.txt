@@ -1,0 +1,18 @@
+**Verdict: INVALID.** The claim is false, so no valid proof of it exists. The argument breaks at step 3.
+
+**Step 1** is a definition: Cov(X,Y) = E[XY] − E[X]E[Y] requires finite second moments, which is implicit in the notion of covariance.
+
+**Step 2** is justified. Setting Cov(X,Y) = 0 in the definition gives E[XY] = E[X]E[Y].
+
+**Step 3** is the first unjustified step. Equality of the means of the product only tests the factorization for the single function pair f(x) = x, g(y) = y. Independence requires E[f(X)g(Y)] = E[f(X)]E[g(Y)] for all bounded measurable f and g (equivalently, P(X∈A, Y∈B) = P(X∈A)P(Y∈B) for all Borel sets A, B). Nothing in steps 1–2 supplies this, and the step asserts it without argument.
+
+**Counterexample.** Let X be uniform on {−1, 0, 1} and Y = X². Then:
+
+- E[X] = 0 and E[XY] = E[X³] = 0, so Cov(X,Y) = 0.
+- P(X = 0, Y = 0) = P(X = 0) = 1/3, but P(X = 0)P(Y = 0) = (1/3)(1/3) = 1/9.
+
+So X and Y are uncorrelated but not independent. The correct statement is that independent random variables are uncorrelated, not the converse. Uncorrelatedness is equivalent to independence only in special cases, such as jointly Gaussian variables.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 3}
+```

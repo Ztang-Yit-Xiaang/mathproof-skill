@@ -1,0 +1,18 @@
+**Verdict: VALID**
+
+**Claim and assumptions:** For a continuous $f:[0,1]\to\mathbb{R}$, there exists $x^*\in[0,1]$ with $f(x)\le f(x^*)$ for all $x\in[0,1]$. The hypotheses are that the domain is $[0,1]$ and $f$ is continuous.
+
+**Step-by-step check:**
+
+1. **$[0,1]$ is compact.** This is the Heine–Borel theorem, a standard result that applies directly to the closed bounded interval. Justified.
+2. **$f([0,1])$ is compact.** This is the standard theorem that continuous images of compact sets are compact. It uses the hypothesis that $f$ is continuous and the conclusion of step 1. Justified.
+3. **A nonempty compact subset of $\mathbb{R}$ contains its supremum, so $f$ attains a maximum.** Compact subsets of $\mathbb{R}$ are closed and bounded. A nonempty bounded set has a supremum $s$, and a nonempty closed set contains its supremum, so $s\in f([0,1])$. Since $f([0,1])$ is nonempty by definition, the set is nonempty, which the step needs. By definition of the image, $s=f(x^*)$ for some $x^*\in[0,1]$, and $f(x)\le s=f(x^*)$ for all $x$. Justified.
+
+**First unsupported step:** None.
+
+**Notes:**
+- Step 3 cites the fact that a nonempty compact subset of $\mathbb{R}$ contains its supremum without proving it. This is a standard true lemma, so I count the step as justified. If the audit standard requires every such lemma to be proved from first principles, the verdict would instead be INCOMPLETE at step 3.
+- The step from "$s\in f([0,1])$" to "$f$ attains a maximum" is one line of unpacking the definition of image. It is implicit in the proof but correct.
+- **Lean status:** NOT FORMALIZED. Formalization was not requested. Mathlib already contains this result, so a check would be straightforward if you want one.
+
+{"verdict": "VALID", "first_bad_step": null}

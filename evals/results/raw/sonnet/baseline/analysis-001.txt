@@ -1,0 +1,11 @@
+**The claim is false, so the proof cannot establish it.** Counterexample: f(x) = x on (0,1) is continuous, but its supremum is 1, which is never attained. (Likewise f(x) = 1/x is unbounded above.)
+
+**Step-by-step audit:**
+
+1. "Let f be continuous on (0,1)." This is just the setup, and it is fine.
+2. "The domain is bounded." This is true, since (0,1) ⊂ [0,1]. It is a correct statement but not sufficient for what follows.
+3. "Therefore the extreme value theorem implies f attains a maximum." This is the first unjustified step. The extreme value theorem requires the domain to be **compact**, i.e. closed and bounded, such as [a,b]. The interval (0,1) is bounded but not closed, so the theorem does not apply. Step 2 supplies only half of the needed hypothesis, and the conclusion drawn in step 3 does not follow.
+
+Step 2 is true, but it is not the point of failure. The error is the misapplication of the extreme value theorem in step 3.
+
+{"verdict": "INVALID", "first_bad_step": 3}

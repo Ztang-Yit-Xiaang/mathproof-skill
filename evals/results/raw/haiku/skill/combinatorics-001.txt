@@ -1,0 +1,15 @@
+## Verdict: VALID
+
+The argument establishes the claim for finite undirected graphs under the standard degree convention (a loop at v adds 2 to deg(v)).
+
+**Step-by-step check**
+
+1. **Justified.** deg(v) counts the incidences at v, so summing over all vertices counts every vertex-edge incidence pair exactly once.
+2. **Justified.** For a non-loop edge {u, v}, there is one incidence at u and one at v, giving 2. For a loop at v, the convention adds 2 to deg(v), so the loop also contributes 2. The step relies on the convention, which it states explicitly.
+3. **Justified.** Step 2 gives each edge a contribution of 2. Because the graph is finite, E is finite, so summing over edges gives 2|E|. Step 3 also equates this with the incidence total from step 1. The proof leaves that re-indexing (the double count of incident pairs) implicit, but it is the standard identity and does not hide a gap.
+
+**Caveat on the hypotheses.** The claim does not mention loops. The proof is valid only because step 2 adopts the loop-counts-twice convention. If a loop counted once, the claim would fail: a single vertex with one loop has degree 1 and |E| = 1, so 1 ≠ 2. The convention should be stated in the claim itself.
+
+**Lean status: NOT FORMALIZED.** I did not run a Lean check in this session, and the user did not request one. Mathlib has a lemma for the simple-graph case (`SimpleGraph.sum_degrees_eq_twice_card_edges`), but I have not verified its name or statement here, so this verdict rests on the informal audit alone.
+
+{"verdict": "VALID", "first_bad_step": null}

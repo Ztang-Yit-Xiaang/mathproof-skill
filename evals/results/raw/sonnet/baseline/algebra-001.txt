@@ -1,0 +1,11 @@
+**The proof does not establish the claim.**
+
+Step 1 is just the hypothesis. Step 2 is fine: multiplying both sides of a=b by a gives a²=ab. Step 3 is also fine: subtracting b² from both sides gives a²−b² = ab−b², which factors as (a−b)(a+b) = b(a−b).
+
+**Step 4 is the first unjustified step.** Cancelling (a−b) requires a−b ≠ 0. But the hypothesis is a=b, so a−b = 0. The step divides both sides by zero. From (a−b)(a+b) = b(a−b), which is just 0=0 here, nothing can be concluded about a+b versus b.
+
+Step 5 then builds on the invalid step 4. Its own substitution is fine (a+b=b with a=b gives 2b=b), but the further move to 2=1 needs dividing by b, which requires b≠0. That is a second gap, not the first.
+
+The claim itself, "if a=b then 2=1", is false in general: take a=b=1, where the hypothesis holds and the conclusion fails. So no valid proof exists.
+
+{"verdict": "INVALID", "first_bad_step": 4}

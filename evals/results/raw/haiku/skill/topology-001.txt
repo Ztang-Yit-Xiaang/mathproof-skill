@@ -1,0 +1,13 @@
+**Verdict: INCOMPLETE.** The claim is true, but the proof as written does not establish it. Its key steps are asserted rather than derived from the hypotheses.
+
+**Claim and assumptions.** Let f: K → Y be continuous with K compact. Then f(K) is compact. Continuity is the hypothesis that the argument must use, and it is never cited.
+
+**First unsupported step: 2.** Step 2 says the preimages f⁻¹(U) are open. That follows from continuity of f, since each U is open in Y. The proof does not invoke continuity, so openness is unjustified. The covering property also needs a line of argument: every x ∈ K has f(x) ∈ f(K) ⊆ ⋃U, so x lies in some f⁻¹(U). The proof asserts this too.
+
+**Other gap (step 4).** The conclusion that the U_i cover f(K) is also unjustified. The fix is that for y ∈ f(K), pick x ∈ K with f(x) = y. By step 3, x ∈ f⁻¹(U_i) for some i, so y ∈ U_i.
+
+**Lean verification: NOT FORMALIZED.** This is a standard point-set fact, and checking it would need the Mathlib project and a one-time download, which I have not started. I can run the check if you want it.
+
+**Repair.** Replace step 2 with: since f is continuous and each U is open, each f⁻¹(U) is open in K. Since U covers f(K), every x ∈ K lies in some f⁻¹(U), so the family is an open cover of K. Replace step 4 with the argument above that each y ∈ f(K) lies in some U_i.
+
+{"verdict": "INCOMPLETE", "first_bad_step": 2}

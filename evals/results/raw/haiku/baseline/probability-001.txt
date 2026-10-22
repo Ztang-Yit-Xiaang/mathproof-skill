@@ -1,0 +1,14 @@
+**Verdict: INVALID.** The claim is false, and the proof breaks at step 3.
+
+- **Step 1** is an assumption, so it needs no justification.
+- **Step 2** is justified. Cov(X,Y) = E[XY] − E[X]E[Y], so Cov(X,Y) = 0 gives E[XY] = E[X]E[Y], provided the covariance exists (finite second moments).
+- **Step 3** is the first unjustified step. Independence means P(X∈A, Y∈B) = P(X∈A)P(Y∈B) for all Borel sets A and B, equivalently E[f(X)g(Y)] = E[f(X)]E[g(Y)] for all bounded measurable f and g. The hypothesis gives only the single case f(x) = x, g(y) = y. One equality of mixed moments does not make the joint distribution factor.
+
+**Counterexample.** Let X be uniform on {−1, 0, 1} and let Y = X².
+
+- E[X] = 0 and E[XY] = E[X³] = 0, so Cov(X,Y) = 0. The variables are uncorrelated.
+- P(X=0, Y=0) = P(X=0) = 1/3, but P(X=0)P(Y=0) = (1/3)(1/3) = 1/9.
+
+So X and Y are dependent. Uncorrelated does imply independence for jointly Gaussian variables, but not in general.
+
+{"verdict": "INVALID", "first_bad_step": 3}

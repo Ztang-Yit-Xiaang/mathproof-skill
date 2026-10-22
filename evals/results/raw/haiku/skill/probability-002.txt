@@ -1,0 +1,17 @@
+**Verdict: INCOMPLETE**
+
+**Claim and assumptions.** For random variables $X, Y$ on a probability space $(\Omega, \mathcal{F}, P)$, with $E[\cdot]$ the Lebesgue integral with respect to $P$, the claim is that $E$ is linear with no independence assumption. Linearity means $E[aX+bY]=aE[X]+bE[Y]$ for real $a,b$, under integrability of $X$ and $Y$.
+
+**Step-by-step check.**
+
+1. *Let $X$ and $Y$ be integrable.* This is a hypothesis, so it is justified.
+2. *By linearity of the integral, $E[X+Y]=E[X]+E[Y]$.* This is justified. Linearity of the integral for integrable functions is a standard theorem, and step 1 supplies its hypotheses. The theorem also gives integrability of $X+Y$, which follows from $|X+Y|\le|X|+|Y|$. The step is terse, since it cites the theorem rather than deriving it, but it is a valid citation.
+3. *No independence assumption is required.* This is justified by inspection. Neither step 1 nor step 2 uses independence, so the remark is accurate.
+
+**Why the verdict is INCOMPLETE.** Every step that appears is justified, so no step is unjustified. The gap is an omitted case. Linearity includes homogeneity, $E[aX]=aE[X]$, and the proof never treats scalar multiples. Step 2 covers only additivity, with coefficients fixed at 1. The claim as stated is therefore not fully established.
+
+If the claim is read as additivity alone, the proof is valid as written. Adding one line completes the full claim: $E[aX]=aE[X]$ follows from the same integral-linearity theorem applied to the integrable function $aX$. Since $aX$ is integrable and the missing case is an absent step rather than a false one, `first_bad_step` is `null`.
+
+```json
+{"verdict": "INCOMPLETE", "first_bad_step": null}
+```

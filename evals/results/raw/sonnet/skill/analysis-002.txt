@@ -1,0 +1,25 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** The claim is that pointwise convergence alone permits exchanging limit and integral. The only hypothesis is f_n → f pointwise on [0,1]. Nothing is assumed about integrability, boundedness, domination, or uniformity of convergence.
+
+**First unsupported step: Step 2.** "Integrate both sides of the pointwise limit" has no meaning as stated. Pointwise convergence is a statement about values f_n(x) → f(x) for each fixed x. It does not give an identity between functions to which one can apply the integral. Integrating requires that f_n and f be integrable, and the step that moves the limit through the integral is exactly what must be justified. Step 3 simply restates the claim, so it inherits the gap.
+
+**Why it fails.** An interchange of lim and ∫ needs an additional hypothesis such as uniform convergence on [0,1] (for Riemann integrable functions), monotone convergence, or dominated convergence (an integrable g with |f_n| ≤ g). Pointwise convergence supplies none of these.
+
+**Counterexample.** Let f_n(x) = n on (0, 1/n) and 0 elsewhere on [0,1].
+- For x = 0, f_n(0) = 0 for all n. For x > 0, f_n(x) = 0 once n > 1/x. So f_n → f ≡ 0 pointwise.
+- Each f_n is a step function with ∫₀¹ f_n = n · (1/n) = 1 for all n, so lim ∫ f_n = 1.
+- But ∫₀¹ f = 0.
+
+Hence lim ∫ f_n = 1 ≠ 0 = ∫ f. All hypotheses hold and the conclusion fails, so the claim as stated is false.
+
+**Lean verification: NOT FORMALIZED.** I did not formalize or machine-check this. The counterexample is elementary and I checked it by hand only.
+
+**Repair (labeled, separate from the diagnosis).** The statement becomes true under added hypotheses, for example:
+- f_n → f uniformly on [0,1] with each f_n integrable, or
+- f_n → f pointwise (a.e.) and |f_n| ≤ g for some integrable g (dominated convergence), or
+- 0 ≤ f_n ↑ f pointwise (monotone convergence).
+
+The claim with any one of these hypotheses added is a different statement from the one given.
+
+{"verdict": "INVALID", "first_bad_step": 2}

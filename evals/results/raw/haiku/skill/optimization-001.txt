@@ -1,0 +1,41 @@
+## Verdict
+
+**INVALID.** The claim is false as stated, and the proof fails at step 2.
+
+## Claim and assumptions
+
+- **Claim:** For differentiable $f:\mathbb{R}^n \to \mathbb{R}$, every $x^*$ with $\nabla f(x^*) = 0$ is a global minimizer.
+- **Hypotheses:** $f$ is differentiable. Nothing else is assumed (no convexity, no second-order information, no global structure).
+
+## First unsupported step
+
+**Step 2:** "Therefore $x^*$ is a local minimum."
+
+Step 1 only records the hypothesis $\nabla f(x^*) = 0$. Step 2 treats that first-order condition as sufficient for a local minimum. It is not. The first-order condition $\nabla f(x^*) = 0$ is necessary for a local minimum at a differentiable point, not sufficient. Nothing in the hypotheses or step 1 supplies the second-order or convexity information that would be needed.
+
+## Why it fails
+
+The implication "gradient zero $\Rightarrow$ local minimum" is the converse of the true theorem "local minimum $\Rightarrow$ gradient zero" (Fermat's theorem). Converses do not hold in general. Stationary points can be saddle points, local maxima, or inflection-type points.
+
+Step 3 is also false in general: a local minimum of a nonconvex function need not be global. But step 3 is downstream of step 2, so step 2 is the first failure.
+
+## Counterexample
+
+Take $f(x) = x^3$ on $\mathbb{R}$.
+
+- $f$ is differentiable, and $f'(x) = 3x^2$, so $f'(0) = 0$. Thus $x^* = 0$ satisfies the hypothesis.
+- $f(x) < 0 = f(0)$ for every $x < 0$, so $0$ is not a local minimum, let alone a global one.
+
+A second example, which shows a stationary point can be a local minimum but not global: $f(x) = x^3 - 3x$ has $f'(1) = 0$ and $f''(1) = 6 > 0$, so $x = 1$ is a strict local minimum. But $f(x) \to -\infty$ as $x \to -\infty$, so $f$ has no global minimum at all.
+
+## Lean verification
+
+**NOT FORMALIZED.** No Lean project was run in this turn. The counterexample is elementary and can be checked by hand, so the verdict does not depend on a machine check. A formalization of the refutation would be a natural next step if you want one.
+
+## Repair
+
+The claim becomes true under an added hypothesis: **convexity**. For a differentiable convex $f$, the gradient inequality gives
+$$f(y) \ge f(x^*) + \nabla f(x^*)^\top (y - x^*) \quad \text{for all } y,$$
+so $\nabla f(x^*) = 0$ implies $f(y) \ge f(x^*)$ for every $y$. This is the repaired statement: **CONDITIONALLY VALID** under convexity. Under that hypothesis, step 2 is replaced by the gradient inequality, and step 3 is no longer needed. The original claim, without convexity, remains INVALID.
+
+{"verdict": "INVALID", "first_bad_step": 2}

@@ -1,0 +1,13 @@
+The proof establishes the claim, and every step is justified.
+
+- **Step 1:** The spectral theorem applies because $A$ is real symmetric.
+- **Step 2:** If $Av = \lambda v$ with $v \neq 0$, then $0 \le v^T A v = \lambda \|v\|^2$, so $\lambda \ge 0$. The diagonal entries of $\Lambda$ are these eigenvalues. The proof cites PSD without spelling out this argument, but the implication is correct.
+- **Step 3:** Since every $\lambda_i \ge 0$, $\sqrt{\lambda_i}$ is a real number and $B$ is well defined.
+- **Step 4:** The proof states that $B$ is symmetric PSD with $B^2 = A$ without showing the computation. Each claim follows directly from $Q^T Q = I$ and $\sqrt{\lambda_i} \ge 0$:
+  - Symmetry: $B^T = Q D^T Q^T = Q D Q^T = B$, where $D = \mathrm{diag}(\sqrt{\lambda_i})$.
+  - PSD: $x^T B x = (Q^T x)^T D (Q^T x) = \sum_i \sqrt{\lambda_i}\,(Q^T x)_i^2 \ge 0$.
+  - Square: $B^2 = Q D Q^T Q D Q^T = Q D^2 Q^T = Q \Lambda Q^T = A$.
+
+The gap is only in presentation: step 4 is terse but has no logical hole. I'd suggest writing out the three one-line computations above in a final version.
+
+{"verdict": "VALID", "first_bad_step": null}

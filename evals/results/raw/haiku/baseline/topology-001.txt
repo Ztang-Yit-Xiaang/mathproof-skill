@@ -1,0 +1,10 @@
+The proof is valid. Each step follows from the hypotheses or from earlier steps:
+
+1. **Step 1** sets up the standard starting point: an arbitrary open cover of f(K).
+2. **Step 2** is justified by two facts. The sets f⁻¹(U) are open in K because f is continuous, which is a hypothesis of the claim. They cover K because every point of K maps into f(K), which is covered by the U's.
+3. **Step 3** applies the definition of compactness of K to the open cover from Step 2, giving finitely many sets f⁻¹(U₁), …, f⁻¹(Uₙ) that cover K.
+4. **Step 4** is the only step that needs a short argument, and the proof leaves it implicit. If y ∈ f(K), then y = f(x) for some x ∈ K. Since the preimages cover K, x ∈ f⁻¹(Uᵢ) for some i, so y = f(x) ∈ Uᵢ. Hence U₁, …, Uₙ cover f(K). This is correct, so the step is justified, though a fuller write-up would state it.
+
+The proof does not explicitly say whether "open cover of f(K)" means open in the subspace topology or open sets of the codomain that cover f(K). Either reading works: subspace-open sets pull back to open sets of K because the corestriction K → f(K) is continuous.
+
+{"verdict": "VALID", "first_bad_step": null}

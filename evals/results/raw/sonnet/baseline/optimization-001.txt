@@ -1,0 +1,16 @@
+**Verdict: the proof does not establish the claim, and the claim itself is false as stated.**
+
+**Step 1** is just a setup: let x* be a point with ∇f(x*) = 0. This is fine.
+
+**Step 2** is the first unjustified step. The claim's hypotheses give only that f is differentiable and that x* is stationary. A zero gradient is a necessary condition for a local minimum, not a sufficient one. Counterexamples:
+- f(x) = x³ at x = 0 has f′(0) = 0, but it is an inflection point, not a local minimum.
+- f(x) = −x² at x = 0 is a local (and global) maximum.
+- f(x, y) = x² − y² at the origin is a saddle point.
+
+Without further assumptions, such as convexity, ∇f(x*) = 0 does not imply a local minimum.
+
+**Step 3** asserts "every local minimum is global." This is also not a consequence of the hypotheses. It holds for convex functions (and some other classes, such as invex or certain structured nonconvex problems), but it fails in general. For example, f(x) = x⁴ − 2x² + x has two distinct local minima with different values. The step silently adds an assumption that the claim does not state.
+
+**Repair:** If f is convex and differentiable, then ∇f(x*) = 0 gives f(y) ≥ f(x*) + ∇f(x*)ᵀ(y − x*) = f(x*) for all y, so x* is a global minimum. This works directly from the first-order convexity inequality, and it makes both steps 2 and 3 unnecessary. As stated, the claim lacks the convexity hypothesis and is false.
+
+{"verdict": "INVALID", "first_bad_step": 2}

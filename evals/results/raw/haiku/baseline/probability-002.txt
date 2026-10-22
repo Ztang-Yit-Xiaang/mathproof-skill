@@ -1,0 +1,9 @@
+**Verdict: the proof establishes the claim.** It is terse, but every step is justified.
+
+- **Step 1** sets up the hypotheses: X and Y are integrable random variables on a common probability space (implicit in writing X + Y).
+- **Step 2** cites linearity of the expectation integral, which holds for integrable random variables on one probability space: X + Y is integrable because |X + Y| ≤ |X| + |Y|, and E[X + Y] = E[X] + E[Y]. The theorem's hypotheses are exactly what Step 1 supplies. The step does not use independence, so nothing extra is needed.
+- **Step 3** is a remark about the proof rather than a derivation step. It follows by inspecting Step 2, which invokes no independence assumption.
+
+The proof is a citation-level argument. A fuller version would show that X + Y is integrable, but that is part of the standard linearity theorem being cited, not a gap in the reasoning. I see no step that is unjustified.
+
+{"verdict": "VALID", "first_bad_step": null}

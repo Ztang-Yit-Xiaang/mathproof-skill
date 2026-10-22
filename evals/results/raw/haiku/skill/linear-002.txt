@@ -1,0 +1,31 @@
+## Verdict: VALID
+
+The argument establishes the claim. Steps 2 and 4 are stated without their short computations, but each follows from the hypotheses and earlier steps.
+
+**Claim and assumptions.** For real symmetric PSD $A$, there is a real symmetric PSD $B$ with $B^2 = A$. The only hypotheses are that $A$ is real, symmetric, and PSD, meaning $x^\top A x \ge 0$ for all real $x$.
+
+**Step-by-step check**
+
+1. **Justified.** This is the real spectral theorem, which applies because $A$ is real symmetric.
+
+2. **Justified, with an omitted line.** The proof does not show why $\lambda_i \ge 0$. Let $q_i = Q e_i$, the $i$-th column of $Q$. Since $Q^\top A Q = \Lambda$,
+   $$\lambda_i = e_i^\top \Lambda e_i = e_i^\top Q^\top A Q e_i = q_i^\top A q_i \ge 0$$
+   by PSD. This uses only the hypothesis and step 1.
+
+3. **Justified.** Step 2 guarantees $\lambda_i \ge 0$, so $\sqrt{\lambda_i}$ is real and $B$ is well defined.
+
+4. **Justified, with omitted computations.** The proof asserts that $B$ is symmetric PSD with $B^2 = A$ without showing the work:
+   - *Symmetry:* $\operatorname{diag}(\sqrt{\lambda_i})$ is diagonal, hence symmetric, so $B^\top = Q\operatorname{diag}(\sqrt{\lambda_i})Q^\top = B$.
+   - *PSD:* For any real $x$, $x^\top B x = \sum_i \sqrt{\lambda_i}\,(Q^\top x)_i^2 \ge 0$, since each $\sqrt{\lambda_i} \ge 0$.
+   - *Square:* Using $Q^\top Q = I$,
+     $$B^2 = Q\operatorname{diag}(\sqrt{\lambda_i})\,Q^\top Q\,\operatorname{diag}(\sqrt{\lambda_i})\,Q^\top = Q\operatorname{diag}(\lambda_i)Q^\top = A.$$
+
+**First unsupported step:** None. Step 2 is the first step whose justification is missing from the text, but it follows from the hypotheses and step 1 in one line.
+
+**Suggested edits for exposition:** Add the one-line proof of $\lambda_i \ge 0$ in step 2, and write out the three computations in step 4.
+
+**Lean verification:** NOT FORMALIZED. The request was an informal audit of a standard elementary fact, and machine checking was not requested.
+
+```json
+{"verdict": "VALID", "first_bad_step": null}
+```

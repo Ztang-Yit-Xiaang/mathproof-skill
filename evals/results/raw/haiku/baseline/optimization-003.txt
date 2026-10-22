@@ -1,0 +1,12 @@
+The proof is valid. Each step follows from the hypotheses or from earlier steps.
+
+1. **Descent lemma.** This is the standard consequence of an L-Lipschitz gradient. It needs no convexity, and the proof cites it without deriving it. That is acceptable.
+2. **Sufficient decrease.** With y = x_{k+1} = x_k - g/L, where g = ∇f(x_k), the lemma gives f(x_{k+1}) ≤ f(x_k) - ||g||²/L + ||g||²/(2L) = f(x_k) - ||g||²/(2L). So f(x_k) is nonincreasing.
+3. **Convexity.** The gradient inequality f(x*) ≥ f(x_k) + ⟨g, x* - x_k⟩ is correct.
+4. **Key inequality.** Expanding ||x_{k+1} - x*||² = ||x_k - x*||² - (2/L)⟨g, x_k - x*⟩ + ||g||²/L² gives (L/2)(||x_k - x*||² - ||x_{k+1} - x*||²) = ⟨g, x_k - x*⟩ - ||g||²/(2L). Convexity gives ⟨g, x_k - x*⟩ ≥ f(x_k) - f*, and step 2 gives f(x_k) - ||g||²/(2L) ≥ f(x_{k+1}). Together these yield f(x_{k+1}) - f* ≤ (L/2)(||x_k - x*||² - ||x_{k+1} - x*||²). The step is terse but justified.
+5. **Telescoping.** Summing step 4 over i = 0,…,k-1 gives Σ_{i=1}^{k} (f(x_i) - f*) ≤ (L/2)(||x_0 - x*||² - ||x_k - x*||²) ≤ (L/2)||x_0 - x*||². The dropped term -||x_k - x*||² is nonpositive, which the proof leaves unstated but is harmless.
+6. **Conclusion.** Monotonicity from step 2 gives f(x_k) - f* ≤ f(x_i) - f* for all i ≤ k. Hence k(f(x_k) - f*) ≤ Σ_{i=1}^{k}(f(x_i) - f*) ≤ (L/2)||x_0 - x*||², which is the claimed bound for every k ≥ 1.
+
+The argument is the standard proof of the O(1/k) rate for gradient descent with step size 1/L.
+
+{"verdict": "VALID", "first_bad_step": null}

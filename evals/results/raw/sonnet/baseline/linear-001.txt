@@ -1,0 +1,13 @@
+**The claim is false, so no proof can establish it.**
+
+Counterexample: A = [[0, 1], [1, 0]] is real symmetric, with eigenvalues +1 and −1. For x = (1, −1)^T, x^T A x = −2 < 0. So A is not PSD. Likewise, A = [−1] (1×1) fails.
+
+**Step-by-step audit:**
+
+1. "A real symmetric matrix has real eigenvalues." This is true (the spectral theorem). It is justified.
+2. "Therefore all its eigenvalues are nonnegative." This does not follow. Real eigenvalues can be negative. Being real is not the same as being nonnegative. Nothing in the hypotheses (symmetry, real entries) constrains the sign of the eigenvalues. This is the first unjustified step, and it is false in general.
+3. "Hence x^T A x is nonnegative for all x." The implication (all eigenvalues ≥ 0 ⇒ x^T A x ≥ 0) is correct for symmetric A. But the premise is step 2, which is unjustified, so step 3 is not established either.
+
+The correct statement is: a real symmetric matrix is PSD if and only if all its eigenvalues are nonnegative. Symmetry alone gives only real eigenvalues.
+
+{"verdict": "INVALID", "first_bad_step": 2}

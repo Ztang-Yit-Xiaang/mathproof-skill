@@ -1,0 +1,20 @@
+**Verdict: INVALID** (the claim is false, so no proof of it can be valid)
+
+**Claim and assumptions.** The hypotheses are f : (0,1) → ℝ continuous. The target is ∃ x₀ ∈ (0,1), ∀ x ∈ (0,1), f(x) ≤ f(x₀).
+
+**Step check**
+- Step 1 restates the hypothesis, so it is justified.
+- Step 2 is true, since (0,1) ⊂ [0,1] is bounded.
+- Step 3 is the first unjustified step. The extreme value theorem requires a compact domain, which for subsets of ℝ means closed and bounded. It applies to continuous f on [a,b]. Step 2 supplies only boundedness, and (0,1) is not closed, so the theorem's hypothesis is not met.
+
+**Counterexamples.** Both satisfy every hypothesis and violate the conclusion.
+- f(x) = x on (0,1) is bounded above by 1, but for any x₀ ∈ (0,1) the point (x₀+1)/2 gives a larger value. The supremum 1 is never attained.
+- f(x) = 1/x is continuous on (0,1) and unbounded above, so it has no maximum at all.
+
+Boundedness of the domain does not help, because continuous functions on a non-closed interval can approach their supremum only at the excluded endpoints.
+
+**Repair (labeled as such).** The claim becomes true if (0,1) is replaced by [0,1], or by any compact set. It also holds on (0,1) if f extends continuously to [0,1], since the extension attains its maximum on [0,1], but that maximum may sit at an endpoint, so even then it need not be attained inside (0,1).
+
+**Lean verification.** NOT FORMALIZED. I did not run a Lean check in this session. The refutation is elementary and the counterexample f(x) = x can be verified by hand as above.
+
+{"verdict": "INVALID", "first_bad_step": 3}

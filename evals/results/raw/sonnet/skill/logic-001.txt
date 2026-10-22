@@ -1,0 +1,15 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** For all integers n, if n is even then 4 ∣ n. No other hypotheses.
+
+**Counterexample.** n = 2 is even, but 4 ∤ 2. The claim is false, so no proof of it can be valid.
+
+**First unsupported step.** Step 3. Step 2 is just a setup (fixing an arbitrary even n), and step 1 is a true statement (4 ∣ n ⇒ 2 ∣ n). Step 3 does not follow from either.
+
+**Why it fails.** Step 1 gives 4 ∣ n ⇒ n even. Step 3 needs the converse, n even ⇒ 4 ∣ n. Inferring the converse from a conditional is the affirming-the-consequent fallacy. Here the converse is not just unproved but false, as n = 2 (or any n ≡ 2 mod 4, such as 6 or −2) shows.
+
+**Lean verification.** `NOT FORMALIZED`. The refutation is a one-line computation (`2` is even and `¬ 4 ∣ 2`, by `decide`), and I did not run the checker, so it carries no machine-checked status.
+
+**Repair (labeled, not part of the diagnosis).** The true statement is that the square of an even integer is divisible by 4: if n = 2k then n² = 4k². Alternatively, "every integer divisible by 4 is even" is exactly what step 1 states.
+
+{"verdict": "INVALID", "first_bad_step": 3}

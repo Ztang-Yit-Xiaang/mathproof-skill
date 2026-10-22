@@ -1,0 +1,17 @@
+**Verdict: INVALID.** Lean status: NOT FORMALIZED. I did not run a Lean check, so the counterexample below was verified by hand only.
+
+**Claim and assumptions.** X and Y are random variables, presumably with finite second moments so that Cov is defined. The target is that Cov(X,Y)=0 implies X and Y are independent. No further hypotheses are given, such as joint Gaussianity.
+
+**Counterexample.** Let X be uniform on {-1, 0, 1} and Y = X².
+- E[X] = 0 and E[XY] = E[X³] = 0, so Cov(X,Y) = 0.
+- P(X=0, Y=0) = 1/3, but P(X=0)·P(Y=0) = (1/3)(1/3) = 1/9.
+- So X and Y are not independent, and the claim is false.
+
+**First unsupported step: step 3.**
+- Step 1 is just the assumption.
+- Step 2 is a correct restatement of Cov(X,Y)=0, since Cov(X,Y) = E[XY] − E[X]E[Y] when the moments are finite.
+- Step 3 does not follow. Independence needs E[f(X)g(Y)] = E[f(X)]E[g(Y)] for all bounded measurable f and g (equivalently, the joint law equals the product of the marginals). Step 2 gives this only for f = g = identity. In the counterexample, f(x)=x² and g(y)=y already fail. Zero covariance only rules out linear dependence.
+
+**Repair (labeled as such).** The statement becomes true if (X,Y) is jointly Gaussian. It also holds in the trivial case where X and Y are each two-valued (indicator-type), since then the linear test functions span all functions of each variable. Without such an added hypothesis, the claim cannot be proved.
+
+{"verdict": "INVALID", "first_bad_step": 3}

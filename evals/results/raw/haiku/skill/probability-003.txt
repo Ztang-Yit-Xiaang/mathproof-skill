@@ -1,0 +1,14 @@
+**Verdict: INVALID.** The claim is false, so no correct proof of it exists.
+
+**Counterexample.** Let X take the values +1 and -1 with probability 1/2 each. X is bounded, hence square-integrable. Then E[X] = 0 and E[X^2] = 1, so E[X^2] = 1 while (E[X])^2 = 0.
+
+In general, E[X^2] - (E[X])^2 = Var(X) ≥ 0, with equality if and only if X is almost surely constant. Jensen's inequality gives E[X^2] ≥ (E[X])^2 for every integrable X, since t ↦ t^2 is convex.
+
+**First unjustified step: Step 2.**
+
+- Step 1 is true: t ↦ t^2 is continuous. But continuity of g does not give E[g(X)] = g(E[X]). The map E commutes with g only in special cases, such as when X is almost surely constant.
+- Step 2 asserts exactly that identity for g(t) = t^2. Nothing in the hypotheses (square-integrability) or in Step 1 licenses it. Step 3 then just restates the false conclusion.
+
+**Lean status: NOT FORMALIZED.** I did not run the Lean checker in this turn. The counterexample above is elementary and can be checked by direct computation.
+
+{"verdict": "INVALID", "first_bad_step": 2}

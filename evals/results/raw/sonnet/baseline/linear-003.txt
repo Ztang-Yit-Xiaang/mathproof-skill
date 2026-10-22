@@ -1,0 +1,13 @@
+**The claim is false, so the proof cannot establish it.**
+
+A positive semidefinite (PSD) matrix need not be invertible. A counterexample is the zero matrix, or A = diag(1, 0). For A = diag(1, 0), x^T A x = x₁² ≥ 0 for all x, but A is singular, with e₂ in its null space.
+
+**Step-by-step audit:**
+
+1. Correct. This is the definition of PSD (for symmetric A).
+2. **Not justified.** Nonnegative does not imply positive. Step 1 only gives x^T A x ≥ 0, and the strict inequality for nonzero x is the definition of positive *definite* (PD), not PSD. In the counterexample, x = e₂ is nonzero but x^T A x = 0.
+3. The conclusion would follow from step 2 (if x^T A x > 0 for all nonzero x, then Ax = 0 forces x^T A x = 0, so x = 0). But since step 2 fails, step 3 is not supported. The correct statement is that every positive *definite* matrix is invertible.
+
+The first bad step is step 2. It silently strengthens PSD to PD.
+
+{"verdict": "INVALID", "first_bad_step": 2}

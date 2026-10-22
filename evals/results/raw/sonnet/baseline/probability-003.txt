@@ -1,0 +1,13 @@
+**The claim is false, so no proof can establish it.**
+
+Counterexample: let X be a fair coin on {0, 1}. It is bounded, hence square-integrable. Then E[X²] = 1/2, but (E[X])² = 1/4. In general, E[X²] − (E[X])² = Var(X) ≥ 0, with equality exactly when X is almost surely constant.
+
+**Step-by-step audit:**
+
+1. "The function t² is continuous." True, but irrelevant to the conclusion.
+2. "Therefore expectation commutes with squaring." This is the first unjustified step. Continuity of a function does not make expectation commute with it. Expectation commutes with affine maps (linearity), not with general continuous maps. For convex functions, Jensen's inequality gives only E[φ(X)] ≥ φ(E[X]), and for t² the gap is exactly Var(X). The conclusion does not follow from step 1, and the statement itself is false for non-degenerate X.
+3. "Hence E[X²] = (E[X])²." This inherits the error from step 2, and the equality is false in general.
+
+The proof fails at step 2. The claim would be true only under the extra hypothesis that X is almost surely constant.
+
+{"verdict": "INVALID", "first_bad_step": 2}

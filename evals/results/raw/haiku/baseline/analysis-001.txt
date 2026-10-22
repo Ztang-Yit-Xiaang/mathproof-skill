@@ -1,0 +1,12 @@
+**Verdict: INVALID.** The claim is false, so no correct proof of it exists.
+
+**Counterexample:** Let f(x) = x. It is continuous on (0,1). For any x in (0,1), the point (x + 1)/2 lies in (0,1) and satisfies f((x+1)/2) > f(x), so f has no maximum.
+
+**Where the proof fails:**
+
+- **Step 2 is true but insufficient.** (0,1) is bounded as a set.
+- **Step 3 is the first unjustified step.** The extreme value theorem requires the domain to be compact, meaning closed and bounded. (0,1) is bounded but not closed; its endpoints 0 and 1 are missing. Boundedness alone does not give the conclusion, and the theorem's hypotheses are not met. The proof therefore applies a theorem outside its hypotheses.
+
+A correct version would need a compact domain such as [0,1], where every continuous f attains a maximum. The example above shows that the open interval (0,1) does not have this property.
+
+{"verdict": "INVALID", "first_bad_step": 3}

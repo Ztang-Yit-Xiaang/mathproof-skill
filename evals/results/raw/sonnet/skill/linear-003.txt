@@ -1,0 +1,15 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** A is a real symmetric n×n matrix with x^T A x ≥ 0 for all x (PSD). Target: A is invertible.
+
+**First unsupported step: Step 2.**
+
+**Why it fails.** Step 1 restates the PSD hypothesis and is fine. Step 2 upgrades "nonnegative" to "strictly positive" for nonzero x. That is positive definiteness, which is strictly stronger than PSD. Nothing in the hypotheses or Step 1 supports it. Step 3 would follow from Step 2 (positive definite implies trivial null space), but Step 2 is not available.
+
+**Counterexample.** A = [[0,0],[0,0]], or the less trivial A = [[1,0],[0,0]]. For the latter, x^T A x = x₁² ≥ 0 for all x, so A is PSD. But for x = (0,1) we get x^T A x = 0, not positive, and A x = 0, so the null space is nontrivial and det A = 0. A is not invertible, so the claim is false.
+
+**Lean verification.** `NOT FORMALIZED`. The counterexample is a 2×2 computation that I checked by hand, and I did not run the Lean checker in this session. So I am not asserting machine-checked status.
+
+**Repair (labeled, separate from the diagnosis).** The claim becomes true if "PSD" is replaced by "positive definite" (x^T A x > 0 for all x ≠ 0). Then Step 2 is a hypothesis, and Step 3 follows: if Ax = 0, then x^T A x = 0, so x = 0. Alternatively, a PSD matrix is invertible if and only if it is positive definite.
+
+{"verdict": "INVALID", "first_bad_step": 2}

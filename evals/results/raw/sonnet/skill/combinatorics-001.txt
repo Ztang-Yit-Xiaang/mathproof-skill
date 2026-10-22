@@ -1,0 +1,16 @@
+**Verdict: VALID**
+
+**Claim and assumptions.** The graph G = (V, E) is finite and undirected. Loops and multiple edges are allowed, and deg(v) is the number of edge-endpoints at v, so a loop adds 2. The target is Σ_v deg(v) = 2|E|.
+
+**Step check.**
+1. Under the standard convention, deg(v) is the number of incidences at v, so Σ_v deg(v) is the total incidence count. This is a definition, not an extra assumption.
+2. Each edge e has exactly two endpoint slots. A non-loop edge gives one incidence at each of its two distinct endpoints. A loop gives two incidences at its single endpoint, which is what the stated convention says. So every edge contributes exactly 2.
+3. Summing over a finite edge set gives Σ_v deg(v) = Σ_e 2 = 2|E|. Finiteness makes the interchange of the two finite sums legitimate.
+
+**First unsupported step.** None. The proof is terse, but each step follows from the definitions and the earlier steps. It states the loop convention explicitly, which is the only place a gap could have appeared. If a loop counted once, the claim would fail, but the proof does not rely on that.
+
+**Counterexample or missing assumption.** None found. The small cases agree. A single loop has degree 2 and 2·1 = 2. A single edge has degree sum 2. The empty edge set gives 0 = 0.
+
+**Lean verification: NOT FORMALIZED.** I did not run a Lean check, so this verdict is an informal audit and not machine-checked. Mathlib has `SimpleGraph.sum_degrees_eq_twice_card_edges`, but that covers only simple graphs. A faithful check of the loop-counting statement would need a multigraph formalization, and setting up a Mathlib project needs a one-time download that I would ask you about first.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,13 @@
+**Verdict: INVALID.** The claim is false, and the proof breaks at step 2.
+
+**Counterexample to the claim:** The zero matrix $0_{2\times 2}$ is PSD, since $x^T 0\, x = 0 \ge 0$ for all $x$, but it is singular. So "every PSD matrix is invertible" fails. The matrix $\mathrm{diag}(1,0)$ is another PSD singular example.
+
+**Step 1 is justified.** Being PSD means $x^T A x \ge 0$ for all $x$, which is the hypothesis itself.
+
+**Step 2 is the first unjustified step.** It moves from "nonnegative" to "positive for every nonzero $x$." Nonnegativity does not give strict positivity. The zero matrix satisfies step 1 but has $x^T 0\, x = 0$ for every nonzero $x$, so step 2 is false for PSD matrices in general. Strict positivity is the definition of positive *definite*, which is a stronger hypothesis than the claim supplies. Step 2 would hold only if the claim were about positive definite matrices.
+
+**Step 3 is also unsupported.** Even granting step 2, the argument would give a trivial null space and therefore invertibility, since $Ax = 0$ implies $x^T A x = 0$. That inference is valid for positive definite $A$. Under the stated hypotheses, however, step 3 does not follow, because step 2 is already invalid.
+
+The correct statement is: every positive definite matrix is invertible. For PSD matrices, the most one can conclude is that they are invertible if and only if they are positive definite.
+
+{"verdict": "INVALID", "first_bad_step": 2}

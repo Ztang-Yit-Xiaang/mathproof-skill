@@ -1,0 +1,20 @@
+**Verdict: INVALID**
+
+**Claim and assumptions.** S ⊆ ℝ is nonempty and bounded (both below and above). The target is that S has a minimum, meaning some m ∈ S with m ≤ s for all s ∈ S.
+
+**Step check**
+1. Justified. A bounded set is bounded below.
+2. Justified. A nonempty set that is bounded below has an infimum in ℝ, by the least-upper-bound property.
+3. **Not justified, and false in general.** Completeness gives that inf S exists in ℝ. It does not give inf S ∈ S.
+
+**Counterexample.** Take S = (0, 1). It is nonempty and bounded. Its infimum is 0, but 0 ∉ S. If m ∈ S were a minimum, then m/2 ∈ S and m/2 < m, a contradiction. So S has no minimum, and the claim itself is false, not just the proof.
+
+**Repair (separate from the diagnosis).** Two true statements are close to the claim:
+- Every nonempty set bounded below has an infimum.
+- Every nonempty *closed* set bounded below, such as a nonempty compact set, contains its infimum and so has a minimum.
+
+The missing assumption is closedness, or more generally that inf S ∈ S.
+
+**Lean verification:** NOT FORMALIZED. The counterexample is a one-line argument, and I did not set up a Mathlib project for it. The conclusion here rests on the informal check above and has not been machine-checked.
+
+{"verdict": "INVALID", "first_bad_step": 3}

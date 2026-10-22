@@ -1,0 +1,12 @@
+**The claim is false, so no proof can establish it.** Uncorrelated does not imply independent.
+
+**Counterexample:** Let X ~ Uniform{-1, 0, 1} and Y = X². Then E[X] = 0 and E[XY] = E[X³] = 0, so Cov(X,Y) = 0. But Y is a function of X and is not constant, so the two are dependent. For instance, P(X=1, Y=0) = 0, while P(X=1)·P(Y=0) = (1/3)(1/3) ≠ 0.
+
+**Step-by-step audit:**
+1. Assuming Cov(X,Y) = 0 is a fine hypothesis.
+2. Cov(X,Y) = E[XY] − E[X]E[Y], so this step is valid (assuming the expectations exist).
+3. This is the unjustified step. Equality of E[XY] and E[X]E[Y] is a single condition on one moment. Independence requires the joint distribution to factor for all events, equivalently E[f(X)g(Y)] = E[f(X)]E[g(Y)] for all bounded measurable f, g. Zero covariance only gives this for f(x)=x, g(y)=y. The inference "therefore the joint distribution factors" has no support.
+
+**Caveat:** The statement holds in special cases, such as when (X,Y) is jointly Gaussian, or when X and Y are both Bernoulli (indicator) variables. The proof as written invokes neither, so it does not cover them.
+
+{"verdict": "INVALID", "first_bad_step": 3}

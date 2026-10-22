@@ -1,0 +1,15 @@
+**Verdict: INVALID.** The claim is false, and the argument's inference in step 3 is unjustified.
+
+**Claim and assumptions.** Let f be continuous on the open interval (0,1). The claim is that f attains a maximum on (0,1), meaning there is x₀ ∈ (0,1) with f(x) ≤ f(x₀) for all x ∈ (0,1).
+
+**First unsupported step: step 3.** The extreme value theorem requires a compact domain, that is, a set that is both closed and bounded. Step 2 establishes only boundedness. (0,1) is bounded, so step 2 is true, but boundedness alone does not license step 3. (0,1) is not closed in ℝ, since 0 and 1 are limit points not in the set. The EVT therefore does not apply.
+
+**Counterexample.** Take f(x) = x. It is continuous on (0,1). Suppose some x₀ ∈ (0,1) were a maximum. Then x₀ ≥ x for all x ∈ (0,1). Taking x = (1+x₀)/2, which lies in (x₀,1) and so in (0,1), gives x > x₀, a contradiction. Hence f has no maximum, and the supremum 1 is not attained.
+
+**Why the argument fails.** Boundedness is necessary for the EVT's conclusion but not sufficient. The proof needs closedness as well, and the domain (0,1) lacks it.
+
+**Lean verification:** NOT FORMALIZED. No Lake project with Mathlib is set up in this working directory, and the counterexample is elementary enough that the informal argument above is complete.
+
+**Repair (diagnosis only).** The statement becomes correct if the domain is changed. A continuous function on a closed bounded interval [a,b] ⊂ ℝ attains a maximum. A continuous function on (0,1) need not, but it attains a maximum on any closed subinterval [a,b] with 0 < a < b < 1.
+
+{"verdict": "INVALID", "first_bad_step": 3}

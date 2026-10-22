@@ -1,0 +1,13 @@
+**Verdict: INVALID.** The claim is false, and the proof breaks at step 2.
+
+**Step 1** is just the hypothesis: x* satisfies ∇f(x*) = 0. It is justified.
+
+**Step 2** is the first unjustified step. The claim gives only that x* is a stationary point. Nothing in the hypotheses or step 1 implies that x* is a local minimum. A zero gradient is necessary for a local minimum, not sufficient. The point could be a local maximum or a saddle point.
+
+Counterexample: f(x) = x³ is differentiable with f'(0) = 0, so 0 is a stationary point. But f(x) < 0 for x < 0 and f(x) > 0 for x > 0, so 0 is not a local minimum, and so not a global one.
+
+**Step 3** is also invalid. "Every local minimum is global" holds for convex functions but not in general. For example, f(x) = x⁴ − 2x² + x has a local minimum near x ≈ 0.93 whose value is larger than the global minimum near x ≈ −1.03. Even if step 2 were granted, step 3 would not follow without convexity. Since the proof fails at step 2, step 3 is moot for the verdict, but it is a second error.
+
+The claim would hold if the function were convex, since then every stationary point is a global minimum. The hypotheses as stated do not include convexity.
+
+{"verdict": "INVALID", "first_bad_step": 2}

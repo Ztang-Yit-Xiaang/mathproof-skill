@@ -1,0 +1,17 @@
+**Verdict: INVALID.** The claim is false, and the proof fails at step 3.
+
+**Claim and assumptions.** S ⊆ ℝ is nonempty and bounded, and the claim asserts that S has a minimum, i.e., some m ∈ S with m ≤ x for all x ∈ S.
+
+**Counterexample.** Let S = (0, 1) = {x ∈ ℝ : 0 < x < 1}. It is nonempty and bounded (by 0 and 1). Suppose m were a minimum. Then m ∈ S, so m > 0. But m/2 satisfies 0 < m/2 < m < 1, so m/2 ∈ S and m/2 < m, contradicting minimality. Hence S has no minimum. Here inf S = 0 exists, but 0 ∉ S.
+
+**Step-by-step audit.**
+
+1. *Let S be nonempty and bounded below.* Justified as a restriction. Every bounded set is bounded below, so this only narrows the case being treated. The proof never addresses the bounded-above part, which is harmless for the infimum but shows the proof is not doing anything with boundedness beyond this.
+2. *By completeness, inf S exists.* Justified. The least-upper-bound property applied to the set of lower bounds of a nonempty bounded-below set gives inf S ∈ ℝ.
+3. *Therefore inf S belongs to S and is its minimum.* **Not justified.** Completeness yields that the infimum exists. It does not yield that the infimum is attained. The inference "inf S ∈ S" has no support from the hypotheses or from steps 1–2, and the counterexample shows it is false in general. Even if inf S ∈ S were true, the proof would still need to establish it, since membership is exactly what is at issue.
+
+**What is true.** Every nonempty bounded-below subset of ℝ has an infimum, and every nonempty bounded-above subset has a supremum. A minimum exists exactly when the infimum is attained. Sufficient conditions include S finite, or S closed and bounded (then S is compact, and a continuous function such as the identity attains its minimum), or S closed and bounded below with inf S ∈ S checked directly. A repair would therefore change the claim to "every nonempty bounded-below subset has an infimum" or add a hypothesis such as closedness or finiteness.
+
+**Lean status: NOT FORMALIZED.** No Lean project was run in this turn. The counterexample is elementary enough to check by hand, but a formal check would require a Lake project with Mathlib, which I have not set up.
+
+{"verdict": "INVALID", "first_bad_step": 3}

@@ -1,0 +1,15 @@
+**Verdict: INVALID.** The claim is false, and the proof's second step is unjustified.
+
+**Claim and assumptions.** A is a real square matrix that is positive semidefinite (PSD), meaning x^T A x ≥ 0 for all x. The claim is that A is invertible.
+
+**First unsupported step: Step 2.** Step 1 gives only x^T A x ≥ 0 (nonnegativity). Step 2 upgrades this to x^T A x > 0 for every nonzero x (strict positivity). Nothing in the hypotheses or Step 1 licenses that upgrade. Strict positivity is the definition of positive definiteness, which is a stronger hypothesis than PSD.
+
+**Why it fails.** Step 3 is valid given Step 2: if x^T A x > 0 for all x ≠ 0, then Ax = 0 forces x^T A x = 0, so x = 0, the null space is trivial, and A is invertible. The error is entirely in Step 2, and the conclusion fails because of it.
+
+**Counterexample.** Take A = diag(1, 0), which is PSD because x^T A x = x₁² ≥ 0 for all x. For x = (0, 1)^T, we have x ≠ 0 but x^T A x = 0, so the positivity claim in Step 2 is false. A is singular, with null space spanned by (0, 1)^T. The zero matrix is an even simpler counterexample.
+
+**Lean verification: NOT FORMALIZED.** The counterexample is elementary and was checked by direct computation, and you did not ask for a machine check.
+
+**Repair.** The correct statement is that every positive definite matrix is invertible. Under the stated hypotheses, the proof establishes only that PSD matrices can be singular. Invertibility of a PSD matrix requires the extra hypothesis of positive definiteness, or equivalently that all eigenvalues are strictly positive.
+
+{"verdict": "INVALID", "first_bad_step": 2}

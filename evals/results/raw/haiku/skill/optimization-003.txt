@@ -1,0 +1,18 @@
+**Verdict: VALID**
+
+**Claim and assumptions.** $f$ is convex and differentiable on a real Hilbert space, $\nabla f$ is $L$-Lipschitz with $L>0$, a minimizer $x^*$ exists, and $x_{k+1} = x_k - \tfrac{1}{L}\nabla f(x_k)$. The claim is $f(x_k)-f(x^*) \le \dfrac{L\|x_0-x^*\|^2}{2k}$ for $k\ge 1$.
+
+**Step-by-step check.** Write $g_k = \nabla f(x_k)$.
+
+1. **Justified.** The descent lemma follows from the $L$-Lipschitz gradient by integrating $\nabla f$ along the segment from $x$ to $y$.
+2. **Justified.** Set $y = x_{k+1}$. Then $\langle g_k, x_{k+1}-x_k\rangle = -\tfrac{1}{L}\|g_k\|^2$ and $\tfrac{L}{2}\|x_{k+1}-x_k\|^2 = \tfrac{1}{2L}\|g_k\|^2$, so $f(x_{k+1}) \le f(x_k) - \tfrac{1}{2L}\|g_k\|^2$. Hence $f(x_k)$ is nonincreasing.
+3. **Justified.** This is the first-order characterization of convexity for differentiable $f$.
+4. **Justified, though terse.** Step 3 gives $f(x_k)-f(x^*) \le \langle g_k, x_k-x^*\rangle$. Combined with step 2, $f(x_{k+1})-f(x^*) \le \langle g_k, x_k-x^*\rangle - \tfrac{1}{2L}\|g_k\|^2$. Expanding $\|x_{k+1}-x^*\|^2 = \|x_k-x^*\|^2 - \tfrac{2}{L}\langle g_k, x_k-x^*\rangle + \tfrac{1}{L^2}\|g_k\|^2$ gives $\langle g_k, x_k-x^*\rangle = \tfrac{L}{2}\big(\|x_k-x^*\|^2-\|x_{k+1}-x^*\|^2\big) + \tfrac{1}{2L}\|g_k\|^2$. The $\|g_k\|^2$ terms cancel, leaving $f(x_{k+1})-f(x^*) \le \tfrac{L}{2}\big(\|x_k-x^*\|^2-\|x_{k+1}-x^*\|^2\big)$. The proof omits this algebra, but I verified it.
+5. **Justified.** Summing step 4 over $i=0,\dots,k-1$ telescopes to $\sum_{i=1}^k (f(x_i)-f(x^*)) \le \tfrac{L}{2}\big(\|x_0-x^*\|^2-\|x_k-x^*\|^2\big) \le \tfrac{L}{2}\|x_0-x^*\|^2$. The last inequality drops a nonnegative term.
+6. **Justified.** By step 2, $f(x_k) \le f(x_i)$ for $i\le k$, so $k\,(f(x_k)-f(x^*)) \le \sum_{i=1}^k (f(x_i)-f(x^*))$. Combining with step 5 gives the claimed bound.
+
+The argument uses only the stated hypotheses. The bound is weaker than the known sharp rate $L\|x_0-x^*\|^2/(4k+2)$ for this step size, but the proof establishes what it claims.
+
+**Lean verification: NOT FORMALIZED.** No Lake project with Mathlib is set up in this directory. Building one requires a Mathlib download, which I'd need your approval for first. The verdict above is an informal audit only.
+
+{"verdict": "VALID", "first_bad_step": null}

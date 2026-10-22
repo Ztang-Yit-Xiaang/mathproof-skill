@@ -1,0 +1,16 @@
+**Verdict: VALID.** Every step is justified, so the argument establishes the claim.
+
+**Claim and assumptions.** Let $f:\mathrm{dom}\,f\to\mathbb{R}$ be differentiable and $\mu$-strongly convex with $\mu>0$, where $\mathrm{dom}\,f$ is convex. Let $x^*$ be a point with $\nabla f(x^*)=0$. The claim is that $x^*$ is the unique global minimizer of $f$.
+
+**Step-by-step check.**
+
+1. **Justified.** For differentiable $\mu$-strongly convex $f$, the first-order characterization $f(y)\ge f(x)+\nabla f(x)^\top(y-x)+\frac{\mu}{2}\|y-x\|^2$ holds for all $x,y\in\mathrm{dom}\,f$. This is a standard equivalent form of strong convexity (e.g., Boyd & Vandenberghe §9.1.2; Nesterov, Thm 2.1.3). It requires differentiability at $x$ and $\mu>0$, both of which hold.
+2. **Justified.** A stationary point is by definition a point where $\nabla f(x^*)=0$.
+3. **Justified.** Substituting step 2 into step 1 gives $f(y)\ge f(x^*)+\frac{\mu}{2}\|y-x^*\|^2$. For $y\neq x^*$, we have $\|y-x^*\|^2>0$ and $\mu>0$, so the right-hand side strictly exceeds $f(x^*)$, giving $f(y)>f(x^*)$. The strictness is stated somewhat tersely but follows directly.
+4. **Justified.** Step 3 gives $f(y)\ge f(x^*)$ for all $y$, so $x^*$ is a global minimizer. The strict inequality for $y\neq x^*$ rules out any other minimizer, so it is unique.
+
+**Gaps I checked for.** The argument does not assume that a minimizer exists, since $x^*$ is given. It does not use any property beyond differentiability and $\mu$-strong convexity. The inequality in step 1 is applied only at points $y$ in $\mathrm{dom}\,f$, which is all the claim requires.
+
+**Lean status: NOT FORMALIZED.** This audit was requested in prose, and a Lean check would require a Mathlib project and a one-time download, which needs your confirmation first. The verdict rests on the informal argument above.
+
+{"verdict": "VALID", "first_bad_step": null}

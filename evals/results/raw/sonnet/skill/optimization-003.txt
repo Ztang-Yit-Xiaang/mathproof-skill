@@ -1,0 +1,16 @@
+**Verdict: VALID.** The proof establishes the claim from its stated hypotheses. Lean status: NOT FORMALIZED. I did not run a Lean check, so this is an informal audit and not machine-verified.
+
+**Claim and assumptions.** f is convex and differentiable on a real Hilbert space, ∇f is L-Lipschitz with L>0, and a minimizer x* exists. The iteration is x_{k+1} = x_k − (1/L)∇f(x_k). The target is f(x_k) − f(x*) ≤ L‖x₀−x*‖²/(2k) for all k ≥ 1.
+
+**Step-by-step check** (write g = ∇f(x_k)):
+
+1. The descent lemma follows from the Lipschitz gradient. Along the segment, φ(t) = f(x + t(y−x)) is C¹ with φ′ Lipschitz, which gives the quadratic upper bound. Justified.
+2. With y = x_k − g/L, the linear term is −‖g‖²/L and the quadratic term is +‖g‖²/(2L). Together they give f(x_{k+1}) ≤ f(x_k) − ‖g‖²/(2L), so f(x_k) is nonincreasing. Justified.
+3. This is the first-order convexity inequality for a differentiable convex function. Justified.
+4. Step 3 gives f(x_{k+1}) − f(x*) ≤ ⟨g, x_k−x*⟩ − ‖g‖²/(2L). Expanding ‖x_{k+1}−x*‖² = ‖x_k−x*‖² − (2/L)⟨g, x_k−x*⟩ + ‖g‖²/L² gives ⟨g, x_k−x*⟩ = (L/2)(‖x_k−x*‖² − ‖x_{k+1}−x*‖²) + ‖g‖²/(2L). The ‖g‖²/(2L) terms cancel, which gives the stated inequality. Justified.
+5. Applying step 4 for indices 0,…,k−1 and telescoping gives Σ_{i=1}^k (f(x_i)−f*) ≤ (L/2)(‖x₀−x*‖² − ‖x_k−x*‖²) ≤ (L/2)‖x₀−x*‖². The last inequality drops a nonnegative term. Justified.
+6. Monotonicity from step 2 gives f(x_k) ≤ f(x_i) for i ≤ k, so k(f(x_k)−f*) ≤ Σ_{i=1}^k (f(x_i)−f*). Dividing by k > 0 gives the claim. Justified.
+
+I found no missing assumptions. Existence of x* is a hypothesis, no division by a possibly-zero quantity occurs, and the dependencies are acyclic. The proof is the standard O(1/k) rate for gradient descent with step size 1/L.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,9 @@
+The proof is valid.
+
+- **Step 1** is the Heine–Borel theorem: $[0,1]$ is closed and bounded in $\mathbb{R}$, hence compact.
+- **Step 2** is the standard fact that a continuous image of a compact set is compact. It uses the claim's hypothesis that $f$ is continuous, which the step doesn't cite by name but clearly relies on.
+- **Step 3** is the fact that a nonempty compact subset of $\mathbb{R}$ is closed and bounded, so it contains its supremum. Applied to $K = f([0,1])$, the supremum $s = \sup K$ lies in $K$, so $s = f(x_0)$ for some $x_0$, and $f(x_0) \ge f(x)$ for all $x$. The step omits one check: $K$ must be nonempty. That holds because $[0,1]$ is nonempty, which is part of the claim's setup, so the omission is cosmetic.
+
+No step introduces an unjustified inference, so there is no first bad step.
+
+{"verdict": "VALID", "first_bad_step": null}

@@ -1,0 +1,15 @@
+**Verdict: INVALID.** The claim is false, so no valid proof of it exists.
+
+**Counterexample:** Let X = +1 or -1, each with probability 1/2. X is bounded, so it is square-integrable. Then E[X] = 0 and E[X²] = 1, but (E[X])² = 0. So E[X²] ≠ (E[X])².
+
+The correct identity is Var(X) = E[X²] − (E[X])², which is generally nonzero. The claim holds only when Var(X) = 0, that is, when X is almost surely constant.
+
+**Step-by-step audit:**
+
+1. **"The function t² is continuous."** This is true and justified. It is also irrelevant to the conclusion, since continuity does not connect E[·] with the squaring map.
+
+2. **"Therefore expectation commutes with squaring."** This is the first unjustified step. Expectation is linear, so it commutes with multiplication by constants and with sums, but it does not commute with nonlinear functions in general. For a convex function g, Jensen's inequality gives E[g(X)] ≥ g(E[X]), with equality only in special cases. Continuity of g is not sufficient for E[g(X)] = g(E[X]), and the proof offers no other justification for this step.
+
+3. **"Hence E[X²] = (E[X])²."** This follows only from step 2, so it fails with it. Step 3 is not an independent error.
+
+{"verdict": "INVALID", "first_bad_step": 2}

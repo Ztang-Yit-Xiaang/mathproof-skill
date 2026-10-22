@@ -1,0 +1,44 @@
+## Verdict: INVALID
+
+The proof does not establish the claim, and the claim is false as stated.
+
+## Claim and assumptions
+
+- **Claim:** For a pointwise convergent sequence $f_n \to f$ on $[0,1]$, $\lim_n \int_0^1 f_n = \int_0^1 f$.
+- **Assumptions:** Only pointwise convergence. The proof does not assume integrability, measurability, a uniform bound, or domination.
+
+## First unsupported step
+
+**Step 2:** "Integrate both sides of the pointwise limit."
+
+Pointwise convergence gives $\lim_n f_n(x) = f(x)$ for each $x$. Integrating both sides, which is what the proof does, gives $\int \lim_n f_n = \int f$. It does not give $\lim_n \int f_n = \int f$. Passing the limit through the integral is exactly the exchange the claim asserts, so step 2 assumes the conclusion. Step 1 only sets up the hypotheses, so it is not the first failure.
+
+## Why it fails
+
+Exchanging limit and integral requires an additional hypothesis such as:
+- uniform convergence on a finite-measure space,
+- a dominating integrable function $g$ with $|f_n| \le g$ (dominated convergence), or
+- monotonicity with nonnegative functions (monotone convergence).
+
+Pointwise convergence alone is not enough, because mass can escape to a shrinking set where the functions are large.
+
+## Counterexample
+
+Let $f_n = n \cdot \mathbf{1}_{(0,1/n)}$ on $[0,1]$.
+
+- **Pointwise limit:** For $x > 0$, $1/n < x$ for all large $n$, so $f_n(x) = 0$ eventually. Also $f_n(0) = 0$. Hence $f_n \to f = 0$ pointwise.
+- **Integrals:** $\int_0^1 f_n = n \cdot \frac{1}{n} = 1$ for every $n$, while $\int_0^1 f = 0$.
+
+So $\lim_n \int f_n = 1 \ne 0 = \int f$. Every function here is Lebesgue measurable and integrable, so the failure is not caused by a missing integrability hypothesis.
+
+## Lean status
+
+NOT FORMALIZED. I did not run the Lean checker in this session, so the counterexample has not been machine-checked.
+
+## Repair
+
+Add one of the hypotheses above. The cleanest option is uniform convergence on $[0,1]$, which gives $\left|\int f_n - \int f\right| \le \sup_x |f_n(x) - f(x)| \to 0$. The counterexample violates both uniform convergence and any domination, since $\sup_x f_n(x) = n$ is unbounded.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 2}
+```

@@ -1,0 +1,15 @@
+**Verdict: INVALID.** The claim is false, so no correct proof of it exists.
+
+**Counterexample:** Let S = (0, 1). It is nonempty and bounded (by 0 below and 1 above), but it has no minimum. Its infimum is 0, and 0 ∉ S, so no element of S is less than or equal to every other element.
+
+**Step-by-step audit:**
+
+- **Step 1** (take S nonempty and bounded below): Justified. A bounded set is bounded below, so this is a valid specialization of the hypotheses.
+- **Step 2** (inf S exists by completeness): Justified. The completeness axiom (least upper bound property) gives greatest lower bounds for nonempty sets bounded below.
+- **Step 3** (inf S belongs to S, so it is the minimum): **Not justified.** The infimum of S is a lower bound of S, but nothing in the hypotheses or in steps 1–2 forces it to lie in S. The conclusion would require inf S ∈ S, which is exactly what fails for S = (0, 1). The step needs an extra hypothesis, such as S being closed, and the claim does not provide one.
+
+The argument is therefore a non-sequitur at step 3. The true statement is that every nonempty bounded-below subset of R has an infimum, not a minimum. A minimum exists exactly when the infimum is attained, for example when S is closed and bounded below.
+
+```json
+{"verdict": "INVALID", "first_bad_step": 3}
+```

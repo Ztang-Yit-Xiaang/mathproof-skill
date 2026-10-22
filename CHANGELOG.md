@@ -4,6 +4,10 @@
 
 - Added Example 6 and eval case `optimization-003`: the $O(1/k)$ rate of gradient descent for convex $L$-smooth functions on a real Hilbert space (Nesterov, Thm 2.1.14), machine-checked in Lean from Mathlib's definitions alone. The formal proof shows the minimizer hypothesis is unnecessary.
 - `validate_evals.py` now accepts Lean names ending in a prime (e.g. `gd_rate'`).
+- Added `scripts/run_benchmark.py` and the first results (`evals/results/`): Haiku and Sonnet, with and without the skill, score 19–21/21. The set is too easy to show an effect, and the skill made Haiku over-strict on two valid proofs.
+- Corrected `logic-002` and `analysis-002` from `INCOMPLETE` to `INVALID`: both claims are refuted by a counterexample, which the skill's own verdict definitions classify as `INVALID`.
+- Packaged as a Claude Code plugin (`.claude-plugin/`): `/plugin install mathproof-skill --marketplace Ztang-Yit-Xiaang/mathproof-skill`.
+- Added a project website (`docs/`, GitHub Pages) with a social preview image.
 - README and examples use GitHub math delimiters (`$`, `$$`) so formulas render.
 
 ## 0.2.0 — 2026-10-21

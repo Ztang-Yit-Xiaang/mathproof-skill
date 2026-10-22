@@ -1,0 +1,12 @@
+The proof establishes the claim. Every step follows from the hypotheses and the earlier steps.
+
+1. **Descent lemma.** This holds for any differentiable f with L-Lipschitz gradient and needs no convexity. ✓
+2. **Descent inequality.** Substituting y = x_k − (1/L)g, with g = ∇f(x_k), gives f(x_{k+1}) ≤ f(x_k) − ||g||²/L + ||g||²/(2L) = f(x_k) − ||g||²/(2L). So f(x_k) is nonincreasing. ✓
+3. **Convexity.** This is the first-order inequality, so f(x_k) ≤ f(x*) + ⟨g, x_k − x*⟩. ✓
+4. **Combining.** Steps 2 and 3 give f(x_{k+1}) − f(x*) ≤ ⟨g, x_k − x*⟩ − ||g||²/(2L). The update rule gives ||x_{k+1} − x*||² = ||x_k − x*||² − (2/L)⟨g, x_k − x*⟩ + ||g||²/L². Solving for the inner product gives ⟨g, x_k − x*⟩ = (L/2)(||x_k − x*||² − ||x_{k+1} − x*||²) + ||g||²/(2L). The ||g||²/(2L) terms cancel, which yields the stated inequality. ✓
+5. **Telescoping.** Summing step 4 for indices 0 through k−1 gives Σ_{i=1}^{k}(f(x_i) − f(x*)) ≤ (L/2)(||x_0 − x*||² − ||x_k − x*||²) ≤ (L/2)||x_0 − x*||². ✓
+6. **Final bound.** By monotonicity from step 2, f(x_i) ≥ f(x_k) for every i ≤ k. Each term f(x_i) − f(x*) is therefore at least f(x_k) − f(x*), so k(f(x_k) − f(x*)) is at most the sum. Dividing by k gives f(x_k) − f(x*) ≤ L||x_0 − x*||²/(2k) for every k ≥ 1. ✓
+
+The argument works in a general real Hilbert space, since it uses only inner products and norms. It also does not need the existence of ∇f beyond the stated differentiability.
+
+{"verdict": "VALID", "first_bad_step": null}

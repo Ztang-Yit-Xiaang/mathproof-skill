@@ -1,0 +1,11 @@
+The proof does not establish the claim. The claim is false, and step 2 is the first unjustified step.
+
+- **Step 1 is justified.** A real symmetric matrix is Hermitian, so by the spectral theorem its eigenvalues are real.
+- **Step 2 is not justified.** Real eigenvalues do not imply nonnegative eigenvalues. The step needs an extra hypothesis that the claim does not supply. Nothing in step 1 rules out negative values.
+- **Step 3 does not follow.** Even granting step 2, the link to $x^T A x \ge 0$ is valid only when all eigenvalues are nonnegative, by the spectral decomposition $x^T A x = \sum_i \lambda_i (q_i^T x)^2$. Since step 2 fails, so does step 3.
+
+**Counterexample:** $A = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}$ is real and symmetric, with eigenvalues $1$ and $-1$. For $x = (0, 1)^T$, $x^T A x = -1 < 0$, so $A$ is not PSD. A less trivial one is $A = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}$, where $x = (1, -1)^T$ gives $x^T A x = -2$.
+
+The correct statement is that a real symmetric matrix is PSD if and only if all its eigenvalues are nonnegative. Step 1 is what makes that equivalence meaningful, but it cannot supply the sign condition by itself.
+
+{"verdict": "INVALID", "first_bad_step": 2}
