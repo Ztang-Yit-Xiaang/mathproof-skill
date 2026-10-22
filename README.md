@@ -141,7 +141,7 @@ FAIL: tests/lean_check/fail_hidden_sorry.lean
 
 The same audit rejects custom `axiom`s and `native_decide` (which trusts compiled code). See [`tests/lean_check/`](tests/lean_check/) for every case.
 
-### 6. A graduate-level proof: the $O(1/k)$ rate of gradient descent · `VALID` · `LEAN-CHECKED`
+### 6. Basic Optimization Example Proof: the $O(1/k)$ rate of gradient descent · `VALID` · `LEAN-CHECKED`
 
 > *Theorem* (Nesterov, *Lectures on Convex Optimization*, Thm 2.1.14). Let $f$ be convex and differentiable on a real Hilbert space, with $L$-Lipschitz gradient. Gradient descent $x_{k+1}=x_k-\frac1L\nabla f(x_k)$ satisfies
 > $$f(x_k)-f(x^\star)\le\frac{L\,\|x_0-x^\star\|^2}{2k}\qquad(k\ge1).$$
