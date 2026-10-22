@@ -1,0 +1,13 @@
+{
+  "name": "mathproof",
+  "owner": { "name": "Yit Xiaang Ztang", "email": "ztangyitxiaang@gmail.com" },
+  "metadata": { "description": "MathProof Skill: audit proofs adversarially and machine-check them in Lean." },
+  "plugins": [
+    {
+      "name": "mathproof-skill",
+      "source": "./",
+      "description": "Correctness-first proof construction and auditing, with Lean 4 + Mathlib machine checking.",
+      "category": "productivity"
+    }
+  ]
+}

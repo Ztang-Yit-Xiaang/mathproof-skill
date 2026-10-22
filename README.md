@@ -242,7 +242,24 @@ mathproof-skill/
 
 ## Install
 
-Copy the `skill/` directory into your agent's personal skills directory and name the destination `mathproof-skill`. The resulting install should have `SKILL.md` at its root:
+**Claude Code (plugin, one step):**
+
+```text
+/plugin install mathproof-skill --marketplace Ztang-Yit-Xiaang/mathproof-skill
+```
+
+On older Claude Code versions, run `/plugin marketplace add Ztang-Yit-Xiaang/mathproof-skill` first, then `/plugin install mathproof-skill@mathproof`.
+
+**Every agent on the machine (Claude Code, Codex, Antigravity) plus the Lean project:**
+
+```bash
+git clone https://github.com/Ztang-Yit-Xiaang/mathproof-skill.git
+cd mathproof-skill && ./scripts/install.sh
+```
+
+The installer also links `~/.mathproof/lean`, so the Lean checker works outside the repository. `scripts/uninstall.sh` reverses it.
+
+**Manually:** Copy the `skill/` directory into your agent's personal skills directory and name the destination `mathproof-skill`. The resulting install should have `SKILL.md` at its root:
 
 ```text
 mathproof-skill/
