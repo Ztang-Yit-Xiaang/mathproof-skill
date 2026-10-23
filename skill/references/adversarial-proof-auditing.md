@@ -9,6 +9,7 @@ This protocol provides systematic guidelines for auditing mathematical proofs, c
 3. Common fallacies
 4. Minimal counterexample template
 5. Research-math attack battery
+6. Assumption harm battery
 
 ---
 
@@ -125,3 +126,20 @@ The claim fails because it implicitly assumed [Identify missing condition, e.g.,
 - Preserve the difference between equality, approximation, bounds, and asymptotic equivalence.
 - Track constants, regimes, probability levels, and dependence on dimensions or parameters.
 - Test whether an error term is uniform over the domain where the conclusion is claimed.
+
+## 6. Assumption Harm Battery
+
+Run this on every hypothesis in the statement and every assumption a repair adds. Finding the assumption that makes a step work is half the job. The other half is checking what it costs.
+
+| Harm | Question | Example | Detection |
+| :--- | :--- | :--- | :--- |
+| **Vacuity** | Can all hypotheses hold at once? | Repairing "$A^2=0 \implies A=0$" with "$A$ invertible": no invertible $A$ with $n \ge 1$ satisfies $A^2=0$ | Exhibit a witness; in Lean, prove $\exists x,\ \text{hyps}(x)$ |
+| **Circularity** | Does the assumption imply the target? | "Assume $\sum a_n$ converges absolutely" to prove $\sum a_n$ converges | Try deriving the target from the assumption alone |
+| **Collapse** | What class of objects survives? | PSD and nilpotent forces $A=0$; $f$ convex and concave on $\mathbb{R}$ forces $f$ affine | Characterize the surviving class; compare it with the intended use |
+| **Overstrength** | Would a weaker assumption do? | Requiring $C^\infty$ where $C^1$ suffices; Example 6's minimizer hypothesis turned out unnecessary | Remove the assumption and locate the step that breaks |
+| **Idle hypothesis** | Is it used anywhere? | A hypothesis no step cites | Map each hypothesis to the steps using it; an unused one is unnecessary or hides a gap |
+| **Downstream mismatch** | Do callers still satisfy it? | A lemma repaired with strong convexity, used where only convexity is known | Recheck every use site of the repaired lemma |
+| **Hard to reach** | Can a user check it from the problem's data? | "Assume the iterates stay in a bounded set"; "assume $L$ is known exactly"; "for $n$ sufficiently large" | Drop it, derive it from checkable hypotheses, or replace it with a checkable sufficient condition (SKILL.md, *Eliminate hard-to-reach conditions*) |
+| **Quantitative blow-up** | What constants enter, and how do they degenerate? | A rate $O(\kappa/k)$ with condition number $\kappa \to \infty$ | Track constants to the final bound; test the degenerate limit |
+
+A repair that is vacuous, circular, or collapsing is reported as such. It does not support `CONDITIONALLY VALID`.

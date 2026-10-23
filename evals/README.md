@@ -18,11 +18,11 @@
 | `notes` | Short grading clarification |
 | `lean` | Optional. Machine-checked formalization; see below |
 
-The benchmark mixes invalid (13) and valid (8) arguments, so a model cannot score well by rejecting everything. It has no `CONDITIONALLY VALID` or `INCOMPLETE` cases yet; contributions of those, and of harder cases in general, are especially welcome.
+The benchmark mixes invalid (14) and valid (8) arguments, so a model cannot score well by rejecting everything. It has no `CONDITIONALLY VALID` or `INCOMPLETE` cases yet; contributions of those, and of harder cases in general, are especially welcome.
 
 ## Running models
 
-`scripts/run_benchmark.py` sends every case to a model with and without the skill's instructions and scores the verdict and first bad step. Results and every raw answer are in [`results/`](results/README.md). Current models already score 19–21/21 either way, so this set is too easy to show the skill's effect on informal verdicts.
+`scripts/run_benchmark.py` sends every case to a model with and without the skill's instructions and scores the verdict and first bad step. Results and every raw answer are in [`results/`](results/README.md). On the first 21 cases, current models already scored 19–21/21 either way, so this set is too easy to show the skill's effect on informal verdicts.
 
 ## Lean formalizations
 

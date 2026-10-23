@@ -193,7 +193,7 @@ PASS: lean/MathProofSkill/Evals/Optimization003.lean
 
 The full write-up, with proofs of every lemma, the post-audit, and the fidelity table, is [Example 6](examples/06-gradient-descent-rate.md).
 
-More worked audits, including fidelity tables, are in [`examples/`](examples/).
+More worked audits, including fidelity tables, are in [`examples/`](examples/). [Example 7](examples/07-assumption-that-hurts.md) shows the assumption cost audit rejecting a tempting repair: "assume $A$ invertible" fixes the proof of "$A^2=0 \implies A=0$" only by making its hypotheses unsatisfiable.
 
 ## Four modes
 
