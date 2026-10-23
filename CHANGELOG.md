@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added an assumption cost audit to the skill. Every stated or added assumption is now checked for consistency, circularity, collapse of the class, unnecessary strength, downstream fit, and quantitative cost. `CONDITIONALLY VALID` now requires a repair that passes the audit, so a vacuous or circular repair no longer earns it.
+- Hard-to-reach conditions (unverifiable a priori bounds, exact constants, assumed minimizers, unquantified "n large") are now treated as defects: the skill tries to drop them, derive them, or replace them with checkable conditions, and labels any that remain.
+- Added the assumption harm battery (`adversarial-proof-auditing.md` §6) and a vacuous-hypotheses trap to the Lean protocol: when hypotheses are added, prove a non-vacuity witness.
+- Added Example 7 and eval case `linear-004`. The tempting repair for "$A^2=0 \implies A=0$" is invertibility, and it is vacuous; symmetry is the repair that works. All three facts are machine-checked in Lean.
+
 ## 0.2.1 — 2026-10-22
 
 - Added Example 6 and eval case `optimization-003`: the $O(1/k)$ rate of gradient descent for convex $L$-smooth functions on a real Hilbert space (Nesterov, Thm 2.1.14), machine-checked in Lean from Mathlib's definitions alone. The formal proof shows the minimizer hypothesis is unnecessary.

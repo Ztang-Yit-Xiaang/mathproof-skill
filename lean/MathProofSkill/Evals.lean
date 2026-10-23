@@ -8,6 +8,7 @@ import MathProofSkill.Evals.Combinatorics001
 import MathProofSkill.Evals.Linear001
 import MathProofSkill.Evals.Linear002
 import MathProofSkill.Evals.Linear003
+import MathProofSkill.Evals.Linear004
 import MathProofSkill.Evals.Logic001
 import MathProofSkill.Evals.Logic002
 import MathProofSkill.Evals.Number001

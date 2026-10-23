@@ -49,6 +49,7 @@ Classify the formalization:
 - **Junk values.** In Lean `x / 0 = 0`, `Real.sqrt` of a negative number is `0`, `Real.log 0 = 0`, `deriv f x = 0` where `f` is not differentiable, and `ℕ` subtraction truncates (`2 - 5 = 0`). A statement that hits a junk value may be "true" for the wrong reason. Add the side conditions (`x ≠ 0`, `0 ≤ x`, `DifferentiableAt ℝ f x`) or index around them (`1 / (n + 1)` instead of `1 / n`).
 - **Wrong number type.** `ℕ`, `ℤ`, `ℚ`, `ℝ` differ in division, subtraction, and order. Make coercions explicit (`(n : ℝ)`).
 - **Missing or extra hypotheses.** Every informal hypothesis must appear; no hypothesis may be added silently. An added hypothesis turns `faithful` into `partial`.
+- **Vacuous hypotheses.** Contradictory hypotheses prove any conclusion, and Lean will accept the proof. When a statement has added or nonstandard hypotheses, prove a witness `∃ x, hyp₁ x ∧ … ∧ hypₖ x` in the same file. Watch empty index types too: over `Fin 0`, every matrix is both zero and invertible.
 - **Quantifier order and scope.** `∀ ε, ∃ δ` versus `∃ δ, ∀ ε`; check that every variable is bound where the informal claim binds it.
 - **Mathlib definitions that bundle extra content.** `Matrix.PosSemidef` includes Hermitian (symmetric over `ℝ`); `SimpleGraph` excludes loops and multi-edges; `IsMinOn f s x` does not require `x ∈ s`; `Continuous` is global while `ContinuousOn f s` is not. Read the definition when unsure (`#print`, or grep the Mathlib source).
 - **Open versus closed sets.** `Set.Ioo`, `Set.Icc`, `Set.Ico` are different claims.
