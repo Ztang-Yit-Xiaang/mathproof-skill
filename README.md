@@ -14,6 +14,19 @@ AI-generated proofs often fail in a dangerous way: the algebra looks polished, b
 
 The reasoning is informal, and an informal audit does **not guarantee correctness**. To check results, the skill uses **Lean 4 with Mathlib**: it formalizes the claim (or its negation), checks that the formal statement says what the informal one says, proves it, and runs a checker that rejects `sorry`, custom axioms, and kernel bypasses. Only a check that passes counts as machine-checked.
 
+<!-- BEGIN portfolio-project-animations -->
+## Animated project guide
+
+These self-contained SVG animations explain the project workflow. They are illustrative guides, not recorded experiments or new performance results. Static content remains available when reduced motion is requested.
+
+### Audit the implication
+
+![Audit the implication — illustrative animation](docs/portfolio-animations/mathproof-skill.svg)
+
+A conceptual counterexample walkthrough. This animation does not call an agent or execute Lean.
+
+<!-- END portfolio-project-animations -->
+
 ## Why not just ask an LLM?
 
 A chatbot gives a fluent answer you must still check yourself, and rarely says it is unsure. MathProof Skill adds:
