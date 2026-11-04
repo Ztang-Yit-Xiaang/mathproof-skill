@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Fixed a false `PASS` in the Lean checker.** `lean_check.py` could report `PASS` for a proof of `1 = 2` or `False`: a file could print a forged audit line and stop with `#exit`, or switch off the kernel check through an option name built from strings. The README, site, and protocol said such files were rejected, and that was wrong. None of the 22 eval files uses these constructs, and all still pass the hardened checker. Results checked with an earlier version rested on the old, weaker check.
+- The checker now compiles the untouched file in its own temporary directory, audits the compiled file as data in a separate process (`lean_audit.lean`), and replays it through `leanchecker`. It audits internal declarations too, requires the real core axioms, and prints statements without the file's own notation. A new `statement_uses` report field lists the file's constants in each statement.
+- **Behavior changes:** files importing anything other than Lean, Mathlib, and Mathlib's dependencies now fail, as do `prelude` and `module` files. `autoImplicit` is now off during checks, which the protocol already claimed. A toolchain without `leanchecker` now exits `2`. Checks take longer, because Mathlib is loaded three times.
+- `lean-verification.md` now states the checker's threat model. It is a local check and is not adversarially sound: compiling a Lean file runs its code as you.
+
 - Added an assumption cost audit to the skill. Every stated or added assumption is now checked for consistency, circularity, collapse of the class, unnecessary strength, downstream fit, and quantitative cost. `CONDITIONALLY VALID` now requires a repair that passes the audit, so a vacuous or circular repair no longer earns it.
 - Hard-to-reach conditions (unverifiable a priori bounds, exact constants, assumed minimizers, unquantified "n large") are now treated as defects: the skill tries to drop them, derive them, or replace them with checkable conditions, and labels any that remain.
 - Added the assumption harm battery (`adversarial-proof-auditing.md` §6) and a vacuous-hypotheses trap to the Lean protocol: when hypotheses are added, prove a non-vacuity witness.

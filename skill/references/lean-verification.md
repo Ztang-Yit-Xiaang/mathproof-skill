@@ -23,7 +23,7 @@ Skip Lean, and say so with a reason, when the statement depends on objects Mathl
    ```
    This pins Lean and Mathlib to the versions the skill is tested against and downloads the Mathlib cache (several GB, one time). Ask the user before the first download.
 
-Put each formalization in its own file inside the project. Start every file with `import Mathlib` unless a narrower import is known to suffice.
+Put each formalization in one self-contained file. Start it with `import Mathlib` unless a narrower import is known to suffice. The checker refuses imports other than Lean, Mathlib, and Mathlib's dependencies, because an imported local file would not be audited or replayed. It also refuses `prelude` and `module` headers.
 
 ## 3. Write the statement first, then check fidelity
 
@@ -53,8 +53,8 @@ Classify the formalization:
 - **Quantifier order and scope.** `∀ ε, ∃ δ` versus `∃ δ, ∀ ε`; check that every variable is bound where the informal claim binds it.
 - **Mathlib definitions that bundle extra content.** `Matrix.PosSemidef` includes Hermitian (symmetric over `ℝ`); `SimpleGraph` excludes loops and multi-edges; `IsMinOn f s x` does not require `x ∈ s`; `Continuous` is global while `ContinuousOn f s` is not. Read the definition when unsure (`#print`, or grep the Mathlib source).
 - **Open versus closed sets.** `Set.Ioo`, `Set.Icc`, `Set.Ico` are different claims.
-- **Auto-bound implicits.** Keep `autoImplicit false` (the provided project sets it) so a typo cannot become a new universally quantified variable.
-- **Notation shadowing.** Do not define local notation or instances that change the meaning of standard symbols.
+- **Auto-bound implicits.** The checker compiles with `autoImplicit false`, so a typo cannot become a new universally quantified variable. Do not turn it back on with `set_option`.
+- **Notation and instance shadowing.** Do not define local notation or instances that change the meaning of standard symbols. The checker prints statements without the file's own notation, but a local instance still prints normally: with a file-local `Add Nat`, `1 + 1 = 0` passes. Read the `statement uses from this file` line under each declaration, and read what it lists.
 
 ## 4. Prove
 
@@ -80,9 +80,16 @@ Rules:
 python3 <skill-dir>/scripts/lean_check.py path/to/File.lean --require <main declaration>
 ```
 
-The checker passes only if the file compiles with no errors, no declaration uses `sorry`, every declaration in the file depends only on `propext`, `Classical.choice`, and `Quot.sound`, no forbidden construct appears outside comments, and each `--require`d declaration exists. It prints every declaration's elaborated type (and the body of each `Prop`-valued definition) for the fidelity comparison. Read that output; do not rely on the source text alone.
+The checker runs four stages, and all must pass:
 
-Exit status `0` is the only acceptable result. Treat anything else as not machine-checked.
+1. **Source scan:** no `prelude` or `module` header, only allow-listed imports, and no forbidden construct outside comments.
+2. **Compile:** the untouched file compiles with no errors, in its own temporary directory.
+3. **Audit:** a separate process reads the compiled file as data. Every declaration, including internal ones, must depend only on the real `propext`, `Classical.choice`, and `Quot.sound`, and each `--require`d declaration must exist.
+4. **Replay:** `leanchecker` re-checks the compiled file with the kernel.
+
+It prints every declaration's elaborated type (and the body of each `Prop`-valued definition) for the fidelity comparison, ignoring notation the file defines. The file's own definitions print with their implicit arguments shown. Read that output, including any `statement uses from this file` line; do not rely on the source text alone.
+
+Exit status `0` is the only acceptable result. Treat anything else as not machine-checked. Exit status `2` means the check could not run, for example on a toolchain without `leanchecker`.
 
 ## 6. Report
 
@@ -106,4 +113,13 @@ How the Lean status interacts with the verdict:
 
 ## 7. Trust boundary
 
-A checker pass establishes that Lean's kernel accepted the proof using only the standard axioms, relative to the pinned Mathlib. It does not establish that the formal statement means what the user meant (that is the fidelity table's job), that Mathlib's definitions match the user's conventions, or that the Lean toolchain itself is bug-free.
+A checker pass establishes that Lean's kernel accepted the file's declarations using only the standard axioms, relative to the Mathlib in the project. The report's `pinned` field says whether that project uses the tested versions. A pass does not establish that the formal statement means what the user meant (that is the fidelity table's job), that Mathlib's definitions match the user's conventions, or that the Lean toolchain itself is bug-free.
+
+**What the checker defends against:** accidents, agent shortcuts, and the file-level attacks in `tests/lean_check/`, such as forged audit output, a switched-off kernel check, a spoofed `prelude`, hidden axioms, and misleading notation.
+
+**What it does not defend against.** It is a local check, not adversarially sound:
+
+- Compiling a Lean file runs its code as the user, with no sandbox. That code can rewrite the checker, its driver, or the compiled file. Do not check untrusted Lean files on a machine you care about.
+- Imports are allow-listed by name. A file placed under a `Mathlib/` path in the project would pass that test and would not be replayed. Only the checked file is replayed, not its imports.
+- The audit and replay tools come from the same toolchain as the compiler, and a modified project or toolchain would not be detected.
+- The attacks tested are the ones known so far. Passing them does not show that no others exist.

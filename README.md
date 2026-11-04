@@ -227,7 +227,9 @@ Possible verdicts are `VALID`, `INVALID`, `CONDITIONALLY VALID`, `INCOMPLETE`, a
 python3 skill/scripts/lean_check.py path/to/File.lean --require main_theorem
 ```
 
-The checker passes only if the file compiles, nothing uses `sorry`, every declaration depends only on `propext`, `Classical.choice`, and `Quot.sound` (so no custom `axiom` and no `native_decide`), and no kernel-bypassing construct appears. It prints each declaration's elaborated statement for comparison with the informal claim, because a passing proof of the wrong statement verifies nothing. The skill records that comparison in a fidelity table and flags Lean's junk values (`x / 0 = 0`, truncated `ℕ` subtraction, `deriv` of a non-differentiable function) and Mathlib definitions that bundle extra content.
+The checker passes only if the file imports nothing beyond Lean, Mathlib, and Mathlib's dependencies, compiles, uses no `sorry`, depends only on the real `propext`, `Classical.choice`, and `Quot.sound` (so no custom `axiom` and no `native_decide`), and survives a replay through Lean's kernel. The audit reads the compiled file in a separate process, so the file cannot forge the result. It prints each declaration's elaborated statement for comparison with the informal claim, ignoring notation the file defines, because a passing proof of the wrong statement verifies nothing.
+
+The checker stops accidents, agent shortcuts, and the attacks in `tests/lean_check/`. It is not proof against a deliberately hostile file: compiling Lean runs the file's code as you. See [the trust boundary](skill/references/lean-verification.md#7-trust-boundary). The skill records that comparison in a fidelity table and flags Lean's junk values (`x / 0 = 0`, truncated `ℕ` subtraction, `deriv` of a non-differentiable function) and Mathlib definitions that bundle extra content.
 
 Without a Lean project at hand, create a pinned one (one-time Mathlib download of several GB):
 
@@ -259,7 +261,7 @@ mathproof-skill/
 ├── skill/                  # Installable, runtime-only skill
 │   ├── SKILL.md
 │   ├── references/         # Includes lean-verification.md
-│   └── scripts/            # lean_check.py
+│   └── scripts/            # lean_check.py, lean_audit.lean
 ├── lean/                   # Lean 4 + Mathlib project; machine-checks every eval case
 ├── examples/               # Human-readable demonstrations
 ├── evals/                  # Adversarial benchmark cases, linked to Lean files
@@ -331,6 +333,7 @@ Every case is also formalized in `lean/`: valid claims are proved and invalid on
 cd lean && lake exe cache get && cd ..
 python3 scripts/check_lean_evals.py
 python3 tests/lean_check/run_tests.py   # checker regression tests
+python3 tests/lean_check/test_pins.py   # Lean and Mathlib pins agree
 ```
 
 The benchmark tests whether an agent localizes the right failure; it is not evidence that every future verdict is correct.

@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """Machine-check a Lean 4 file and audit what its proofs rest on.
 
-A file PASSES only if all of the following hold:
+A file PASSES only if every stage passes:
 
-1. it elaborates with no errors (Lean's exit code is 0);
-2. no declaration uses `sorry` (directly or through a dependency);
-3. every declaration defined in the file depends only on the standard axioms
-   `propext`, `Classical.choice`, and `Quot.sound` (so no custom `axiom`,
-   no `native_decide`/`Lean.ofReduceBool`, no `sorryAx`);
-4. the source contains no kernel-bypassing or trust-expanding constructs
-   (`set_option debug.skipKernelTC`, `@[implemented_by]`, `@[extern]`,
-   `unsafe`, `axiom` declarations) outside comments;
-5. every `--require`d declaration exists in the file.
+1. source scan: no `prelude` or `module` header, only allow-listed imports, and no kernel-bypassing
+   or trust-expanding construct outside comments (`sorry`, `axiom`, `debug.skipKernelTC`,
+   `@[implemented_by]`, `@[extern]`, `unsafe`);
+2. compile: the untouched file elaborates with no errors, in its own temporary directory;
+3. audit: in a separate process that reads the compiled file as data (lean_audit.lean), every
+   declaration depends only on the standard axioms `propext`, `Classical.choice`, and `Quot.sound`,
+   the real ones from core Lean, and every `--require`d declaration exists;
+4. replay: the toolchain's `leanchecker` re-checks the compiled file with the kernel.
 
-It never checks that a Lean statement faithfully expresses the informal claim;
-that comparison remains the auditor's job (see references/lean-verification.md).
-For that comparison the script prints the elaborated type of each required
-declaration.
+Declarations come only from the audit stage. Nothing the file prints while compiling can add one.
+
+This defends against accidents, agent shortcuts, and the known file-level attacks in
+tests/lean_check. It is not adversarially sound: compiling a Lean file runs its code as you, and
+such code can tamper with anything you can. See references/lean-verification.md, section 7.
+
+It never checks that a Lean statement faithfully expresses the informal claim; that comparison
+remains the auditor's job. For that comparison the script prints the elaborated type of each
+declaration, ignoring notation defined by the file itself.
 
 Usage:
     lean_check.py FILE.lean [--project DIR] [--require NAME ...] [--json]
@@ -32,6 +36,7 @@ Standard library only; requires `lake` (via elan) on PATH.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -39,9 +44,24 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
+
+# Version of the check report and stages (IF-check-report-v2).
+CHECKER_VERSION = "2.0"
+
+# Imports are refused unless their first component is here. These are the Lean toolchain's own
+# libraries, Mathlib, and Mathlib's dependencies. A sibling module could hide a bypass in a file
+# that is never replayed.
+ALLOWED_IMPORT_ROOTS = {"Init", "Std", "Lean", "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets",
+                        "Plausible", "ImportGraph", "LeanSearchClient", "Cli"}
+
+AUDIT_DRIVER = Path(__file__).resolve().parent / "lean_audit.lean"
+
+# The checked file's module name inside its private temporary directory.
+TARGET_MODULE = "MpsTarget"
 
 # Fallback Lake project when FILE is not inside one: $MATHPROOF_LEAN_PROJECT, then this path
 # (scripts/install.sh links it to the repository's lean/ project).
@@ -54,44 +74,12 @@ MATHLIB_REV = "v4.32.0"
 FORBIDDEN_SOURCE = [
     (re.compile(r"\bsorry\b"), "`sorry`"),
     (re.compile(r"\badmit\b"), "`admit`"),
-    (re.compile(r"^\s*(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+)?axiom\b", re.M), "`axiom` declaration"),
+    (re.compile(r"(?<![\w.'])axiom(?![\w'])"), "`axiom` declaration"),
     (re.compile(r"\bdebug\.skipKernelTC\b"), "`debug.skipKernelTC`"),
     (re.compile(r"\bimplemented_by\b"), "`@[implemented_by]`"),
     (re.compile(r"@\[\s*extern\b"), "`@[extern]`"),
     (re.compile(r"\bunsafe\b"), "`unsafe`"),
 ]
-
-# Appended to a temporary copy of the checked file. It reports, for every
-# non-internal constant added by this file, the axioms it depends on and its
-# elaborated type.
-AUDIT_SNIPPET = r"""
-
-section MathProofSkillAudit
-open Lean Elab Command in
-#eval show CommandElabM Unit from do
-  let env ← getEnv
-  let mut names : Array Name := #[]
-  for (n, _) in env.constants.map₂.toList do
-    unless n.isInternal || isAuxRecursor env n || isNoConfusion env n do
-      names := names.push n
-  for n in names.qsort Name.lt do
-    let axs ← Lean.collectAxioms n
-    let some ci := env.find? n | continue
-    let ty ← liftTermElabM <| Meta.ppExpr ci.type
-    let axStr := ", ".intercalate (axs.qsort Name.lt |>.toList.map toString)
-    let tyStr := (toString ty).replace "\n" " "
-    let valStr ← match ci with
-      | .defnInfo d =>
-        if d.type.isProp || d.type.isSort then
-          pure ((toString (← liftTermElabM <| Meta.ppExpr d.value)).replace "\n" " ")
-        else pure ""
-      | _ => pure ""
-    logInfo m!"@@MPS_DECL {n} @@AXIOMS [{axStr}] @@TYPE {tyStr} @@VALUE {valStr}"
-end MathProofSkillAudit
-"""
-
-DECL_RE = re.compile(r"@@MPS_DECL (\S+) @@AXIOMS \[([^\]]*)\] @@TYPE (.*?) @@VALUE ?(.*)")
-
 
 def strip_comments(src: str) -> str:
     """Remove Lean line comments and (nested) block comments, keep string literals."""
@@ -179,79 +167,223 @@ def init_project(target: Path) -> int:
     return 0
 
 
-def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
-    src = file.read_text(encoding="utf-8")
-    code = strip_strings(strip_comments(src))
+def scan_header(code: str) -> list[str]:
+    """Check the header of comment-free source, before anything is compiled."""
+    problems: list[str] = []
+    pos = 0
+    word = re.compile(r"\s*(\S+)")
+    while m := word.match(code, pos):
+        token = m.group(1)
+        if token in ("prelude", "module"):
+            problems.append(f"header-not-allowed: {token}")
+            pos = m.end()
+            continue
+        if token != "import":
+            break
+        name = word.match(code, m.end())
+        module = name.group(1) if name else ""
+        if not import_allowed(module):
+            problems.append(f"import-not-allowed: {module}")
+        pos = name.end() if name else m.end()
+    return problems
+
+
+def import_allowed(module: str) -> bool:
+    return (re.fullmatch(r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)*", module) is not None
+            and module.split(".")[0] in ALLOWED_IMPORT_ROOTS)
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def project_pins(project: Path) -> tuple[str | None, str | None]:
+    """The toolchain and Mathlib revision a project declares, or None where it declares none."""
+    toolchain_file = project / "lean-toolchain"
+    toolchain = toolchain_file.read_text(encoding="utf-8").strip() if toolchain_file.exists() else None
+    mathlib = None
+    try:
+        manifest = json.loads((project / "lake-manifest.json").read_text(encoding="utf-8"))
+        for package in manifest.get("packages", []):
+            if package.get("name") == "mathlib":
+                mathlib = package.get("inputRev") or package.get("rev")
+    except (OSError, ValueError):
+        pass
+    return toolchain, mathlib
+
+
+def run_stage(cmd: list[str], project: Path, deadline: float, **kwargs) -> tuple[subprocess.CompletedProcess | None, float]:
+    """Run one stage in the project, returning (None, seconds) if the time budget ran out."""
+    start = time.monotonic()
+    try:
+        proc = subprocess.run(cmd, cwd=project, capture_output=True, text=True,
+                              timeout=max(1.0, deadline - start), **kwargs)
+    except subprocess.TimeoutExpired:
+        proc = None
+    return proc, round(time.monotonic() - start, 1)
+
+
+def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[str]]:
+    """Turn the audit driver's report into the report's declarations and problems."""
     problems: list[str] = []
 
-    for pattern, label in FORBIDDEN_SOURCE:
-        for m in pattern.finditer(code):
-            line = code.count("\n", 0, m.start()) + 1
-            problems.append(f"line {line}: forbidden construct {label}")
-
-    with tempfile.NamedTemporaryFile(
-        "w", suffix=".lean", prefix=".mps_check_", dir=project, delete=False, encoding="utf-8"
-    ) as tmp:
-        # The audit needs `import Lean`; put it on line 1 so reported line numbers stay unchanged.
-        header = "" if src.lstrip().startswith("module") else "import Lean "
-        tmp.write(header + src.rstrip() + "\n" + AUDIT_SNIPPET)
-        tmp_path = Path(tmp.name)
-    try:
-        proc = subprocess.run(
-            ["lake", "env", "lean", str(tmp_path)],
-            cwd=project,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        tmp_path.unlink(missing_ok=True)
-        return {"file": str(file), "status": "FAIL", "problems": [f"Lean timed out after {timeout}s"],
-                "declarations": [], "lean_output": ""}
-    finally:
-        if tmp_path.exists():
-            tmp_path.unlink()
-
-    output = (proc.stdout + proc.stderr).replace(str(tmp_path), str(file))
-    lines = output.splitlines()
-
-    errors = [l for l in lines if re.search(r":\d+:\d+: error", l) or l.startswith("error:")]
-    problems += [f"Lean error: {e}" for e in errors]
-    if proc.returncode != 0 and not errors:
-        problems.append(f"Lean exited with code {proc.returncode}")
-    for l in lines:
-        if "declaration uses 'sorry'" in l or "declaration uses `sorry`" in l:
-            problems.append(f"Lean warning: {l.strip()}")
+    if audit["is_module"]:
+        problems.append("header-not-allowed: module")
+    # A file without `prelude` always imports Init, so its absence means core was left out.
+    if "Init" not in audit["imports"]:
+        problems.append("header-not-allowed: prelude (compiled file does not import Init)")
+    for module in audit["imports"]:
+        if not import_allowed(module):
+            problems.append(f"import-not-allowed: {module}")
+    for name in audit["core_mismatches"]:
+        problems.append(f"axiom `{name}` is not the one from core Lean")
+    for name in audit["unresolved"]:
+        problems.append(f"audit could not resolve constant `{name}`")
+    for name in audit["unsafe"]:
+        problems.append(f"{name} is declared `unsafe`")
+    for hidden in audit["hidden"]:
+        bad = sorted(set(hidden["axioms"]) - ALLOWED_AXIOMS)
+        if bad:
+            problems.append(f"{hidden['name']} depends on non-standard axioms: {', '.join(bad)}")
 
     decls = []
-    for l in lines:
-        m = DECL_RE.search(l)
-        if not m:
-            continue
-        name, axs, ty = m.group(1), [a.strip() for a in m.group(2).split(",") if a.strip()], m.group(3)
-        bad = sorted(set(axs) - ALLOWED_AXIOMS)
-        decl = {"name": name, "axioms": axs, "nonstandard_axioms": bad, "type": ty}
-        if m.group(4).strip():
-            decl["definition"] = m.group(4).strip()
+    for raw in audit["declarations"]:
+        bad = sorted(set(raw["axioms"]) - ALLOWED_AXIOMS)
+        decl = {"name": raw["name"], "axioms": raw["axioms"], "nonstandard_axioms": bad, "type": raw["type"],
+                "statement_uses": raw["statement_uses"]}
+        if raw.get("definition"):
+            decl["definition"] = raw["definition"]
         decls.append(decl)
         if bad:
-            problems.append(f"{name} depends on non-standard axioms: {', '.join(bad)}")
+            problems.append(f"{raw['name']} depends on non-standard axioms: {', '.join(bad)}")
 
-    if not errors and proc.returncode == 0 and not decls:
+    if not decls:
         problems.append("audit produced no declarations; the file defines nothing to check")
-
     names = {d["name"] for d in decls}
     for r in required:
         if r not in names and not any(n.endswith("." + r) for n in names):
             problems.append(f"required declaration `{r}` not found")
+    return decls, problems
 
-    return {
+
+def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
+    src = file.read_text(encoding="utf-8")
+    no_comments = strip_comments(src)
+    code = strip_strings(no_comments)
+    problems: list[str] = []
+    decls: list[dict] = []
+    environment_error = False
+    toolchain, mathlib_rev = project_pins(project)
+    stages: dict = {"source_scan": {"status": "not run"},
+                    "compile": {"status": "not run", "seconds": 0.0, "sandboxed": False},
+                    "audit": {"status": "not run", "seconds": 0.0},
+                    "replay": {"status": "not run", "seconds": 0.0}}
+
+    header_problems = scan_header(no_comments)
+    problems += header_problems
+    for pattern, label in FORBIDDEN_SOURCE:
+        for m in pattern.finditer(code):
+            line = code.count("\n", 0, m.start()) + 1
+            problems.append(f"line {line}: forbidden construct {label}")
+    stages["source_scan"]["status"] = "fail" if problems else "pass"
+
+    lean_output = ""
+    deadline = time.monotonic() + timeout
+
+    def timed_out(stage: str) -> None:
+        stages[stage]["status"] = "timeout"
+        problems.append(f"Lean timed out after {timeout}s")
+
+    # A refused header is not compiled: `import` and `prelude` decide what code runs at all.
+    if not header_problems:
+        with tempfile.TemporaryDirectory(prefix="mps_check_") as work:
+            work_dir = Path(work).resolve()
+            target = work_dir / f"{TARGET_MODULE}.lean"
+            olean = work_dir / f"{TARGET_MODULE}.olean"
+            target.write_bytes(file.read_bytes())
+
+            # `lake env lean` ignores the lakefile's leanOptions, so set these here. Otherwise a
+            # typo in a statement silently becomes a universally quantified variable.
+            compile_cmd = ["lake", "env", "lean", "-DautoImplicit=false", "-DrelaxedAutoImplicit=false",
+                           f"--root={work_dir}", "-o", str(olean),
+                           "-i", str(work_dir / f"{TARGET_MODULE}.ilean"), str(target)]
+            proc, seconds = run_stage(compile_cmd, project, deadline)
+            stages["compile"]["seconds"] = seconds
+            compiled = False
+            if proc is None:
+                timed_out("compile")
+            else:
+                lean_output = (proc.stdout + proc.stderr).replace(str(target), str(file))
+                lines = lean_output.splitlines()
+                errors = [l for l in lines if re.search(r":\d+:\d+: error", l) or l.startswith("error:")]
+                problems += [f"Lean error: {e}" for e in errors]
+                if proc.returncode != 0 and not errors:
+                    problems.append(f"Lean exited with code {proc.returncode}")
+                for l in lines:
+                    if "declaration uses 'sorry'" in l or "declaration uses `sorry`" in l:
+                        problems.append(f"Lean warning: {l.strip()}")
+                compiled = proc.returncode == 0 and not errors and olean.exists()
+                stages["compile"]["status"] = "pass" if compiled else "fail"
+
+            if compiled:
+                out = work_dir / "audit.json"
+                audit_cmd = ["lake", "env", "lean", "--run", str(AUDIT_DRIVER), str(olean), str(out)]
+                proc, seconds = run_stage(audit_cmd, project, deadline)
+                stages["audit"]["seconds"] = seconds
+                if proc is None:
+                    timed_out("audit")
+                elif proc.returncode != 0 or not out.exists():
+                    # A driver that cannot run is an environment fault (for example a toolchain
+                    # with a different API). It must never read as a pass.
+                    environment_error = True
+                    stages["audit"]["status"] = "error"
+                    problems.append("audit driver failed: " + (proc.stdout + proc.stderr).strip()[-1000:])
+                else:
+                    decls, found = audit_problems(json.loads(out.read_text(encoding="utf-8")), required)
+                    problems += found
+                    stages["audit"]["status"] = "fail" if found else "pass"
+
+                # Lake puts its own paths first, so the temporary directory cannot shadow an import.
+                replay_env = {**os.environ, "LEAN_PATH": str(work_dir)}
+                prefix = subprocess.run(["lake", "env", "lean", "--print-prefix"], cwd=project,
+                                        capture_output=True, text=True).stdout.strip()
+                leanchecker = Path(prefix, "bin", "leanchecker")
+                if not leanchecker.exists():
+                    environment_error = True
+                    stages["replay"]["status"] = "unavailable"
+                    problems.append(f"kernel replay unavailable: no leanchecker in toolchain at {prefix!r}")
+                else:
+                    proc, seconds = run_stage(["lake", "env", str(leanchecker), TARGET_MODULE],
+                                              project, deadline, env=replay_env)
+                    stages["replay"]["seconds"] = seconds
+                    if proc is None:
+                        timed_out("replay")
+                    elif proc.returncode != 0:
+                        stages["replay"]["status"] = "fail"
+                        problems.append("kernel replay rejected the file: " + (proc.stdout + proc.stderr).strip()[-1000:])
+                    else:
+                        stages["replay"]["status"] = "pass"
+
+    report = {
         "file": str(file),
         "status": "PASS" if not problems else "FAIL",
         "problems": problems,
         "declarations": decls,
-        "lean_output": "\n".join(l for l in lines if "@@MPS_DECL" not in l),
+        "lean_output": lean_output,
+        "checker": {
+            "version": CHECKER_VERSION,
+            "sha256_checker": sha256(Path(__file__).resolve()),
+            "sha256_driver": sha256(AUDIT_DRIVER),
+        },
+        "toolchain": toolchain,
+        "mathlib_rev": mathlib_rev,
+        "pinned": toolchain == LEAN_TOOLCHAIN and mathlib_rev == MATHLIB_REV,
+        "tier": "local",
+        "stages": stages,
     }
+    if environment_error:
+        report["environment_error"] = True
+    return report
 
 
 def main() -> int:
@@ -284,6 +416,10 @@ def main() -> int:
         print("lake not found on PATH. Install elan: https://lean-lang.org/install", file=sys.stderr)
         return 2
 
+    if not AUDIT_DRIVER.is_file():
+        print(f"audit driver missing: {AUDIT_DRIVER}", file=sys.stderr)
+        return 2
+
     report = check(file, project, args.require, args.timeout)
 
     if args.json:
@@ -293,6 +429,8 @@ def main() -> int:
         for d in report["declarations"]:
             axs = ", ".join(d["axioms"]) or "none"
             print(f"  {d['name']} : {d['type']}")
+            if d["statement_uses"]:
+                print(f"    statement uses from this file: {', '.join(d['statement_uses'])}")
             if "definition" in d:
                 print(f"    := {d['definition']}")
             print(f"    axioms: {axs}")
@@ -301,6 +439,8 @@ def main() -> int:
         if report["status"] == "FAIL" and report["lean_output"].strip():
             print("--- Lean output ---")
             print(report["lean_output"].strip()[:4000])
+    if report.get("environment_error"):
+        return 2
     return 0 if report["status"] == "PASS" else 1
 
 

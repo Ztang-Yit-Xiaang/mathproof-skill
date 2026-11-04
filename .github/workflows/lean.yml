@@ -21,4 +21,5 @@ jobs:
           python-version: "3.12"
       - run: python3 scripts/validate_evals.py
       - run: python3 scripts/check_lean_evals.py -j 2
+      - run: python3 tests/lean_check/test_pins.py
       - run: python3 tests/lean_check/run_tests.py
