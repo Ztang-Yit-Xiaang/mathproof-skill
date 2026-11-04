@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-- **Fixed a false `PASS` in the Lean checker.** `lean_check.py` could report `PASS` for a proof of `1 = 2` or `False`: a file could print a forged audit line and stop with `#exit`, or switch off the kernel check through an option name built from strings. The README, site, and protocol said such files were rejected, and that was wrong. None of the 22 eval files uses these constructs, and all still pass the hardened checker. Results checked with an earlier version rested on the old, weaker check.
+- **Fixed a false `PASS` in the Lean checker.** `lean_check.py` could report `PASS`, exit 0, for files that "proved" `1 = 2` and `False`. The README, site, and protocol said such files were rejected, and that was wrong. The defects:
+  - **Forged audit.** The old checker appended its audit to a copy of the file and parsed the file's own output. A file could add an axiom with `run_cmd` and `addDecl`, which the source scan does not see, use it to prove `(1 : Nat) = 2`, print its own `@@MPS_DECL` line claiming only `propext`, and stop with `#exit` so the real audit never ran.
+  - **Kernel check switched off.** A file could set `debug.skipKernelTC` with `withOptions` and an option name built by `Name.mkStr`. The source scan removes string literals before searching, so it did not see the option, and nothing replayed the declarations afterward. This gave `false_thm : False` with `axioms: none`.
+  - **Hidden axiom.** Internal-looking names were skipped by the audit, so an unused axiom named `_hidden_axiom` passed.
+  - **Misleading statements.** The file's own notation applied when statements were printed, so a theorem of `True` could print as `main_theorem : False`.
+  - **Weak `axiom` scan.** The source scan matched the keyword only at the start of a line. The audit still caught such axioms when they were used by a declaration.
+
+  None of the 22 eval files uses these constructs. All 22 pass the hardened checker with identical names, types, axioms, and definitions. If you rely on a result checked with an earlier version, re-run the new checker on that file.
 - The checker now compiles the untouched file in its own temporary directory, audits the compiled file as data in a separate process (`lean_audit.lean`), and replays it through `leanchecker`. It audits internal declarations too, requires the real core axioms, and prints statements without the file's own notation. A new `statement_uses` report field lists the file's constants in each statement.
 - **Behavior changes:** files importing anything other than Lean, Mathlib, and Mathlib's dependencies now fail, as do `prelude` and `module` files. `autoImplicit` is now off during checks, which the protocol already claimed. A toolchain without `leanchecker` now exits `2`. Checks take longer, because Mathlib is loaded three times.
 - `lean-verification.md` now states the checker's threat model. It is a local check and is not adversarially sound: compiling a Lean file runs its code as you.
