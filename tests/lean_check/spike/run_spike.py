@@ -40,12 +40,44 @@ def escape_attempt() -> str:
     return f"import Lean\nopen Lean Elab Command\n{writes}\ntheorem main_theorem : True := trivial\n"
 
 
+# A complete fake core, so the exporter's lookup of Quot and Nat.* cannot stop it by crashing.
+FULL_PRELUDE = """prelude
+universe u
+-- A complete fake core: `False` here has a constructor, so `main_theorem : False` is easy to prove.
+inductive False : Prop where | intro : False
+inductive Eq {α : Sort u} (a : α) : α → Prop where | refl : Eq a a
+init_quot
+structure Iff (a b : Prop) : Prop where (mp : a → b) (mpr : b → a)
+inductive Nonempty (α : Sort u) : Prop where | intro (val : α) : Nonempty α
+axiom propext {a b : Prop} : Iff a b → Eq a b
+axiom Quot.sound {α : Sort u} {r : α → α → Prop} {a b : α} : r a b → Eq (Quot.mk r a) (Quot.mk r b)
+axiom Classical.choice {α : Sort u} : Nonempty α → α
+inductive Bool : Type where | false | true
+inductive Nat : Type where | zero | succ (n : Nat)
+def Nat.add (a _ : Nat) : Nat := a
+def Nat.sub (a _ : Nat) : Nat := a
+def Nat.mul (a _ : Nat) : Nat := a
+def Nat.pow (a _ : Nat) : Nat := a
+def Nat.gcd (a _ : Nat) : Nat := a
+def Nat.div (a _ : Nat) : Nat := a
+def Nat.mod (a _ : Nat) : Nat := a
+def Nat.beq (_ _ : Nat) : Bool := Bool.true
+def Nat.ble (_ _ : Nat) : Bool := Bool.true
+def Nat.land (a _ : Nat) : Nat := a
+def Nat.lor (a _ : Nat) : Nat := a
+def Nat.xor (a _ : Nat) : Nat := a
+def Nat.shiftLeft (a _ : Nat) : Nat := a
+def Nat.shiftRight (a _ : Nat) : Nat := a
+theorem main_theorem : False := False.intro
+"""
+
+
 # name, kind, Challenge source, Solution source, extra modules.
 # control-pass and control-fail check the judge works at all; attack must fail; trust documents a limit.
 CASES = [
     ("valid_proof", "control-pass", "theorem main_theorem : (2 : Nat) + 2 = 4 := sorry\n",
      "theorem main_theorem : (2 : Nat) + 2 = 4 := rfl\n", {}),
-    ("valid_proof_imports_challenge", "control-pass", "theorem main_theorem : (2 : Nat) + 2 = 4 := sorry\n",
+    ("solution_only_reexports_sorry", "attack", "theorem main_theorem : (2 : Nat) + 2 = 4 := sorry\n",
      "import Challenge\n", {}),
     ("weaker_statement", "control-fail", "theorem main_theorem : ∀ n : Nat, n + 0 = n ∧ 0 + n = n := sorry\n",
      "theorem main_theorem : ∀ n : Nat, n + 0 = n := fun _ => rfl\n", {}),
@@ -70,7 +102,12 @@ CASES = [
      '    try IO.FS.writeFile f "theorem main_theorem : True := sorry\\n" catch _ => pure ()\n'
      'theorem main_theorem : True := trivial\n', {}),
     ("escape_attempt", "escape", TRUE, escape_attempt(), {}),
+    ("full_prelude_spoof", "attack", FALSE, FULL_PRELUDE, {}),
 ]
+
+ONLY = os.environ.get("SPIKE_ONLY")
+if ONLY:
+    CASES = [c for c in CASES if c[0] in ONLY.split(",")]
 
 
 def make_project(root: Path, challenge: str, solution: str, extra: dict[str, str]) -> None:

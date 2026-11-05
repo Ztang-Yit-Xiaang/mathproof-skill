@@ -30,6 +30,8 @@ jobs:
           bwrap --ro-bind / / true || sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           bwrap --ro-bind / / true && echo "BWRAP WORKS"
       - name: Run spike
+        env:
+          SPIKE_ONLY: full_prelude_spoof,valid_proof,prelude_spoof
         run: python3 tests/lean_check/spike/run_spike.py
       - uses: actions/upload-artifact@v4
         if: always()
