@@ -410,11 +410,11 @@ theorem t (n : Nat) : n * 1 = n := by trust_me</code></pre>
       <p>A check passes only if all of these hold. Anything else is reported as <span class="tag bad">LEAN-FAILED</span> or <span class="tag neutral">NOT FORMALIZED</span>, never quietly upgraded.</p>
     </div>
     <ul class="checks">
-      <li><span>The file compiles against pinned Lean 4 and Mathlib.</span></li>
+      <li><span>Imports come only from the real Lean and Mathlib libraries, packages match their manifest, and the file compiles.</span></li>
       <li><span>No <code>sorry</code> anywhere, including behind macros.</span></li>
-      <li><span>Every declaration depends only on <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code> — no custom axioms, no <code>native_decide</code>.</span></li>
-      <li><span>No kernel bypasses: <code>implemented_by</code>, <code>@[extern]</code>, <code>unsafe</code>, <code>debug.skipKernelTC</code>.</span></li>
-      <li><span>Every required theorem exists, and its elaborated statement is printed for the fidelity table.</span></li>
+      <li><span>A separate process confirms every declaration depends only on the real <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code> — no custom axioms, no <code>native_decide</code>.</span></li>
+      <li><span>Lean's kernel replays the compiled file, which catches a switched-off kernel check. <code>implemented_by</code>, <code>@[extern]</code>, and <code>unsafe</code> are refused too.</span></li>
+      <li><span>Every required theorem exists. Its real statement is printed for the fidelity table, ignoring notation the file defines, along with every definition from the file it depends on.</span></li>
       <li><span>Junk values flagged: <code>x / 0 = 0</code>, truncated <code>ℕ</code> subtraction, <code>deriv</code> of non-differentiable functions.</span></li>
     </ul>
   </div>
@@ -422,7 +422,7 @@ theorem t (n : Nat) : n * 1 = n := by trust_me</code></pre>
     <div class="stats">
       <div class="card stat"><b>22</b><span>benchmark cases</span></div>
       <div class="card stat"><b>21</b><span>formalized and checked in Lean</span></div>
-      <div class="card stat"><b>7</b><span>adversarial checker tests</span></div>
+      <div class="card stat"><b>28</b><span>checker regression fixtures</span></div>
       <div class="card stat"><b>3</b><span>agents supported</span></div>
     </div>
   </div>

@@ -152,7 +152,7 @@ Follow [lean-verification.md](references/lean-verification.md). In outline:
 
 1. Use the nearest Lake project with Mathlib, the repository's `lean/` project, or create one with `python3 scripts/lean_check.py --init <dir>` (ask before the one-time Mathlib download).
 2. Write the Lean statement first. Build a fidelity table (informal phrase ↔ Lean term ↔ `faithful` / `instance` / `partial`) and check junk values, number types, hidden hypotheses, and bundled Mathlib definitions before proving anything.
-3. Prove it without `sorry`, `admit`, `axiom`, or `native_decide`. Never weaken the statement to make a proof compile.
+3. Prove it in one self-contained file that imports only Lean, Mathlib, and Mathlib's dependencies, without `sorry`, `admit`, `axiom`, or `native_decide`. Never weaken the statement to make a proof compile.
    When hypotheses were added or are nonstandard, also prove a non-vacuity witness (`∃ x, hyp₁ x ∧ … ∧ hypₖ x`). Contradictory hypotheses prove anything.
 4. Run `python3 scripts/lean_check.py <file> --require <main declaration>`. Only exit status `0` counts.
 5. Report the Lean status, file, checker output, and fidelity table with the verdict.

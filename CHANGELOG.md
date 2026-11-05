@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **Fixed a false `PASS` in the Lean checker.** `lean_check.py` could report `PASS`, exit 0, for files that "proved" `1 = 2` and `False`. The README, site, and protocol said such files were rejected, and that was wrong. The defects:
+  - **Forged audit.** The old checker appended its audit to a copy of the file and parsed the file's own output. A file could add an axiom with `run_cmd` and `addDecl`, which the source scan does not see, use it to prove `(1 : Nat) = 2`, print its own `@@MPS_DECL` line claiming only `propext`, and stop with `#exit` so the real audit never ran.
+  - **Kernel check switched off.** A file could set `debug.skipKernelTC` with `withOptions` and an option name built by `Name.mkStr`. The source scan removes string literals before searching, so it did not see the option, and nothing replayed the declarations afterward. This gave `false_thm : False` with `axioms: none`.
+  - **Hidden axiom.** Internal-looking names were skipped by the audit, so an unused axiom named `_hidden_axiom` passed.
+  - **Misleading statements.** The file's own notation applied when statements were printed, so a theorem of `True` could print as `main_theorem : False`.
+  - **Weak `axiom` scan.** The source scan matched the keyword only at the start of a line. The audit still caught such axioms when they were used by a declaration.
+
+  None of the 22 eval files uses these constructs. All 22 pass the hardened checker with identical names, types, axioms, and definitions. If you rely on a result checked with an earlier version, re-run the new checker on that file.
+- The checker now has five stages, all of which must pass:
+  - **Source scan:** Lean's own parser reports the header, so the script cannot disagree with Lean about it.
+  - **Packages:** each package in `lake-manifest.json` must come from its official repository and be at its recorded commit with no edited files.
+  - **Compile:** the untouched file compiles in its own temporary directory.
+  - **Audit:** separate processes (`lean_audit.lean`) do the work. One imports the compiled file with extensions off, so its initializers do not run, and uses Lean's `collectAxioms`. Another prints statements from an environment holding only the file's imports. It audits internal declarations too and requires the real core axioms. Imported modules must load from the toolchain or `.lake/packages` and belong to the real library, which stops a fake `Mathlib.Evil`.
+  - **Replay:** `leanchecker` re-checks the compiled file with the kernel.
+- Statements now print without the file's own notation. New `statement_uses` and `statement_context` report fields show every definition from the file that a statement depends on, including private ones, and including instances hidden inside a definition such as `def Claim`.
+- **Behavior changes:** files importing anything other than the real Lean and Mathlib libraries now fail, as do `prelude` and `module` files. This includes a project's own lemma files, and direct imports of Batteries or Aesop modules that `import Mathlib` does not include. A project whose packages have edited files, or come from anywhere other than their official repositories, now fails, including a Mathlib fork. `autoImplicit` is now off during checks, which the protocol already claimed. A toolchain without `leanchecker` or `lean --deps-json` now exits `2`. Checks take longer, because Mathlib is loaded four times.
+- Each declaration now also prints an `explicit:` line, because notation can hide an inline instance (`2 + 2 = 5`) or a numeric type (`1 = 2` in `Fin 1`). Printing can no longer be suppressed by metadata, and control characters in names are escaped so a name cannot forge report lines. `--require` now needs at least one required declaration to be a theorem.
+- Known issue: the checker's output can be long, because it prints every definition a statement depends on. The README records this as a problem to solve.
+- `lean-verification.md` now states the checker's threat model. It is a local check and is not adversarially sound: compiling a Lean file runs its code as you.
+
 - Added an assumption cost audit to the skill. Every stated or added assumption is now checked for consistency, circularity, collapse of the class, unnecessary strength, downstream fit, and quantitative cost. `CONDITIONALLY VALID` now requires a repair that passes the audit, so a vacuous or circular repair no longer earns it.
 - Hard-to-reach conditions (unverifiable a priori bounds, exact constants, assumed minimizers, unquantified "n large") are now treated as defects: the skill tries to drop them, derive them, or replace them with checkable conditions, and labels any that remain.
 - Added the assumption harm battery (`adversarial-proof-auditing.md` §6) and a vacuous-hypotheses trap to the Lean protocol: when hypotheses are added, prove a non-vacuity witness.
