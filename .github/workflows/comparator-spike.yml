@@ -1,0 +1,38 @@
+name: Comparator spike
+
+# Throwaway job for S2.1.T6. It runs hostile files, in the comparator's own sandbox only.
+on:
+  push:
+    branches: [spike/comparator]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bubblewrap and Lean
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q bubblewrap
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain leanprover/lean4:v4.35.0
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Does bwrap work as shipped?
+        run: |
+          bwrap --version
+          sysctl kernel.apparmor_restrict_unprivileged_userns || true
+          bwrap --ro-bind / / true && echo "BWRAP WORKS AS SHIPPED" || echo "BWRAP BLOCKED AS SHIPPED"
+      - name: Allow user namespaces if blocked
+        run: |
+          bwrap --ro-bind / / true || sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          bwrap --ro-bind / / true && echo "BWRAP WORKS"
+      - name: Run spike
+        run: python3 tests/lean_check/spike/run_spike.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-report
+          path: spike_report.json
