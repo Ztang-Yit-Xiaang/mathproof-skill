@@ -3,14 +3,16 @@
 
 A file PASSES only if every stage passes:
 
-1. source scan: no `prelude` or `module` header, only allow-listed imports, and no kernel-bypassing
-   or trust-expanding construct outside comments (`sorry`, `axiom`, `debug.skipKernelTC`,
-   `@[implemented_by]`, `@[extern]`, `unsafe`);
-2. compile: the untouched file elaborates with no errors, in its own temporary directory;
-3. audit: in a separate process that reads the compiled file as data (lean_audit.lean), every
-   declaration depends only on the standard axioms `propext`, `Classical.choice`, and `Quot.sound`,
-   the real ones from core Lean, and every `--require`d declaration exists;
-4. replay: the toolchain's `leanchecker` re-checks the compiled file with the kernel.
+1. source scan: Lean's own parser reports no `prelude` or `module` header and only allow-listed
+   imports, and no kernel-bypassing or trust-expanding construct appears outside comments (`sorry`,
+   `axiom`, `debug.skipKernelTC`, `@[implemented_by]`, `@[extern]`, `unsafe`);
+2. packages: each package in the project's manifest is at its recorded commit, with no edited files;
+3. compile: the untouched file elaborates with no errors, in its own temporary directory;
+4. audit: in a separate process (lean_audit.lean), every imported module comes from the toolchain or
+   a package and belongs to a real library, every declaration depends only on the standard axioms
+   `propext`, `Classical.choice`, and `Quot.sound`, the real ones from core Lean, and every
+   `--require`d declaration exists;
+5. replay: the toolchain's `leanchecker` re-checks the compiled file with the kernel.
 
 Declarations come only from the audit stage. Nothing the file prints while compiling can add one.
 
@@ -20,7 +22,8 @@ such code can tamper with anything you can. See references/lean-verification.md,
 
 It never checks that a Lean statement faithfully expresses the informal claim; that comparison
 remains the auditor's job. For that comparison the script prints the elaborated type of each
-declaration, ignoring notation defined by the file itself.
+declaration, ignoring notation defined by the file itself, and the file's definitions that each
+statement depends on.
 
 Usage:
     lean_check.py FILE.lean [--project DIR] [--require NAME ...] [--json]
@@ -41,22 +44,37 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 from pathlib import Path
 
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 
 # Version of the check report and stages (IF-check-report-v2).
-CHECKER_VERSION = "2.0"
+CHECKER_VERSION = "2.2"
 
-# Imports are refused unless their first component is here. These are the Lean toolchain's own
-# libraries, Mathlib, and Mathlib's dependencies. A sibling module could hide a bypass in a file
-# that is never replayed.
+# First filter on imports, by name, before compiling: the Lean toolchain's own libraries, Mathlib,
+# and Mathlib's dependencies. Imported files are never replayed, so one could hide a bypass. The
+# audit then checks where each module really comes from (lean_audit.lean).
 ALLOWED_IMPORT_ROOTS = {"Init", "Std", "Lean", "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets",
                         "Plausible", "ImportGraph", "LeanSearchClient", "Cli"}
+
+# Where each package may come from. Another source could add anything under a trusted name.
+OFFICIAL_PACKAGES = {
+    "mathlib": "https://github.com/leanprover-community/mathlib4.git",
+    "plausible": "https://github.com/leanprover-community/plausible",
+    "LeanSearchClient": "https://github.com/leanprover-community/LeanSearchClient",
+    "importGraph": "https://github.com/leanprover-community/import-graph",
+    "proofwidgets": "https://github.com/leanprover-community/ProofWidgets4",
+    "aesop": "https://github.com/leanprover-community/aesop",
+    "Qq": "https://github.com/leanprover-community/quote4",
+    "batteries": "https://github.com/leanprover-community/batteries",
+    "Cli": "https://github.com/leanprover/lean4-cli",
+}
 
 AUDIT_DRIVER = Path(__file__).resolve().parent / "lean_audit.lean"
 
@@ -167,24 +185,27 @@ def init_project(target: Path) -> int:
     return 0
 
 
-def scan_header(code: str) -> list[str]:
-    """Check the header of comment-free source, before anything is compiled."""
+def parsed_header(file: Path, project: Path, deadline: float) -> dict | None:
+    """Have Lean parse the file's header, so this script cannot disagree with Lean about it."""
+    proc, _ = run_stage(["lake", "env", "lean", "--deps-json", str(file)], project, deadline)
+    if proc is None or proc.returncode != 0:
+        return None
+    try:
+        return json.loads(proc.stdout)["imports"][0]["result"]
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None
+
+
+def header_problems(header: dict) -> list[str]:
     problems: list[str] = []
-    pos = 0
-    word = re.compile(r"\s*(\S+)")
-    while m := word.match(code, pos):
-        token = m.group(1)
-        if token in ("prelude", "module"):
-            problems.append(f"header-not-allowed: {token}")
-            pos = m.end()
-            continue
-        if token != "import":
-            break
-        name = word.match(code, m.end())
-        module = name.group(1) if name else ""
+    if header["isModule"]:
+        problems.append("header-not-allowed: module")
+    # Lean adds a meta import of Init to every file unless the file says `prelude`.
+    if not any(i["module"] == "Init" and i["isMeta"] for i in header["imports"]):
+        problems.append("header-not-allowed: prelude")
+    for module in dict.fromkeys(i["module"] for i in header["imports"]):
         if not import_allowed(module):
             problems.append(f"import-not-allowed: {module}")
-        pos = name.end() if name else m.end()
     return problems
 
 
@@ -212,20 +233,66 @@ def project_pins(project: Path) -> tuple[str | None, str | None]:
     return toolchain, mathlib
 
 
-def run_stage(cmd: list[str], project: Path, deadline: float, **kwargs) -> tuple[subprocess.CompletedProcess | None, float]:
-    """Run one stage in the project, returning (None, seconds) if the time budget ran out."""
-    start = time.monotonic()
+def package_problems(project: Path, deadline: float) -> tuple[list[str], list[str]]:
+    """Compare each git package with the manifest. Returns (problems, package names checked).
+
+    This sees edited sources, not the compiled .olean files, which are ignored by git and are what
+    Lean actually loads. Only an authoritative rebuild or replay could check those.
+    """
     try:
-        proc = subprocess.run(cmd, cwd=project, capture_output=True, text=True,
-                              timeout=max(1.0, deadline - start), **kwargs)
+        manifest = json.loads((project / "lake-manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [], []
+    packages_dir = project / manifest.get("packagesDir", ".lake/packages")
+    problems: list[str] = []
+    checked: list[str] = []
+    for package in manifest.get("packages", []):
+        name, rev = package.get("name"), package.get("rev")
+        if package.get("url") != OFFICIAL_PACKAGES.get(name):
+            problems.append(f"package-source-unknown: {name} comes from {package.get('url')}, not its official repository")
+        if package.get("type") != "git" or not rev:
+            problems.append(f"package-not-verifiable: {name} is not a pinned git package")
+            continue
+        directory = packages_dir / str(package.get("dir") or name)
+        if not (directory / ".git").exists():
+            problems.append(f"package-not-verifiable: {name} has no git checkout at {directory}")
+            continue
+        head, _ = run_stage(["git", "rev-parse", "HEAD"], directory, deadline)
+        status, _ = run_stage(["git", "status", "--porcelain"], directory, deadline)
+        if head is None or status is None or head.returncode != 0 or status.returncode != 0:
+            problems.append(f"package-not-verifiable: git could not read {name}")
+            continue
+        checked.append(name)
+        if head.stdout.strip() != rev:
+            problems.append(f"package-not-at-manifest-rev: {name} is at {head.stdout.strip()}, manifest says {rev}")
+        if status.stdout.strip():
+            changed = status.stdout.strip().splitlines()
+            problems.append(f"package-not-clean: {name} has {len(changed)} changed files, such as {changed[0].strip()}")
+    return problems, checked
+
+
+def run_stage(cmd: list[str], cwd: Path, deadline: float, **kwargs) -> tuple[subprocess.CompletedProcess | None, float]:
+    """Run one stage, returning (None, seconds) if the time budget ran out.
+
+    `lake env` starts Lean as a child, so a timeout has to kill the whole process group. Otherwise
+    Lean keeps running, and a file that loops forever would use a CPU indefinitely.
+    """
+    start = time.monotonic()
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            start_new_session=True, **kwargs)
+    try:
+        stdout, stderr = proc.communicate(timeout=max(1.0, deadline - start))
     except subprocess.TimeoutExpired:
-        proc = None
-    return proc, round(time.monotonic() - start, 1)
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.communicate()
+        return None, round(time.monotonic() - start, 1)
+    return (subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr),
+            round(time.monotonic() - start, 1))
 
 
 def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[str]]:
     """Turn the audit driver's report into the report's declarations and problems."""
-    problems: list[str] = []
+    problems: list[str] = list(audit["import_problems"])
 
     if audit["is_module"]:
         problems.append("header-not-allowed: module")
@@ -237,8 +304,6 @@ def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[s
             problems.append(f"import-not-allowed: {module}")
     for name in audit["core_mismatches"]:
         problems.append(f"axiom `{name}` is not the one from core Lean")
-    for name in audit["unresolved"]:
-        problems.append(f"audit could not resolve constant `{name}`")
     for name in audit["unsafe"]:
         problems.append(f"{name} is declared `unsafe`")
     for hidden in audit["hidden"]:
@@ -250,6 +315,7 @@ def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[s
     for raw in audit["declarations"]:
         bad = sorted(set(raw["axioms"]) - ALLOWED_AXIOMS)
         decl = {"name": raw["name"], "axioms": raw["axioms"], "nonstandard_axioms": bad, "type": raw["type"],
+                "type_explicit": raw["type_explicit"], "kind": raw["kind"],
                 "statement_uses": raw["statement_uses"]}
         if raw.get("definition"):
             decl["definition"] = raw["definition"]
@@ -259,28 +325,46 @@ def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[s
 
     if not decls:
         problems.append("audit produced no declarations; the file defines nothing to check")
-    names = {d["name"] for d in decls}
+    for raw in audit["declarations"]:
+        for field in ("type", "type_explicit", "definition"):
+            if raw.get(field, "").startswith("<could not print"):
+                problems.append(f"{raw['name']}: {raw[field]}")
+
+    def matches(name: str, r: str) -> bool:
+        return name == r or name.endswith("." + r)
+
+    found = [r for r in required if any(matches(d["name"], r) for d in decls)]
     for r in required:
-        if r not in names and not any(n.endswith("." + r) for n in names):
+        if r not in found:
             problems.append(f"required declaration `{r}` not found")
+    # Requiring only definitions would pass while proving nothing.
+    theorems = [d["name"] for d in audit["declarations"] if d["kind"] == "theorem"]
+    if found and not any(matches(t, r) for t in theorems for r in found):
+        problems.append(f"required-not-a-theorem: {', '.join(found)}")
     return decls, problems
 
 
 def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
     src = file.read_text(encoding="utf-8")
-    no_comments = strip_comments(src)
-    code = strip_strings(no_comments)
+    code = strip_strings(strip_comments(src))
     problems: list[str] = []
     decls: list[dict] = []
+    statement_context: dict = {}
     environment_error = False
     toolchain, mathlib_rev = project_pins(project)
     stages: dict = {"source_scan": {"status": "not run"},
+                    "packages": {"status": "not run", "seconds": 0.0, "checked": []},
                     "compile": {"status": "not run", "seconds": 0.0, "sandboxed": False},
                     "audit": {"status": "not run", "seconds": 0.0},
                     "replay": {"status": "not run", "seconds": 0.0}}
 
-    header_problems = scan_header(no_comments)
-    problems += header_problems
+    deadline = time.monotonic() + timeout
+    header = parsed_header(file, project, deadline)
+    if header is None:
+        return environment_report(file, "Lean could not report the file's header (`lean --deps-json`)",
+                                  toolchain, mathlib_rev, stages)
+    refused = header_problems(header)
+    problems += refused
     for pattern, label in FORBIDDEN_SOURCE:
         for m in pattern.finditer(code):
             line = code.count("\n", 0, m.start()) + 1
@@ -288,14 +372,21 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
     stages["source_scan"]["status"] = "fail" if problems else "pass"
 
     lean_output = ""
-    deadline = time.monotonic() + timeout
 
     def timed_out(stage: str) -> None:
         stages[stage]["status"] = "timeout"
-        problems.append(f"Lean timed out after {timeout}s")
+        message = f"Lean timed out after {timeout}s"
+        if message not in problems:
+            problems.append(message)
 
     # A refused header is not compiled: `import` and `prelude` decide what code runs at all.
-    if not header_problems:
+    if not refused:
+        start = time.monotonic()
+        found, checked = package_problems(project, deadline)
+        problems += found
+        stages["packages"].update(status="fail" if found else "pass", checked=checked,
+                                  seconds=round(time.monotonic() - start, 1))
+
         with tempfile.TemporaryDirectory(prefix="mps_check_") as work:
             work_dir = Path(work).resolve()
             target = work_dir / f"{TARGET_MODULE}.lean"
@@ -327,8 +418,10 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
 
             if compiled:
                 out = work_dir / "audit.json"
-                audit_cmd = ["lake", "env", "lean", "--run", str(AUDIT_DRIVER), str(olean), str(out)]
-                proc, seconds = run_stage(audit_cmd, project, deadline)
+                # Lake puts its own paths first, so the temporary directory cannot shadow an import.
+                module_env = {**os.environ, "LEAN_PATH": str(work_dir)}
+                audit_cmd = ["lake", "env", "lean", "--run", str(AUDIT_DRIVER), TARGET_MODULE, str(olean), str(out)]
+                proc, seconds = run_stage(audit_cmd, project, deadline, env=module_env)
                 stages["audit"]["seconds"] = seconds
                 if proc is None:
                     timed_out("audit")
@@ -339,22 +432,24 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
                     stages["audit"]["status"] = "error"
                     problems.append("audit driver failed: " + (proc.stdout + proc.stderr).strip()[-1000:])
                 else:
-                    decls, found = audit_problems(json.loads(out.read_text(encoding="utf-8")), required)
+                    audit = json.loads(out.read_text(encoding="utf-8"))
+                    statement_context = audit["statement_context"]
+                    decls, found = audit_problems(audit, required)
                     problems += found
                     stages["audit"]["status"] = "fail" if found else "pass"
 
-                # Lake puts its own paths first, so the temporary directory cannot shadow an import.
-                replay_env = {**os.environ, "LEAN_PATH": str(work_dir)}
-                prefix = subprocess.run(["lake", "env", "lean", "--print-prefix"], cwd=project,
-                                        capture_output=True, text=True).stdout.strip()
+                proc, _ = run_stage(["lake", "env", "lean", "--print-prefix"], project, deadline)
+                prefix = proc.stdout.strip() if proc else ""
                 leanchecker = Path(prefix, "bin", "leanchecker")
-                if not leanchecker.exists():
+                if proc is None:
+                    timed_out("replay")
+                elif not leanchecker.exists():
                     environment_error = True
                     stages["replay"]["status"] = "unavailable"
                     problems.append(f"kernel replay unavailable: no leanchecker in toolchain at {prefix!r}")
                 else:
                     proc, seconds = run_stage(["lake", "env", str(leanchecker), TARGET_MODULE],
-                                              project, deadline, env=replay_env)
+                                              project, deadline, env=module_env)
                     stages["replay"]["seconds"] = seconds
                     if proc is None:
                         timed_out("replay")
@@ -364,12 +459,22 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
                     else:
                         stages["replay"]["status"] = "pass"
 
-    report = {
+    report = base_report(file, toolchain, mathlib_rev, stages)
+    report.update(status="PASS" if not problems else "FAIL", problems=problems, declarations=decls,
+                  statement_context=statement_context, lean_output=lean_output)
+    if environment_error:
+        report["environment_error"] = True
+    return report
+
+
+def base_report(file: Path, toolchain: str | None, mathlib_rev: str | None, stages: dict) -> dict:
+    return {
         "file": str(file),
-        "status": "PASS" if not problems else "FAIL",
-        "problems": problems,
-        "declarations": decls,
-        "lean_output": lean_output,
+        "status": "FAIL",
+        "problems": [],
+        "declarations": [],
+        "statement_context": {},
+        "lean_output": "",
         "checker": {
             "version": CHECKER_VERSION,
             "sha256_checker": sha256(Path(__file__).resolve()),
@@ -381,9 +486,19 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
         "tier": "local",
         "stages": stages,
     }
-    if environment_error:
-        report["environment_error"] = True
+
+
+def environment_report(file: Path, problem: str, toolchain: str | None,
+                       mathlib_rev: str | None, stages: dict) -> dict:
+    report = base_report(file, toolchain, mathlib_rev, stages)
+    report.update(problems=[problem], environment_error=True)
     return report
+
+
+def clean(text: str) -> str:
+    """Escape control and line-breaking characters, so Lean names cannot forge report lines."""
+    return "".join(f"\\u{{{ord(c):04x}}}" if unicodedata.category(c)[0] == "C" or unicodedata.category(c) in ("Zl", "Zp")
+                   else c for c in text)
 
 
 def main() -> int:
@@ -393,7 +508,7 @@ def main() -> int:
                     help="Lake project root (default: nearest above FILE, $MATHPROOF_LEAN_PROJECT, ~/.mathproof/lean)")
     ap.add_argument("--require", action="append", default=[], metavar="NAME",
                     help="declaration that must exist (repeatable; suffix match on the full name)")
-    ap.add_argument("--timeout", type=int, default=900, help="seconds (default 900)")
+    ap.add_argument("--timeout", type=int, default=1800, help="seconds for the whole check (default 1800)")
     ap.add_argument("--json", action="store_true", help="print a JSON report")
     ap.add_argument("--init", type=Path, metavar="DIR", help="scaffold a Mathlib-backed project and exit")
     args = ap.parse_args()
@@ -420,25 +535,38 @@ def main() -> int:
         print(f"audit driver missing: {AUDIT_DRIVER}", file=sys.stderr)
         return 2
 
-    report = check(file, project, args.require, args.timeout)
+    try:
+        report = check(file, project, args.require, args.timeout)
+    except Exception as error:  # Whatever went wrong, it must not look like a pass.
+        print(f"checker error: {type(error).__name__}: {error}", file=sys.stderr)
+        return 2
 
     if args.json:
         print(json.dumps({k: v for k, v in report.items() if k != "lean_output"}, indent=2))
     else:
         print(f"{report['status']}: {report['file']}")
+        if not report["pinned"]:
+            print("  note: this project is not on the tested Lean and Mathlib versions")
         for d in report["declarations"]:
             axs = ", ".join(d["axioms"]) or "none"
-            print(f"  {d['name']} : {d['type']}")
-            if d["statement_uses"]:
-                print(f"    statement uses from this file: {', '.join(d['statement_uses'])}")
+            print(clean(f"  {d['name']} : {d['type']}"))
+            print(clean(f"    explicit: {d['type_explicit']}"))
             if "definition" in d:
-                print(f"    := {d['definition']}")
-            print(f"    axioms: {axs}")
+                print(clean(f"    := {d['definition']}"))
+            if d["statement_uses"]:
+                print(clean(f"    statement uses from this file: {', '.join(d['statement_uses'])}"))
+            print(clean(f"    axioms: {axs}"))
+        if report["statement_context"]:
+            print("  From this file, what the statements above depend on:")
+            for name, entry in report["statement_context"].items():
+                print(clean(f"    {name} : {entry['type']}"))
+                if "definition" in entry:
+                    print(clean(f"      := {entry['definition']}"))
         for p in report["problems"]:
-            print(f"  ✗ {p}")
+            print(clean(f"  ✗ {p}"))
         if report["status"] == "FAIL" and report["lean_output"].strip():
             print("--- Lean output ---")
-            print(report["lean_output"].strip()[:4000])
+            print("\n".join(clean(l) for l in report["lean_output"].strip()[:4000].splitlines()))
     if report.get("environment_error"):
         return 2
     return 0 if report["status"] == "PASS" else 1
