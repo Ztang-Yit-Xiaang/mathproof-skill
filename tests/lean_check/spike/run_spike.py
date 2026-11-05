@@ -43,31 +43,46 @@ def escape_attempt() -> str:
 # A complete fake core, so the exporter's lookup of Quot and Nat.* cannot stop it by crashing.
 FULL_PRELUDE = """prelude
 universe u
+set_option genCtorIdx false
+unsafe axiom lcErased : Type
+unsafe axiom lcAny : Type
+unsafe axiom lcVoid : Type
+unsafe axiom lcProof {α : Prop} : α
 -- A complete fake core: `False` here has a constructor, so `main_theorem : False` is easy to prove.
 inductive False : Prop where | intro : False
 inductive Eq {α : Sort u} (a : α) : α → Prop where | refl : Eq a a
 init_quot
-structure Iff (a b : Prop) : Prop where (mp : a → b) (mpr : b → a)
+inductive Iff (a b : Prop) : Prop where | intro (mp : a → b) (mpr : b → a) : Iff a b
 inductive Nonempty (α : Sort u) : Prop where | intro (val : α) : Nonempty α
 axiom propext {a b : Prop} : Iff a b → Eq a b
 axiom Quot.sound {α : Sort u} {r : α → α → Prop} {a b : α} : r a b → Eq (Quot.mk r a) (Quot.mk r b)
 axiom Classical.choice {α : Sort u} : Nonempty α → α
 inductive Bool : Type where | false | true
 inductive Nat : Type where | zero | succ (n : Nat)
-def Nat.add (a _ : Nat) : Nat := a
-def Nat.sub (a _ : Nat) : Nat := a
-def Nat.mul (a _ : Nat) : Nat := a
-def Nat.pow (a _ : Nat) : Nat := a
-def Nat.gcd (a _ : Nat) : Nat := a
-def Nat.div (a _ : Nat) : Nat := a
-def Nat.mod (a _ : Nat) : Nat := a
-def Nat.beq (_ _ : Nat) : Bool := Bool.true
-def Nat.ble (_ _ : Nat) : Bool := Bool.true
-def Nat.land (a _ : Nat) : Nat := a
-def Nat.lor (a _ : Nat) : Nat := a
-def Nat.xor (a _ : Nat) : Nat := a
-def Nat.shiftLeft (a _ : Nat) : Nat := a
-def Nat.shiftRight (a _ : Nat) : Nat := a
+inductive List (α : Type u) : Type u where | nil | cons (head : α) (tail : List α)
+inductive Char : Type where | mk (val : Nat)
+inductive String : Type where | mk (data : List Char)
+noncomputable def Nat.add (a _ : Nat) : Nat := a
+noncomputable def Nat.sub (a _ : Nat) : Nat := a
+noncomputable def Nat.mul (a _ : Nat) : Nat := a
+noncomputable def Nat.pow (a _ : Nat) : Nat := a
+noncomputable def Nat.gcd (a _ : Nat) : Nat := a
+noncomputable def Nat.div (a _ : Nat) : Nat := a
+noncomputable def Nat.mod (a _ : Nat) : Nat := a
+noncomputable def Nat.beq (_ _ : Nat) : Bool := Bool.true
+noncomputable def Nat.ble (_ _ : Nat) : Bool := Bool.true
+noncomputable def Nat.land (a _ : Nat) : Nat := a
+noncomputable def Nat.lor (a _ : Nat) : Nat := a
+noncomputable def Nat.xor (a _ : Nat) : Nat := a
+noncomputable def Nat.shiftLeft (a _ : Nat) : Nat := a
+noncomputable def Nat.shiftRight (a _ : Nat) : Nat := a
+noncomputable def String.ofList (data : List Char) : String := String.mk data
+noncomputable def Char.ofNat (n : Nat) : Char := Char.mk n
+noncomputable def eagerReduce {α : Sort u} (a : α) : α := a
+noncomputable def optParam (α : Sort u) (_ : α) : Sort u := α
+noncomputable def autoParam (α : Sort u) (_ : Nat) : Sort u := α
+noncomputable def semiOutParam (α : Sort u) : Sort u := α
+noncomputable def outParam (α : Sort u) : Sort u := α
 theorem main_theorem : False := False.intro
 """
 
