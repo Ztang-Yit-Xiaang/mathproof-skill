@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 — 2026-11-05
 
 - **Fixed a false `PASS` in the Lean checker.** `lean_check.py` could report `PASS`, exit 0, for files that "proved" `1 = 2` and `False`. The README, site, and protocol said such files were rejected, and that was wrong. The defects:
   - **Forged audit.** The old checker appended its audit to a copy of the file and parsed the file's own output. A file could add an axiom with `run_cmd` and `addDecl`, which the source scan does not see, use it to prove `(1 : Nat) = 2`, print its own `@@MPS_DECL` line claiming only `propext`, and stop with `#exit` so the real audit never ran.
