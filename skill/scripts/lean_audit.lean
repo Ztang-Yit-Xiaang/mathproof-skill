@@ -1,18 +1,20 @@
 /-
 Audit driver for lean_check.py. Reports what a compiled Lean file's declarations depend on.
 
-    lean --run lean_audit.lean TARGET_MODULE EXPECTED_OLEAN OUT.json
+    lean --run lean_audit.lean axioms TARGET_MODULE EXPECTED_OLEAN OUT.json
+    lean --run lean_audit.lean statements TARGET_OLEAN OUT.json
+    lean --run lean_audit.lean reachable OUT.json ROOTS MODULE...
 
-Two environments are used, so that Lean does the work and the checked file's code stays inert:
+Each mode is its own process, because each imports Mathlib once. Two imports in one process used
+about 9 GB per process on Linux and ran a CI machine out of memory.
 
-1. The file is imported with extensions off. Lean's own `collectAxioms` runs on this environment.
-   With extensions off, the file's initializers do not run and data it stored is not trusted.
-2. Statements print in an environment holding only the file's imports, with extensions on, so
-   Mathlib's notation prints and the file's own notation, unexpanders, and delaborators do not.
-   The file's own definitions therefore print with their implicit arguments shown.
-
-Imported modules must also come from the toolchain or the project's packages, and must be
-reachable from a real root such as `import Mathlib`.
+- `axioms` imports the file with extensions off and uses Lean's own `collectAxioms`. With
+  extensions off, the file's initializers do not run and data it stored is not trusted.
+- `statements` reads the compiled file without importing it, and prints in an environment holding
+  only its imports, with extensions on. Mathlib's notation prints, and the file's own notation,
+  unexpanders, and delaborators do not. The file's own definitions therefore print with their
+  implicit arguments shown.
+- `reachable` checks that direct imports belong to a real library, such as `import Mathlib`.
 
 This is a defense for the local checker and not a root of trust. See section 7 of
 references/lean-verification.md.
@@ -29,9 +31,6 @@ def coreAxioms : List (Name × String) :=
   [(`propext, "forall {a : Prop} {b : Prop}, (Iff a b) -> (Eq.{1} Prop a b)"),
    (`Classical.choice, "forall {α : Sort.{u}}, (Nonempty.{u} α) -> α"),
    (`Quot.sound, "forall {α : Sort.{u}} {r : α -> α -> Prop} {a : α} {b : α}, (r a b) -> (Eq.{u} (Quot.{u} α r) (Quot.mk.{u} α r a) (Quot.mk.{u} α r b))")]
-
-/-- Importing one of these is trusted to bring in only that library's real modules. -/
-def trustedRoots : Array Name := #[`Init, `Std, `Lean, `Mathlib]
 
 def coreContext : Core.Context := { fileName := "<lean_audit>", fileMap := default }
 
@@ -116,19 +115,16 @@ def locationProblems (env : Environment) (target : Name) : IO (Array String) := 
       problems := problems.push s!"import-location: {m} is loaded from {path}"
   return problems
 
-/-- A direct import must be a trusted root or a module one of those roots really includes, so a
-file planted under a real package's directory is refused. -/
-def reachabilityProblems (direct : Array Name) : IO (Array String) := do
-  let others := direct.filter (!trustedRoots.contains ·)
-  if others.isEmpty then
-    return #[]
-  let mut roots : Array Import := #[]
-  for root in trustedRoots do
+/-- Modules must be reachable from a root that exists here, so a file planted under a real
+package's directory is refused. -/
+def reachabilityProblems (roots others : Array Name) : IO (Array String) := do
+  let mut present : Array Import := #[]
+  for root in roots do
     -- A project without Mathlib has no such package, and Lean reports that by throwing.
     let found ← try (← findOLean root).pathExists catch _ => pure false
     if found then
-      roots := roots.push { module := root }
-  let trusted ← importModules roots {} (trustLevel := 0) (loadExts := false)
+      present := present.push { module := root }
+  let trusted ← importModules present {} (trustLevel := 0) (loadExts := false)
   let known := trusted.header.moduleNames.foldl NameSet.insert {}
   return (others.filter (!known.contains ·)).map fun m =>
     s!"import-not-reachable: {m} is not part of Lean or `import Mathlib`"
@@ -139,7 +135,7 @@ def targetProblems (target : Name) (expected : String) : IO (Array String) := do
   return if path.toString == expected then #[]
     else #[s!"target-location: {target} loads from {path}, not the file just compiled"]
 
-unsafe def run (target : Name) (expected out : String) : IO Unit := do
+unsafe def runAxioms (target : Name) (expected out : String) : IO Unit := do
   initSearchPath (← findSysroot)
   let planted ← targetProblems target expected
   let env ← importModules #[{ module := target }] {} (trustLevel := 0) (loadExts := false)
@@ -148,28 +144,36 @@ unsafe def run (target : Name) (expected out : String) : IO Unit := do
   let mod := env.header.moduleData[idx.toNat]!
   let locals := mod.constants.foldl (fun (m : NameMap ConstantInfo) ci => m.insert ci.name ci) {}
   let direct := (mod.imports.map (·.module)).foldl NameSet.insert {} |> sorted
-  let importProblems := planted ++ (← locationProblems env target) ++ (← reachabilityProblems direct)
+  let mut constants : Array (String × Json) := #[]
+  for n in mod.constNames do
+    constants := constants.push (toString n, names (← runCore env (collectAxioms n)))
+  let report := Json.mkObj
+    [("is_module", toJson mod.isModule),
+     ("imports", names direct),
+     ("import_problems", toJson (planted ++ (← locationProblems env target))),
+     ("constants", Json.mkObj constants.toList),
+     ("core_mismatches", names (coreMismatches locals env))]
+  IO.FS.writeFile out report.compress
 
-  -- From here on, initializers of the file's imports may run. The file itself is not loaded.
+unsafe def runStatements (olean out : String) : IO Unit := do
+  initSearchPath (← findSysroot)
+  let (mod, _) ← readModuleData olean
   enableInitializersExecution
   let deps ← importModules mod.imports {} (trustLevel := 0) (loadExts := true)
-
+  let locals := mod.constants.foldl (fun (m : NameMap ConstantInfo) ci => m.insert ci.name ci) {}
   let ordered := mod.constants.qsort fun a b => Name.lt a.name b.name
   let mut declarations : Array Json := #[]
-  let mut hidden : Array Json := #[]
   let mut unsafeDecls : Array Name := #[]
   let mut context : NameSet := {}
   for ci in ordered do
     let n := ci.name
-    let axioms := names (← runCore env (collectAxioms n))
     if n.isInternal || isAuxiliary locals n then
-      hidden := hidden.push (Json.mkObj [("name", toString n), ("axioms", axioms)])
       continue
     if ci.isUnsafe then
       unsafeDecls := unsafeDecls.push n
     let uses := statementClosure locals ci.type
     context := uses.foldl NameSet.insert context
-    let mut fields := [("name", toJson (toString n)), ("axioms", axioms),
+    let mut fields := [("name", toJson (toString n)),
       ("kind", toJson (if ci matches .thmInfo _ then "theorem" else "other")),
       ("type", toJson (← pretty deps ci.type)),
       ("type_explicit", toJson (← pretty deps ci.type (explicit := true))),
@@ -178,7 +182,6 @@ unsafe def run (target : Name) (expected out : String) : IO Unit := do
       if d.type.isProp || d.type.isSort then
         fields := fields ++ [("definition", toJson (← pretty deps d.value))]
     declarations := declarations.push (Json.mkObj fields)
-
   let mut statementContext : Array (String × Json) := #[]
   for n in sorted context do
     let some ci := locals.find? n | continue
@@ -188,25 +191,31 @@ unsafe def run (target : Name) (expected out : String) : IO Unit := do
     | .opaqueInfo d => fields := fields ++ [("definition", toJson (← pretty deps d.value))]
     | _ => pure ()
     statementContext := statementContext.push (toString n, Json.mkObj fields)
-
   let report := Json.mkObj
-    [("is_module", toJson mod.isModule),
-     ("imports", names direct),
-     ("import_problems", toJson importProblems),
-     ("declarations", toJson declarations),
+    [("declarations", toJson declarations),
      ("statement_context", Json.mkObj statementContext.toList),
-     ("hidden", toJson hidden),
-     ("unsafe", names unsafeDecls),
-     ("core_mismatches", names (coreMismatches locals env))]
+     ("unsafe", names unsafeDecls)]
   IO.FS.writeFile out report.compress
+
+unsafe def runReachable (out roots : String) (modules : List String) : IO Unit := do
+  initSearchPath (← findSysroot)
+  let rootNames := ((roots.splitOn ",").map String.toName).toArray
+  let problems ← reachabilityProblems rootNames (modules.map String.toName).toArray
+  IO.FS.writeFile out (toJson problems).compress
 
 end LeanAudit
 
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
-  | [target, expected, out] =>
-    LeanAudit.run target.toName expected out
+  | ["axioms", target, expected, out] =>
+    LeanAudit.runAxioms target.toName expected out
+    return 0
+  | ["statements", olean, out] =>
+    LeanAudit.runStatements olean out
+    return 0
+  | "reachable" :: out :: roots :: modules =>
+    LeanAudit.runReachable out roots modules
     return 0
   | _ =>
-    IO.eprintln "usage: lean --run lean_audit.lean TARGET_MODULE EXPECTED_OLEAN OUT.json"
+    IO.eprintln "usage: see the comment at the top of lean_audit.lean"
     return 2

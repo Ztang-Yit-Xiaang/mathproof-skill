@@ -55,7 +55,7 @@ from pathlib import Path
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 
 # Version of the check report and stages (IF-check-report-v2).
-CHECKER_VERSION = "2.2"
+CHECKER_VERSION = "2.3"
 
 # First filter on imports, by name, before compiling: the Lean toolchain's own libraries, Mathlib,
 # and Mathlib's dependencies. Imported files are never replayed, so one could hide a bypass. The
@@ -75,6 +75,9 @@ OFFICIAL_PACKAGES = {
     "batteries": "https://github.com/leanprover-community/batteries",
     "Cli": "https://github.com/leanprover/lean4-cli",
 }
+
+# Importing one of these brings in only that library's own modules, so no further check is needed.
+TRUSTED_ROOTS = ("Init", "Std", "Lean", "Mathlib")
 
 AUDIT_DRIVER = Path(__file__).resolve().parent / "lean_audit.lean"
 
@@ -291,7 +294,7 @@ def run_stage(cmd: list[str], cwd: Path, deadline: float, **kwargs) -> tuple[sub
 
 
 def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[str]]:
-    """Turn the audit driver's report into the report's declarations and problems."""
+    """Turn the audit driver's reports into the report's declarations and problems."""
     problems: list[str] = list(audit["import_problems"])
 
     if audit["is_module"]:
@@ -306,15 +309,20 @@ def audit_problems(audit: dict, required: list[str]) -> tuple[list[dict], list[s
         problems.append(f"axiom `{name}` is not the one from core Lean")
     for name in audit["unsafe"]:
         problems.append(f"{name} is declared `unsafe`")
-    for hidden in audit["hidden"]:
-        bad = sorted(set(hidden["axioms"]) - ALLOWED_AXIOMS)
-        if bad:
-            problems.append(f"{hidden['name']} depends on non-standard axioms: {', '.join(bad)}")
+    visible = {raw["name"] for raw in audit["declarations"]}
+    for name, axioms in audit["constants"].items():
+        bad = sorted(set(axioms) - ALLOWED_AXIOMS)
+        if bad and name not in visible:
+            problems.append(f"{name} depends on non-standard axioms: {', '.join(bad)}")
 
     decls = []
     for raw in audit["declarations"]:
-        bad = sorted(set(raw["axioms"]) - ALLOWED_AXIOMS)
-        decl = {"name": raw["name"], "axioms": raw["axioms"], "nonstandard_axioms": bad, "type": raw["type"],
+        axioms = audit["constants"].get(raw["name"])
+        if axioms is None:
+            problems.append(f"audit has no axiom report for `{raw['name']}`")
+            axioms = []
+        bad = sorted(set(axioms) - ALLOWED_AXIOMS)
+        decl = {"name": raw["name"], "axioms": axioms, "nonstandard_axioms": bad, "type": raw["type"],
                 "type_explicit": raw["type_explicit"], "kind": raw["kind"],
                 "statement_uses": raw["statement_uses"]}
         if raw.get("definition"):
@@ -417,26 +425,43 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
                 stages["compile"]["status"] = "pass" if compiled else "fail"
 
             if compiled:
-                out = work_dir / "audit.json"
                 # Lake puts its own paths first, so the temporary directory cannot shadow an import.
                 module_env = {**os.environ, "LEAN_PATH": str(work_dir)}
-                audit_cmd = ["lake", "env", "lean", "--run", str(AUDIT_DRIVER), TARGET_MODULE, str(olean), str(out)]
-                proc, seconds = run_stage(audit_cmd, project, deadline, env=module_env)
-                stages["audit"]["seconds"] = seconds
-                if proc is None:
-                    timed_out("audit")
-                elif proc.returncode != 0 or not out.exists():
-                    # A driver that cannot run is an environment fault (for example a toolchain
-                    # with a different API). It must never read as a pass.
-                    environment_error = True
-                    stages["audit"]["status"] = "error"
-                    problems.append("audit driver failed: " + (proc.stdout + proc.stderr).strip()[-1000:])
-                else:
-                    audit = json.loads(out.read_text(encoding="utf-8"))
-                    statement_context = audit["statement_context"]
-                    decls, found = audit_problems(audit, required)
-                    problems += found
-                    stages["audit"]["status"] = "fail" if found else "pass"
+                axioms_out, statements_out, reach_out = (work_dir / f"{n}.json" for n in ("axioms", "statements", "reach"))
+                driver = ["lake", "env", "lean", "--run", str(AUDIT_DRIVER)]
+
+                def audit_step(args: list[str], out: Path, seconds: float) -> tuple[object, float]:
+                    """One audit process. Each imports Mathlib once, since two imports exhaust memory."""
+                    nonlocal environment_error
+                    proc, took = run_stage(driver + args, project, deadline, env=module_env)
+                    if proc is None:
+                        timed_out("audit")
+                    elif proc.returncode != 0 or not out.exists():
+                        # A driver that cannot run is an environment fault (for example a toolchain
+                        # with a different API). It must never read as a pass.
+                        environment_error = True
+                        stages["audit"]["status"] = "error"
+                        problems.append("audit driver failed: " + (proc.stdout + proc.stderr).strip()[-1000:])
+                    else:
+                        return json.loads(out.read_text(encoding="utf-8")), seconds + took
+                    return None, seconds + took
+
+                axioms, seconds = audit_step(["axioms", TARGET_MODULE, str(olean), str(axioms_out)], axioms_out, 0.0)
+                statements, seconds = (audit_step(["statements", str(olean), str(statements_out)], statements_out, seconds)
+                                       if axioms is not None else (None, seconds))
+                if statements is not None:
+                    others = [m for m in axioms["imports"] if m not in TRUSTED_ROOTS]
+                    reach: object = []
+                    if others:
+                        reach, seconds = audit_step(["reachable", str(reach_out), ",".join(TRUSTED_ROOTS), *others],
+                                                    reach_out, seconds)
+                    if reach is not None:
+                        audit = {**axioms, **statements, "import_problems": axioms["import_problems"] + reach}
+                        statement_context = audit["statement_context"]
+                        decls, found = audit_problems(audit, required)
+                        problems += found
+                        stages["audit"]["status"] = "fail" if found else "pass"
+                stages["audit"]["seconds"] = round(seconds, 1)
 
                 proc, _ = run_stage(["lake", "env", "lean", "--print-prefix"], project, deadline)
                 prefix = proc.stdout.strip() if proc else ""
