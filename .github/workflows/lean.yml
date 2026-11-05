@@ -20,10 +20,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: python3 scripts/validate_evals.py
-      - run: |
-          (while sleep 5; do echo "MEM $(free -m | sed -n 2p)"; ps -eo rss,etimes,args --sort=-rss | sed -n 2,4p | cut -c1-90; done) &
-          python3 scripts/check_lean_evals.py -j 2
-      - if: failure()
-        run: sudo dmesg | tail -25
+      - run: python3 scripts/check_lean_evals.py -j 2
       - run: python3 tests/lean_check/test_pins.py
       - run: python3 tests/lean_check/run_tests.py
