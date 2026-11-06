@@ -9,12 +9,15 @@ not run, so this measures the informal audit protocol alone.
     python3 scripts/run_benchmark.py --model haiku --model sonnet -j 4
 
 Raw answers go to evals/results/raw/<model>/<condition>/<id>.txt and are reused on
-rerun (delete them to refresh). The summary goes to evals/results/summary.json.
+rerun (delete them to refresh). An answer from the `skill` condition is reused only if the
+skill text is unchanged, as recorded beside it in <id>.sha256. The summary goes to
+evals/results/summary.json, with the hash of the skill text in `skill_sha256`.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -40,6 +43,10 @@ End your answer with one line of JSON and nothing after it:
 {{"verdict": one of {verdicts}, "first_bad_step": the number of the first unjustified step, or null if every step is justified}}"""
 
 
+def skill_hash() -> str:
+    return hashlib.sha256(SKILL.read_bytes()).hexdigest()
+
+
 def prompt_for(case: dict) -> str:
     steps = "\n".join(f"{i}. {s}" for i, s in enumerate(case["proof_steps"], 1))
     return PROMPT.format(claim=case["claim"], steps=steps, verdicts=json.dumps(list(VERDICTS)))
@@ -47,12 +54,16 @@ def prompt_for(case: dict) -> str:
 
 def ask(model: str, condition: str, case: dict, timeout: int) -> str:
     path = OUT / "raw" / model / condition / f"{case['id']}.txt"
-    if path.is_file() and path.stat().st_size:
+    recorded = path.with_suffix(".sha256")
+    current = condition != "skill" or (recorded.is_file() and recorded.read_text(encoding="utf-8").strip() == skill_hash())
+    if path.is_file() and path.stat().st_size and current:
         return path.read_text(encoding="utf-8")
     cmd = ["claude", "-p", "--model", model, "--setting-sources", "", "--strict-mcp-config",
            "--tools", "", "--no-session-persistence"]
     if condition == "skill":
-        cmd += ["--append-system-prompt", SKILL.read_text(encoding="utf-8")]
+        text = SKILL.read_text(encoding="utf-8")
+        sent_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        cmd += ["--append-system-prompt", text]
     cmd.append(prompt_for(case))
     with tempfile.TemporaryDirectory() as cwd:
         result = subprocess.run(cmd, cwd=cwd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
@@ -61,6 +72,8 @@ def ask(model: str, condition: str, case: dict, timeout: int) -> str:
         raise RuntimeError(f"{model}/{condition}/{case['id']}: exit {result.returncode}: {result.stderr[:300]}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+    if condition == "skill":
+        recorded.write_text(sent_hash + "\n", encoding="utf-8")
     return text
 
 
@@ -114,7 +127,7 @@ def main() -> None:
     with ThreadPoolExecutor(args.jobs) as pool:
         results = list(pool.map(run, jobs))
 
-    summary: dict = {"cases": len(cases), "runs": {}}
+    summary: dict = {"cases": len(cases), "skill_sha256": skill_hash(), "runs": {}}
     for model in args.model:
         for condition in CONDITIONS:
             rows = [r for m, c, r in results if m == model and c == condition and r is not None]
