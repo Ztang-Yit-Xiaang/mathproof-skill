@@ -34,8 +34,8 @@ def _text(text: object) -> str:
 
 
 def _quoted(text: object) -> list[str]:
-    lines = [_MARKUP.sub(r"\\\1", line) for line in _clean(text).splitlines()]
-    # A line of `=` or `-` would turn the line above into a heading, even inside a quote.
+    # Leading spaces are dropped, so a line of `=` or `-` can't turn the one above into a heading.
+    lines = [_MARKUP.sub(r"\\\1", line.lstrip()) for line in _clean(text).splitlines()]
     return [f"> \\{line}" if line[:1] in ("=", "-", "+") else f"> {line}" for line in lines] or [">"]
 
 

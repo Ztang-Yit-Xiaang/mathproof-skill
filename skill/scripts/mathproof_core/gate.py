@@ -76,6 +76,14 @@ def summarize(reasons: list[str]) -> list[str]:
     return [reason[:300] for reason in reasons[:5]]
 
 
+def without_paths(report: dict, *directories: str) -> dict:
+    """Replace temporary paths, which are noise in a stored report and differ on every run."""
+    text = json.dumps(report, ensure_ascii=False)
+    for directory in directories:
+        text = text.replace(json.dumps(directory, ensure_ascii=False)[1:-1], "<check>")
+    return json.loads(text)
+
+
 def run_checker(source: bytes, decl: str, project: str | os.PathLike[str], checker: Path = CHECKER) -> dict:
     """Run the checker on a temporary copy of `source`. Raises EnvironmentFailure if it cannot run."""
     if not Path(project).is_dir():
@@ -93,8 +101,7 @@ def run_checker(source: bytes, decl: str, project: str | os.PathLike[str], check
             report = json.loads(proc.stdout)
         except ValueError as error:
             raise EnvironmentFailure(f"checker gave no report: {error}") from error
-        # Temporary paths are noise in a stored report.
-        return json.loads(json.dumps(report).replace(str(Path(directory).resolve()), "<check>").replace(directory, "<check>"))
+        return without_paths(report, str(Path(directory).resolve()), directory)
 
 
 def _actor() -> dict[str, str]:

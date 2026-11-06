@@ -76,6 +76,8 @@ MUTANTS = {
         ('report.get("environment_error") or ', ""),
         ('bad = sorted(set(target.get("axioms", [])) - ALLOWED_AXIOMS)', "bad = []"),
         ('s.get("status") == "timeout"', "False"),
+        ('report["request"] = {"target_decl": decl, "polarity": polarity}', 'report["request"] = {"target_decl": decl, "polarity": "claim"}'),
+        ('text = text.replace(json.dumps(directory, ensure_ascii=False)[1:-1], "<check>")', "pass"),
         ("any(_ENVIRONMENT_PROBLEM.search(str(r)) for r in reasons)", "False"),
         ('"type_explicit": d.get("type_explicit"), ', ""),
         ('"statement_uses": d.get("statement_uses")', '"statement_uses": None'),
@@ -105,7 +107,8 @@ MUTANTS = {
     "report.py": [
         (r"""return [f"> \\{line}" if line[:1] in ("=", "-", "+") else f"> {line}" for line in lines] or [">"]""", "return lines"),
         (r"""return _MARKUP.sub(r"\\\1", _clean(text).replace("\n", " "))""", r"""return _clean(text).replace("\n", " ")"""),
-        (r"""lines = [_MARKUP.sub(r"\\\1", line) for line in _clean(text).splitlines()]""", "lines = _clean(text).splitlines()"),
+        (r"""lines = [_MARKUP.sub(r"\\\1", line.lstrip()) for line in _clean(text).splitlines()]""", "lines = _clean(text).splitlines()"),
+        ("line.lstrip()", "line"),
         ('if c["result"] == "pass" and key(c) not in failed]', 'if c["result"] == "pass"]'),
         ('notes = [e.get("data", {}) for e in mine if not is_status_bearing(str(e.get("kind"))) and isinstance(e.get("data"), dict)]', 'notes = [e["data"] for e in mine if e.get("kind") == "note"]'),
         ('return [f"    {line}" for line in _clean(text).splitlines()]', "return _clean(text).splitlines()"),

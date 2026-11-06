@@ -3,7 +3,8 @@
 import unittest
 
 import _paths  # noqa: F401
-from mathproof_core.gate import EnvironmentFailure, normalized, outcome
+import lean_check
+from mathproof_core.gate import EnvironmentFailure, normalized, outcome, without_paths
 from mathproof_core.replay import compare_rerun
 
 DECL = {"name": "ns.main_theorem", "kind": "theorem", "type": "1 = 1", "axioms": ["propext"]}
@@ -44,6 +45,22 @@ class OutcomeTests(unittest.TestCase):
     def test_an_environment_report_is_not_a_result(self):
         with self.assertRaises(EnvironmentFailure):
             outcome(report("FAIL", environment_error=True), "ns.main_theorem")
+
+
+class PathTests(unittest.TestCase):
+    def test_temporary_paths_are_removed_even_when_not_ascii(self):
+        cleaned = without_paths({"problems": ["/tmp/é/x/Check.lean:1:0: error", "/real/é/x/Check.lean"]}, "/tmp/é/x", "/real/é/x")
+        self.assertEqual(cleaned["problems"], ["<check>/Check.lean:1:0: error", "<check>/Check.lean"])
+
+
+class EnvironmentExitTests(unittest.TestCase):
+    def test_signals_and_panics_are_not_results(self):
+        for code, output in ((137, ""), (-9, ""), (128, ""), (1, "INTERNAL PANIC: out of memory\n")):
+            self.assertTrue(lean_check.environment_exit(code, output), (code, output))
+
+    def test_ordinary_failures_are_results(self):
+        for code, output in ((1, "error: type mismatch"), (0, ""), (127, "")):
+            self.assertFalse(lean_check.environment_exit(code, output), (code, output))
 
 
 class CompareTests(unittest.TestCase):

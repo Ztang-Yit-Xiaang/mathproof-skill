@@ -12,7 +12,7 @@ from typing import Sequence
 from .gate import EnvironmentFailure, record_check
 from .ledger import Ledger
 from .replay import verify_investigation
-from .report import render_report
+from .report import _clean, render_report
 from .status import derive_status
 
 GATED_KINDS = frozenset({
@@ -72,6 +72,9 @@ def _cmd_event_add(args: argparse.Namespace) -> int:
     if args.kind in RESERVED_KINDS:
         return _fail(f"event kind '{args.kind}' cannot be added here; use `claim add` for a new claim")
     ledger = _require_initialized_ledger(args.dir)
+    if args.claim is not None and not any(
+            e.get("kind") == "claim_created" and e.get("claim") == args.claim for e in ledger.read()):
+        return _fail(f"unknown claim: {args.claim}; add it with `claim add` first")
     try:
         parsed_data = json.loads(args.data)
     except Exception as exc:
@@ -118,6 +121,11 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _line(text: object) -> str:
+    """One line of inert text, so a recorded value cannot pass as a line of this output."""
+    return _clean(text).replace("\n", " ")
+
+
 def _cmd_verify(args: argparse.Namespace) -> int:
     _require_initialized_ledger(args.dir)
     result = verify_investigation(args.dir, project=args.project)
@@ -125,11 +133,11 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         for difference in result["differences"]:
-            print(f"DIFFERENCE {difference['claim']} (event {difference['seq']}, {difference['kind']}): {difference['detail']}")
+            print(f"DIFFERENCE {_line(difference['claim'])} (event {difference['seq']}, {difference['kind']}): {_line(difference['detail'])}")
         for error in result["environment_errors"]:
-            print(f"COULD NOT RE-RUN {error['claim']} (event {error['seq']}): {' '.join(error['detail'].splitlines())}")
+            print(f"COULD NOT RE-RUN {_line(error['claim'])} (event {error['seq']}): {_line(error['detail'])}")
         for claim, status in result["statuses"].items():
-            print(f"{claim}: {status['headline']}, {status['verdict']}")
+            print(f"{_line(claim)}: {status['headline']}, {status['verdict']}")
         print(f"{'OK' if result['ok'] else 'NOT OK'}: {result['reruns']} checks re-run.")
         for note in result["notes"]:
             print(f"Note: {note}")

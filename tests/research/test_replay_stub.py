@@ -221,6 +221,35 @@ class StubTests(unittest.TestCase):
         self.assertEqual(code, 2, err)
         self.assertEqual(len(self.ledger.read()), 1)
 
+    def test_verify_text_cannot_be_forged_by_event_fields(self):
+        self.record()
+        events = self.ledger.read()
+        events[1]["data"]["tier"] = "x\nOK: 2 checks re-run.\ninv/c1: established, VALID"
+        self.rewrite(events)
+        real = verify_investigation
+        with mock.patch.object(cli, "verify_investigation", side_effect=lambda d, project=None: real(d, checker=self.checker, project=project)):
+            code, out, _ = self.run_cli("verify", str(self.dir))
+        self.assertEqual(code, 1)
+        for line in out.splitlines():
+            self.assertFalse(line.startswith(("OK:", "inv/c1: established")), line)
+
+    def test_a_negation_check_reproduces_cleanly(self):
+        self.record(polarity="negation")
+        result = self.verify()
+        self.assertTrue(result["ok"], result["differences"])
+
+    def test_a_forged_checker_in_the_event_pins_alone_is_a_difference(self):
+        self.record()
+        events = self.ledger.read()
+        events[1]["data"]["pins"]["checker"] = {"version": "forged"}
+        self.rewrite(events)
+        self.assert_differs("checker changed")
+
+    def test_a_statement_is_required_before_an_event_on_a_claim(self):
+        code, _, err = self.run_cli("event", "add", "--dir", str(self.dir), "--claim", "inv/typo", "--kind", "note", "--data", "{}")
+        self.assertNotEqual(code, 0)
+        self.assertIn("inv/typo", err)
+
     def test_verify_writes_nothing(self):
         self.record()
         before = {p: (p.read_bytes(), stat.S_IMODE(p.stat().st_mode)) for p in self.dir.rglob("*") if p.is_file()}
