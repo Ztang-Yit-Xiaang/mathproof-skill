@@ -9,7 +9,11 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .gate import EnvironmentFailure, record_check
 from .ledger import Ledger
+from .replay import verify_investigation
+from .report import render_report
+from .status import derive_status
 
 GATED_KINDS = frozenset({
     "check",
@@ -84,6 +88,56 @@ def _cmd_event_add(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_artifact_add(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    print(ledger.put_artifact(Path(args.file).read_bytes()))
+    return 0
+
+
+def _cmd_check(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    try:
+        event = record_check(ledger, args.claim, args.file, args.decl, args.polarity, args.project)
+    except EnvironmentFailure as error:
+        print(f"environment error, nothing recorded: {' '.join(str(error).splitlines())}", file=sys.stderr)
+        return 2
+    data = event["data"]
+    print(json.dumps({"claim": args.claim, "seq": event["seq"], "result": data["result"], "type": data["type"],
+                      "axioms": data["axioms"], "problems": data["problems"]}, ensure_ascii=False, indent=2))
+    return 0 if data["result"] == "pass" else 1
+
+
+def _cmd_status(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    print(json.dumps(derive_status(ledger.read(), args.claim, {}), ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    print(render_report(_require_initialized_ledger(args.dir), args.claim))
+    return 0
+
+
+def _cmd_verify(args: argparse.Namespace) -> int:
+    _require_initialized_ledger(args.dir)
+    result = verify_investigation(args.dir, project=args.project)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        for difference in result["differences"]:
+            print(f"DIFFERENCE {difference['claim']} (event {difference['seq']}, {difference['kind']}): {difference['detail']}")
+        for error in result["environment_errors"]:
+            print(f"COULD NOT RE-RUN {error['claim']} (event {error['seq']}): {' '.join(error['detail'].splitlines())}")
+        for claim, status in result["statuses"].items():
+            print(f"{claim}: {status['headline']}, {status['verdict']}")
+        print(f"{'OK' if result['ok'] else 'NOT OK'}: {result['reruns']} checks re-run.")
+        for note in result["notes"]:
+            print(f"Note: {note}")
+    if result["differences"]:
+        return 1
+    return 2 if result["environment_errors"] else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mathproof", description="Mathproof records CLI.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -134,6 +188,44 @@ def build_parser() -> argparse.ArgumentParser:
     )
     event_add.add_argument("--data", required=True, metavar="JSON", help="Event payload as a JSON object.")
     event_add.set_defaults(handler=_cmd_event_add)
+
+    # artifact add
+    artifact_parser = subparsers.add_parser("artifact", help="Manage stored files.")
+    artifact_sub = artifact_parser.add_subparsers(dest="artifact_command", required=True)
+    artifact_add = artifact_sub.add_parser("add", help="Store a file and print its hash.")
+    artifact_add.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    artifact_add.add_argument("file", metavar="FILE", help="File to store.")
+    artifact_add.set_defaults(handler=_cmd_artifact_add)
+
+    # check
+    check = subparsers.add_parser(
+        "check", help="Run the Lean checker on a file and record the result.",
+        description="Run the Lean checker on a file and record the result. Exit: 0 pass, 1 fail, 2 could not run.")
+    check.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    check.add_argument("--claim", required=True, metavar="ID", help="Claim identifier.")
+    check.add_argument("--decl", required=True, metavar="NAME", help="Exact full name of the theorem.")
+    check.add_argument("--polarity", required=True, choices=("claim", "negation", "step"),
+                       help="Whether the theorem is exactly the claim, exactly its negation, or only a step.")
+    check.add_argument("--project", required=True, metavar="DIR", help="Lean project with Mathlib.")
+    check.add_argument("file", metavar="FILE", help="Lean file.")
+    check.set_defaults(handler=_cmd_check)
+
+    # status, report
+    for name, handler, text in (("status", _cmd_status, "Print a claim's derived status as JSON."),
+                                ("report", _cmd_report, "Print a claim's report as Markdown.")):
+        command = subparsers.add_parser(name, help=text)
+        command.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+        command.add_argument("--claim", required=True, metavar="ID", help="Claim identifier.")
+        command.set_defaults(handler=handler)
+
+    # verify
+    verify = subparsers.add_parser(
+        "verify", help="Check the ledger and re-run every check.",
+        description="Check the ledger and re-run every check. Exit: 0 clean, 1 a difference, 2 could not re-run.")
+    verify.add_argument("dir", metavar="DIR", help="Ledger directory path.")
+    verify.add_argument("--project", metavar="DIR", help="Use this Lean project, not the recorded one.")
+    verify.add_argument("--json", action="store_true", help="Print a JSON report.")
+    verify.set_defaults(handler=_cmd_verify)
 
     return parser
 
