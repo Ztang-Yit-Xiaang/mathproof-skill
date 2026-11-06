@@ -1,6 +1,6 @@
 {
   "name": "mathproof-skill",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Correctness-first proof construction and auditing: finds the first unsupported step, searches for counterexamples, and machine-checks verdicts in Lean 4 + Mathlib.",
   "author": { "name": "Yit Xiaang Ztang", "email": "ztangyitxiaang@gmail.com" },
   "homepage": "https://ztang-yit-xiaang.github.io/mathproof-skill/",
