@@ -1,13 +1,13 @@
 {
-  "_about": "Written by reading each Lean file's statements, not copied from expected_verdict. `targets` is what the row checks. `polarity` says what the statement is relative to the claim: exactly the claim, exactly its negation, or only a step toward the verdict. `read_note` records where the reader disagrees with the repo's label; labels are left as they are until reviewed.",
+  "_about": "Written by reading each Lean file's statements, not copied from expected_verdict. `targets` is what the row checks. `polarity` says what the statement is relative to the claim: exactly the claim, exactly its negation, or only a step toward the verdict. `read_note` explains a reading that isn't obvious from the file.",
   "rows": [
-    {"id": "logic-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance", "read_note": "The statement negates the whole claim over all integers, so this reads as faithful rather than instance."},
+    {"id": "logic-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "faithful"},
     {"id": "logic-002", "targets": ["claim_false"], "polarity": "negation", "fidelity": "faithful"},
     {"id": "number-001", "targets": ["even_sq"], "polarity": "claim", "fidelity": "faithful"},
     {"id": "algebra-001", "targets": ["cancellation_step_fails"], "polarity": "step", "fidelity": "instance", "read_note": "Checks the failing cancellation step, not the absurd conclusion."},
     {"id": "calculus-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance"},
     {"id": "calculus-002", "targets": ["attains_max"], "polarity": "claim", "fidelity": "faithful"},
-    {"id": "analysis-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance", "read_note": "The statement negates the whole claim, so this reads as faithful rather than instance."},
+    {"id": "analysis-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "faithful"},
     {"id": "analysis-002", "targets": ["exchange_fails"], "polarity": "step", "fidelity": "instance", "read_note": "Proves facts about one concrete sequence, not exactly the negation of a formal claim, so it counts as a step."},
     {"id": "linear-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance"},
     {"id": "linear-002", "targets": ["exists_psd_sqrt"], "polarity": "claim", "fidelity": "faithful"},
@@ -19,7 +19,7 @@
     {"id": "probability-002", "targets": ["expectation_add", "expectation_smul"], "polarity": "claim", "fidelity": "faithful"},
     {"id": "probability-003", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance"},
     {"id": "asymptotic-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "faithful"},
-    {"id": "sets-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance", "read_note": "The statement negates the whole claim, so this reads as faithful rather than instance."},
+    {"id": "sets-001", "targets": ["claim_false"], "polarity": "negation", "fidelity": "faithful"},
     {"id": "combinatorics-001", "targets": ["handshake"], "polarity": "claim", "fidelity": "partial"},
     {"id": "topology-001", "targets": ["image_compact"], "polarity": "claim", "fidelity": "faithful"},
     {"id": "linear-004", "targets": ["claim_false"], "polarity": "negation", "fidelity": "instance"}
