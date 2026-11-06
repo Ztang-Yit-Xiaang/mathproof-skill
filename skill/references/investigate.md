@@ -12,7 +12,7 @@ Your ordinary verdict in `AUDIT` or `PROVE` is a separate thing. If you give one
 
 ## Commands
 
-`<dir>` is the investigation's directory, and claim ids look like `<investigation>/<claim>`, in lowercase. Run these from anywhere, using this skill's `scripts/mathproof.py`:
+`<dir>` is the investigation's directory, and claim ids look like `<investigation>/<claim>`, in lowercase. `--kind` on `claim add` is your own word for it, such as `theorem` or `lemma`. Run these using the full path to this skill's `scripts/mathproof.py`; they work from any directory, and files can be given by any path:
 
 ```bash
 python3 scripts/mathproof.py init <dir>
@@ -23,7 +23,9 @@ python3 scripts/mathproof.py report --dir <dir> --claim inv/c1
 python3 scripts/mathproof.py verify <dir>
 ```
 
-`check` exits 0 on a pass, 1 on a failure, and 2 if it could not run. Exit 2 records nothing. A failure is worth keeping: it stays in the ledger as a record of what was tried.
+`check` exits 0 on a pass, 1 on a failure, and 2 if it could not run, for example when a file or Mathlib is missing or a time limit ran out. Exit 2 records nothing. A failure is worth keeping: it stays in the ledger as a record of what was tried.
+
+The status line reads like `KERNEL-PASSED (local; negation, fidelity: faithful, self-declared)`. `KERNEL-PASSED` is not one of the `Lean status` values in the main protocol: it means the local checker passed and the verdict stays `UNVERIFIED`. A proof and a refutation share the headline `kernel-passed-local`, so read the polarity in this line.
 
 ## Choosing the polarity
 
@@ -41,13 +43,13 @@ Add these with `event add --dir <dir> --claim <id> --kind <kind> --data '<json>'
 
 | Kind | Data |
 |---|---|
-| `fidelity` | `statement_hash` (the Lean file's hash), `rows` (the fidelity table), `class` (`faithful`, `instance`, `partial`, `unfaithful`), `direction`, `judge`, `scope_note` |
+| `fidelity` | `statement_hash` (the Lean file's hash), `rows` (a list of objects with `informal`, `formal`, and `match`, which is the fidelity table), `class` (`faithful`, `instance`, `partial`, `unfaithful`), `direction`, `judge`, `scope_note` |
 | `informal_proof` | `artifact`, `author_context` |
 | `informal_audit` | `proof_hash`, `result` (`no-flaw` or `flaw`), `auditor` |
 | `assumption` | `text`, `standing`, `origin`, `change` |
 | `budget_stop` | `reason`, `open_items` (a list) |
 | `abandon` | `reason` |
-| `note`, or any kind you invent | anything except a `status` field. Shown in the report as unverified notes |
+| `note`, or any kind you invent | anything except a `status` field. A `text` field is shown in the report as an unverified note |
 
 For `fidelity`, `direction` is `F=>I` when a proof of the formal statement gives the claim, and `I=>F` when the claim implies the formal statement, which is what refuting it requires. Use `self-declared` as the judge for your own judgment. Without a verified signature, it stays a label and cannot change the verdict.
 
@@ -55,4 +57,4 @@ You cannot add `check` by hand, and a claim's statement cannot be changed. For a
 
 ## Finishing
 
-Run `verify` before you report. It re-runs every check, so it can take minutes per file with Mathlib. Exit 0 means the ledger is consistent and the checks reproduce, and it does not mean the claim is proved. Give the user the `report` output, the `verify` result, and the Lean status as written.
+Run `verify` before you report. It re-runs every check, loading Mathlib four times per file, so expect minutes per file and much longer on a busy machine. Exit 0 means the ledger is consistent and the checks reproduce, and it does not mean the claim is proved. Give the user the `report` output, the `verify` result, and the Lean status as written.

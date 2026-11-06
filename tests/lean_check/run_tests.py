@@ -318,6 +318,18 @@ def check_timeout_leaves_nothing_running(checker: Path) -> str | None:
     return None
 
 
+def check_killed_lean_is_not_a_result(checker: Path) -> str | None:
+    """Lean ending on a signal-like code means the check did not finish, so it exits 2."""
+    with tempfile.TemporaryDirectory() as d:
+        project = make_project(Path(d).resolve(), False)
+        target = project / "T.lean"
+        target.write_text("#eval (IO.Process.exit 137 : IO Unit)\ntheorem x : True := trivial\n", encoding="utf-8")
+        code, report = run_checker(checker, target, project)
+        if code != 2 or report.get("status") == "PASS":
+            return f"exit {code}, status {report.get('status')}"
+    return None
+
+
 def check_text_cannot_be_forged(checker: Path) -> str | None:
     """Line breaks and control characters in a name must not reach the text report raw."""
     f = HERE / "pass_name_cannot_forge_lines.lean"
@@ -357,6 +369,7 @@ BEHAVIOR_TESTS = [("same file name in parallel", check_same_name_parallel),
                   ("planted target module", check_planted_target),
                   ("submodule without Mathlib", check_submodule_without_mathlib),
                   ("timeout kills Lean", check_timeout_leaves_nothing_running),
+                  ("killed Lean is not a result", check_killed_lean_is_not_a_result),
                   ("text report cannot be forged", check_text_cannot_be_forged),
                   ("unreadable input", check_bad_inputs)]
 

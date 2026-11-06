@@ -55,7 +55,7 @@ from pathlib import Path
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 
 # Version of the check report and stages (IF-check-report-v2).
-CHECKER_VERSION = "2.3"
+CHECKER_VERSION = "2.4"
 
 # First filter on imports, by name, before compiling: the Lean toolchain's own libraries, Mathlib,
 # and Mathlib's dependencies. Imported files are never replayed, so one could hide a bypass. The
@@ -418,6 +418,8 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
                 problems += [f"Lean error: {e}" for e in errors]
                 if proc.returncode != 0 and not errors:
                     problems.append(f"Lean exited with code {proc.returncode}")
+                    # Killed by a signal, or out of memory: that says nothing about the proof.
+                    environment_error = environment_error or proc.returncode < 0 or proc.returncode >= 128
                 for l in lines:
                     if "declaration uses 'sorry'" in l or "declaration uses `sorry`" in l:
                         problems.append(f"Lean warning: {l.strip()}")

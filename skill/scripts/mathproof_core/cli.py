@@ -98,7 +98,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
     ledger = _require_initialized_ledger(args.dir)
     try:
         event = record_check(ledger, args.claim, args.file, args.decl, args.polarity, args.project)
-    except EnvironmentFailure as error:
+    except (EnvironmentFailure, OSError) as error:
         print(f"environment error, nothing recorded: {' '.join(str(error).splitlines())}", file=sys.stderr)
         return 2
     data = event["data"]

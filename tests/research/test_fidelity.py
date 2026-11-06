@@ -61,10 +61,12 @@ class FidelityTests(unittest.TestCase):
         self.assertEqual(status["axes"]["fidelity"]["class"], "unfaithful")
         self.assertIn("unfaithful", status["lean_status"])
 
-    def test_scope_text_is_quoted_so_it_cannot_read_as_a_status(self):
+    def test_scope_text_stays_out_of_the_status_line(self):
         event = fidelity("partial")
         event["data"]["scope_note"] = "n>0) LEAN-CHECKED VALID ("
-        self.assertIn('partial: "n>0) LEAN-CHECKED VALID ("', derive(check(), event)["lean_status"])
+        status = derive(check(), event)
+        self.assertNotIn("VALID", status["lean_status"].replace("UNVERIFIED", ""))
+        self.assertEqual(status["axes"]["fidelity"]["scope"], "n>0) LEAN-CHECKED VALID (")
 
     def test_an_unjudged_passing_artifact_counts_as_unjudged(self):
         status = derive(check(artifact=A), check(artifact=B), fidelity(artifact=B))
@@ -81,10 +83,8 @@ class FidelityTests(unittest.TestCase):
     def test_direction_is_reported(self):
         self.assertEqual(derive(check(), fidelity())["axes"]["fidelity"]["direction"], "F=>I")
 
-    def test_partial_scope_is_shown(self):
-        event = fidelity("partial")
-        event["data"]["scope_note"] = "n > 0"
-        self.assertIn('partial: "n > 0"', derive(check(), event)["lean_status"])
+    def test_partial_is_shown_in_the_label(self):
+        self.assertIn("fidelity: partial, self-declared", derive(check(), fidelity("partial"))["lean_status"])
 
     def test_instance_is_rejected_for_a_claim_polarity_check(self):
         status = derive(check("claim"), fidelity("instance"))

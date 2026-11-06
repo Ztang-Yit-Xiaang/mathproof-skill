@@ -10,8 +10,11 @@ DECL = {"name": "ns.main_theorem", "kind": "theorem", "type": "1 = 1", "axioms":
 CHECKER = {"version": "2.3", "sha256_checker": "a", "sha256_driver": "b"}
 
 
+REQUEST = {"target_decl": "ns.main_theorem", "polarity": "claim"}
+
+
 def report(status="PASS", declarations=(DECL,), **extra):
-    return {"status": status, "problems": [], "declarations": list(declarations), "checker": CHECKER,
+    return {"status": status, "problems": [], "declarations": list(declarations), "checker": CHECKER, "request": REQUEST,
             "file": "/tmp/x", "stages": {"compile": {"seconds": 1.0}}, **extra}
 
 
@@ -45,7 +48,9 @@ class OutcomeTests(unittest.TestCase):
 
 class CompareTests(unittest.TestCase):
     def event(self, result="pass", **data):
-        return {"result": result, "target_decl": "ns.main_theorem", "type": "1 = 1", "axioms": ["propext"], **data}
+        return {"result": result, "target_decl": "ns.main_theorem", "polarity": "claim", "type": "1 = 1", "axioms": ["propext"],
+                "tier": "local", "problems": [], "pins": {"toolchain": None, "mathlib_rev": None, "pinned": None, "checker": CHECKER},
+                **data}
 
     def test_timing_and_paths_never_differ(self):
         fresh = report(file="/other/path", stages={"compile": {"seconds": 99.0}})

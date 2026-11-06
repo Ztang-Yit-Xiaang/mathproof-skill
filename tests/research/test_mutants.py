@@ -17,7 +17,7 @@ from pathlib import Path
 from _paths import ROOT
 
 HERE = Path(__file__).resolve().parent
-SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report"]
+SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report", "test_replay_stub"]
 
 MUTANTS = {
     "status.py": [
@@ -73,24 +73,46 @@ MUTANTS = {
     "gate.py": [
         ('if declaration.get("name") == decl:', 'if str(declaration.get("name")).endswith(decl):'),
         ('if target.get("kind") != "theorem":', "if False:"),
-        ('if report.get("environment_error"):', "if False:"),
+        ('report.get("environment_error") or ', ""),
         ('bad = sorted(set(target.get("axioms", [])) - ALLOWED_AXIOMS)', "bad = []"),
+        ('s.get("status") == "timeout"', "False"),
+        ("any(_ENVIRONMENT_PROBLEM.search(str(r)) for r in reasons)", "False"),
+        ('"type_explicit": d.get("type_explicit"), ', ""),
+        ('"statement_uses": d.get("statement_uses")', '"statement_uses": None'),
+        ('"statement_context": report.get("statement_context")}', '"statement_context": None}'),
+        ('"environment": {key: report.get(key) for key in ("toolchain", "mathlib_rev", "pinned", "environment_error")},', ""),
         ('return ("pass" if report.get("status") == "PASS" and not reasons else "fail"), reasons', 'return "pass", reasons'),
     ],
     "replay.py": [
         ('if event_data.get("result") != result:', "if False:"),
-        ("if normalized(stored) != normalized(fresh):", "if False:"),
+        ("if not same:", "if False:"),
+        ('if stored.get("request") != {"target_decl": decl, "polarity": event_data.get("polarity")}:', "if False:"),
         ('if event_data.get("type") != target.get("type"):', "if False:"),
-        ('if sorted(event_data.get("axioms") or []) != sorted(target.get("axioms", [])):', "if False:"),
-        ('if stored.get("checker") != fresh.get("checker"):', "if False:"),
+        ('if event_data.get("axioms") != sorted(target.get("axioms", [])):', "if False:"),
+        ('if event_data.get("tier") != "local":', "if False:"),
+        ('if event_data.get("problems") != summarize(reasons):', "if False:"),
+        ('if not isinstance(pins, dict) or pins.get(key) != fresh.get(key):', "if False:"),
+        ('if stored.get("checker") != fresh.get("checker") or not isinstance(pins, dict) or pins.get("checker") != fresh.get("checker"):', "if False:"),
+        ("for error in chain.errors:", "for error in []:"),
+        ('key = (data["artifact"], data["target_decl"], str(chosen))', 'key = (data["target_decl"], str(chosen))'),
+        ('"informal_proof": ("artifact",), ', ""),
+        ('"informal_audit": ("proof_hash",),', ""),
+        ('"experiment": ("code_hash",), ', ""),
+        ('"fidelity": ("statement_hash",),', ""),
+        ("if claim not in with_statement:", "if False:"),
+        ('environment_errors.append({"claim": claim, "seq": seq, "detail": str(error)})', "pass"),
     ],
     "report.py": [
-        ('return [f"> {line}" for line in _clean(text).splitlines()] or [">"]', "return _clean(text).splitlines()"),
+        (r"""return [f"> \\{line}" if line[:1] in ("=", "-", "+") else f"> {line}" for line in lines] or [">"]""", "return lines"),
+        (r"""return _MARKUP.sub(r"\\\1", _clean(text).replace("\n", " "))""", r"""return _clean(text).replace("\n", " ")"""),
+        (r"""lines = [_MARKUP.sub(r"\\\1", line) for line in _clean(text).splitlines()]""", "lines = _clean(text).splitlines()"),
+        ('if c["result"] == "pass" and key(c) not in failed]', 'if c["result"] == "pass"]'),
+        ('notes = [e.get("data", {}) for e in mine if not is_status_bearing(str(e.get("kind"))) and isinstance(e.get("data"), dict)]', 'notes = [e["data"] for e in mine if e.get("kind") == "note"]'),
         ('return [f"    {line}" for line in _clean(text).splitlines()]', "return _clean(text).splitlines()"),
         ("""f"**Verdict:** {status['verdict']}", "",""", """"**Verdict:** VALID", "","""),
         ('open_items + status["warnings"]', "[]"),
         ('if unicodedata.category(c)[0] == "C" or unicodedata.category(c) in ("Zl", "Zp") else c', "if False else c"),
-        ('notes = [e["data"] for e in mine if e.get("kind") == "note"]', "notes = []"),
+        (r""".replace("\n", "\\n")""", ""),
     ],
 }
 

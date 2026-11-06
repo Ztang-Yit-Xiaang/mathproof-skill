@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -22,6 +23,9 @@ from .ledger import Ledger
 CHECKER = Path(__file__).resolve().parents[1] / "lean_check.py"
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 GATE_ACTOR_ROLE = "gate"
+
+# Lean could not start on the file at all: these say nothing about the proof.
+_ENVIRONMENT_PROBLEM = re.compile(r"unknown module prefix|object file .* does not exist")
 
 
 class EnvironmentFailure(Exception):
@@ -37,9 +41,10 @@ def _target(report: dict, decl: str) -> dict | None:
 
 def outcome(report: dict, decl: str) -> tuple[str, list[str]]:
     """Decide pass or fail from a checker report, with the reasons for a failure."""
-    if report.get("environment_error"):
-        raise EnvironmentFailure("; ".join(report.get("problems", [])) or "checker could not run")
     reasons = list(report.get("problems", []))
+    timed_out = any(isinstance(s, dict) and s.get("status") == "timeout" for s in (report.get("stages") or {}).values())
+    if report.get("environment_error") or timed_out or any(_ENVIRONMENT_PROBLEM.search(str(r)) for r in reasons):
+        raise EnvironmentFailure("; ".join(str(r) for r in reasons) or "checker could not run")
     if report.get("status") != "PASS" and not reasons:
         reasons.append("checker did not report PASS")
     target = _target(report, decl)
@@ -55,10 +60,20 @@ def outcome(report: dict, decl: str) -> tuple[str, list[str]]:
 
 
 def normalized(report: dict) -> dict:
-    """The part of a report that must reproduce. Timing and paths never count."""
+    """Everything a report shows that must reproduce. Timing and paths never count."""
     return {"status": report.get("status"),
-            "declarations": sorted((d.get("name"), d.get("type"), tuple(sorted(d.get("axioms", []))))
-                                   for d in report.get("declarations", []))}
+            "environment": {key: report.get(key) for key in ("toolchain", "mathlib_rev", "pinned", "environment_error")},
+            "declarations": sorted((json.dumps({"name": d.get("name"), "kind": d.get("kind"), "type": d.get("type"),
+                                                "type_explicit": d.get("type_explicit"), "definition": d.get("definition"),
+                                                "axioms": sorted(d.get("axioms", [])),
+                                                "statement_uses": d.get("statement_uses")}, sort_keys=True)
+                                    for d in report.get("declarations", []))),
+            "statement_context": report.get("statement_context")}
+
+
+def summarize(reasons: list[str]) -> list[str]:
+    """The failure reasons as stored in an event."""
+    return [reason[:300] for reason in reasons[:5]]
 
 
 def run_checker(source: bytes, decl: str, project: str | os.PathLike[str], checker: Path = CHECKER) -> dict:
@@ -96,6 +111,7 @@ def record_check(ledger: Ledger, claim: str, file: str | os.PathLike[str], decl:
     report = run_checker(source, decl, project, checker)
     result, reasons = outcome(report, decl)
     target = _target(report, decl) or {}
+    report["request"] = {"target_decl": decl, "polarity": polarity}
     data = {
         "artifact": ledger.put_artifact(source),
         "target_decl": decl,
@@ -107,6 +123,6 @@ def record_check(ledger: Ledger, claim: str, file: str | os.PathLike[str], decl:
         "project": str(project),
         "type": target.get("type"),
         "axioms": sorted(target.get("axioms", [])),
-        "problems": [reason[:300] for reason in reasons[:5]],
+        "problems": summarize(reasons),
     }
     return ledger.append("check", claim, data, _actor())

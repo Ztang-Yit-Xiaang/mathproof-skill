@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 from .events import STATUS_BEARING_KINDS, validate_event
-from .gate import CHECKER, EnvironmentFailure, _target, normalized, outcome, run_checker
+from .gate import CHECKER, EnvironmentFailure, _target, normalized, outcome, run_checker, summarize
 from .ledger import ArtifactCorrupt, Ledger
 from .status import derive_status
 
@@ -31,17 +31,31 @@ def compare_rerun(event_data: dict, stored: dict, fresh: dict) -> list[str]:
     """Differences between what was recorded and what a fresh run says."""
     decl = event_data.get("target_decl", "")
     differences = []
-    result, _ = outcome(fresh, decl)
+    result, reasons = outcome(fresh, decl)
     if event_data.get("result") != result:
         differences.append(f"event says {event_data.get('result')}, re-run says {result}")
-    if normalized(stored) != normalized(fresh):
+    try:
+        same = normalized(stored) == normalized(fresh)
+    except (AttributeError, TypeError):
+        same = False
+    if not same:
         differences.append("stored report differs from the re-run")
+    if stored.get("request") != {"target_decl": decl, "polarity": event_data.get("polarity")}:
+        differences.append("stored report was made for a different target or polarity")
     target = _target(fresh, decl) or {}
     if event_data.get("type") != target.get("type"):
         differences.append("event's statement differs from the re-run")
-    if sorted(event_data.get("axioms") or []) != sorted(target.get("axioms", [])):
+    if event_data.get("axioms") != sorted(target.get("axioms", [])):
         differences.append("event's axioms differ from the re-run")
-    if stored.get("checker") != fresh.get("checker"):
+    if event_data.get("tier") != "local":
+        differences.append(f"event claims tier {event_data.get('tier')}, and this re-run is local")
+    if event_data.get("problems") != summarize(reasons):
+        differences.append("event's stated problems differ from the re-run")
+    pins = event_data.get("pins")
+    for key in ("toolchain", "mathlib_rev", "pinned"):
+        if not isinstance(pins, dict) or pins.get(key) != fresh.get(key):
+            differences.append(f"{key} differs from the re-run")
+    if stored.get("checker") != fresh.get("checker") or not isinstance(pins, dict) or pins.get("checker") != fresh.get("checker"):
         differences.append("checker changed since this was recorded, so this result was not reproduced by the same checker")
     return differences
 
@@ -118,6 +132,10 @@ def verify_investigation(directory: str | os.PathLike[str], project: str | os.Pa
             environment_errors.append({"claim": claim, "seq": seq, "detail": str(error)})
 
     claims = sorted({e["claim"] for e in usable if e["claim"] and e["kind"] in STATUS_BEARING_KINDS})
+    with_statement = {e["claim"] for e in usable if e["kind"] == "claim_created"}
+    for claim in claims:
+        if claim not in with_statement:
+            differ(claim, None, "claim", "this claim has records but no statement")
     return {"ok": not differences and not environment_errors,
             "differences": differences,
             "environment_errors": environment_errors,
