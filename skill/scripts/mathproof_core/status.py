@@ -77,7 +77,7 @@ def compat(headline: str, *, kernel_passed: bool = False, attempted: bool = Fals
     raise ValueError(f"unknown headline: {headline}")
 
 
-def _usable_events(events: list, claim: str) -> tuple[list[dict], int]:
+def usable_events(events: list, claim: str) -> tuple[list[dict], int]:
     """This claim's status-bearing events, and how many of them were invalid and so ignored."""
     usable, ignored = [], 0
     for event in events:
@@ -171,7 +171,7 @@ def _computational(events: list[dict]) -> dict:
 def derive_status(events: list[dict], claim: str, env: dict) -> dict:
     """Derive a claim's status. `env` can add version notes, and cannot raise anything in M0."""
     env = env or {}
-    usable, ignored = _usable_events(events, claim)
+    usable, ignored = usable_events(events, claim)
     of_kind = lambda kind: [e["data"] for e in usable if e["kind"] == kind]  # noqa: E731
 
     kernel, passing, step_passed, attempted, warnings = _kernel(of_kind("check"))
@@ -208,11 +208,8 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
 
     label = None
     if polarities:
-        judged = "none"
-        if fidelity["class"]:
-            # Quoted, because scope text is written by whoever wrote the event.
-            scoped = f'partial: "{fidelity["scope"]}"' if fidelity["class"] == "partial" and fidelity["scope"] else fidelity["class"]
-            judged = f"{scoped}, {fidelity['provenance']}"
+        # Only closed values go in this line. Scope text is free text, so it stays in the axis.
+        judged = f"{fidelity['class']}, {fidelity['provenance']}" if fidelity["class"] else "none"
         label = f"{'+'.join(sorted(polarities))}, fidelity: {judged}"
     verdict, lean_status = compat(headline, kernel_passed=bool(passing), attempted=attempted, label=label)
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added `INVESTIGATE` mode ([investigate.md](skill/references/investigate.md)): a durable record of one claim. `skill/scripts/mathproof.py` keeps an append-only ledger, runs Lean checks through the checker, derives each claim's status, re-runs every check with `verify`, and renders a report. No record carries a status. At this stage the strongest result is `kernel-passed-local`, with the verdict `UNVERIFIED`, and nothing an agent writes can raise it. The other modes are unchanged and don't need any of this.
+- Checker 2.5: a killed or crashed Lean now exits `2` instead of reporting a failure.
+
 ## 0.2.2 — 2026-11-05
 
 - **Fixed a false `PASS` in the Lean checker.** `lean_check.py` could report `PASS`, exit 0, for files that "proved" `1 = 2` and `False`. The README, site, and protocol said such files were rejected, and that was wrong. The defects:

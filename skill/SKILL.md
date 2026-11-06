@@ -17,6 +17,7 @@ Infer the mode from the request. Ask only if the intended task is genuinely ambi
 - `AUDIT`: inspect a proposed proof without silently repairing it.
 - `EXPLAIN`: teach an existing proof while preserving its logic.
 - `RESEARCH`: locate and verify external theorems, prior proofs, or counterexamples.
+- `INVESTIGATE`: keep a durable, replayable record of one claim, when the user asks for one. Follow [investigate.md](references/investigate.md).
 
 If modes overlap, make `AUDIT` precede `PROVE`: diagnose before repairing.
 

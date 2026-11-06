@@ -55,7 +55,7 @@ from pathlib import Path
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 
 # Version of the check report and stages (IF-check-report-v2).
-CHECKER_VERSION = "2.3"
+CHECKER_VERSION = "2.5"
 
 # First filter on imports, by name, before compiling: the Lean toolchain's own libraries, Mathlib,
 # and Mathlib's dependencies. Imported files are never replayed, so one could hide a bypass. The
@@ -186,6 +186,11 @@ def init_project(target: Path) -> int:
             return 2
     print(f"Initialized Mathlib-backed Lean project at {target}")
     return 0
+
+
+def environment_exit(code: int, output: str) -> bool:
+    """Whether Lean stopped for a reason that says nothing about the proof: a signal or a crash."""
+    return code < 0 or code >= 128 or (code != 0 and "INTERNAL PANIC" in output)
 
 
 def parsed_header(file: Path, project: Path, deadline: float) -> dict | None:
@@ -418,6 +423,8 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
                 problems += [f"Lean error: {e}" for e in errors]
                 if proc.returncode != 0 and not errors:
                     problems.append(f"Lean exited with code {proc.returncode}")
+                    # Killed by a signal, or out of memory: that says nothing about the proof.
+                    environment_error = environment_error or environment_exit(proc.returncode, lean_output)
                 for l in lines:
                     if "declaration uses 'sorry'" in l or "declaration uses `sorry`" in l:
                         problems.append(f"Lean warning: {l.strip()}")
@@ -479,6 +486,7 @@ def check(file: Path, project: Path, required: list[str], timeout: int) -> dict:
                     if proc is None:
                         timed_out("replay")
                     elif proc.returncode != 0:
+                        environment_error = environment_error or environment_exit(proc.returncode, proc.stdout + proc.stderr)
                         stages["replay"]["status"] = "fail"
                         problems.append("kernel replay rejected the file: " + (proc.stdout + proc.stderr).strip()[-1000:])
                     else:
