@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IF-event-v1",
+  "description": "JSON Schema of the IF-event-v1 envelope.",
+  "type": "object",
+  "required": [
+    "seq",
+    "prev",
+    "ts",
+    "actor",
+    "kind",
+    "claim",
+    "data"
+  ],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "prev": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ts": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "object",
+      "required": [
+        "context_id",
+        "role",
+        "kind"
+      ],
+      "properties": {
+        "context_id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        }
+      }
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claim": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"
+    },
+    "data": {
+      "type": "object"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Stored by the ledger: the event's own hash."
+    }
+  },
+  "not": {
+    "required": [
+      "status"
+    ]
+  }
+}
