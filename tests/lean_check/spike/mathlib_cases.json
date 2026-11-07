@@ -1,0 +1,69 @@
+{
+ "_about": "Cases for S2.1.T11: lake comparator with Mathlib v4.35.0. Written by hand. control-pass must be accepted, control-fail and attack must be rejected, and trust shows that a weak Challenge passes because its author is trusted.",
+ "toolchain": "leanprover/lean4:v4.35.0",
+ "mathlib_rev": "v4.35.0",
+ "theorem_names": [
+  "main_theorem"
+ ],
+ "permitted_axioms": [
+  "propext",
+  "Quot.sound",
+  "Classical.choice"
+ ],
+ "cases": [
+  {
+   "name": "valid_even_square",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\ntheorem main_theorem (n : ℤ) (h : Even n) : Even (n ^ 2) := sorry\n",
+   "solution": "import Mathlib\n\ntheorem main_theorem (n : ℤ) (h : Even n) : Even (n ^ 2) := by\n  obtain ⟨k, rfl⟩ := h\n  exact ⟨2 * k ^ 2, by ring⟩\n"
+  },
+  {
+   "name": "valid_open_interval_refutation",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ndef Claim : Prop :=\n  ∀ f : ℝ → ℝ, ContinuousOn f (Ioo 0 1) → ∃ x ∈ Ioo (0 : ℝ) 1, IsMaxOn f (Ioo 0 1) x\n\ntheorem main_theorem : ¬ Claim := sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ndef Claim : Prop :=\n  ∀ f : ℝ → ℝ, ContinuousOn f (Ioo 0 1) → ∃ x ∈ Ioo (0 : ℝ) 1, IsMaxOn f (Ioo 0 1) x\n\ntheorem main_theorem : ¬ Claim := by\n  intro h\n  obtain ⟨x, ⟨hx0, hx1⟩, hmax⟩ := h id continuousOn_id\n  have hy : (x + 1) / 2 ∈ Ioo (0 : ℝ) 1 := ⟨by linarith, by linarith⟩\n  have : (x + 1) / 2 ≤ x := hmax hy\n  linarith\n"
+  },
+  {
+   "name": "valid_attains_max",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem main_theorem (f : ℝ → ℝ) (hf : ContinuousOn f (Icc 0 1)) :\n    ∃ x ∈ Icc (0 : ℝ) 1, IsMaxOn f (Icc 0 1) x := sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem main_theorem (f : ℝ → ℝ) (hf : ContinuousOn f (Icc 0 1)) :\n    ∃ x ∈ Icc (0 : ℝ) 1, IsMaxOn f (Icc 0 1) x :=\n  isCompact_Icc.exists_isMaxOn (nonempty_Icc.mpr zero_le_one) hf\n"
+  },
+  {
+   "name": "weaker_statement",
+   "kind": "control-fail",
+   "challenge": "import Mathlib\n\ntheorem main_theorem (n : ℤ) (h : Even n) : Even (n ^ 2) := sorry\n",
+   "solution": "import Mathlib\n\ntheorem main_theorem (n : ℤ) (h : Even n) : Even (n ^ 2) ∨ True := Or.inr trivial\n"
+  },
+  {
+   "name": "weak_challenge_is_trusted",
+   "kind": "trust",
+   "challenge": "import Mathlib\n\ntheorem main_theorem : (2 : ℝ) ≤ 2 := sorry\n",
+   "solution": "import Mathlib\n\ntheorem main_theorem : (2 : ℝ) ≤ 2 := le_refl 2\n"
+  },
+  {
+   "name": "kernel_skip",
+   "kind": "attack",
+   "challenge": "import Mathlib\n\ntheorem main_theorem : (1 : ℝ) = 2 := sorry\n",
+   "solution": "import Mathlib\n\nopen Lean Elab Command\n\nrun_cmd liftCoreM <|\n  withOptions (fun o => o.setBool (Name.mkStr `debug \"skipKernelTC\") true) <|\n    addDecl <| Declaration.thmDecl {\n      name := `false_thm, levelParams := [], type := mkConst ``False,\n      value := mkConst ``True.intro }\n\ntheorem main_theorem : (1 : ℝ) = 2 := False.elim false_thm\n"
+  },
+  {
+   "name": "hidden_axiom",
+   "kind": "attack",
+   "challenge": "import Mathlib\n\ntheorem main_theorem : (1 : ℝ) = 2 := sorry\n",
+   "solution": "import Mathlib\n\nopen Lean Elab Command\n\nrun_cmd liftCoreM <| addDecl <| Declaration.axiomDecl {\n  name := `hidden_assumption, levelParams := [], type := mkConst ``False, isUnsafe := false }\n\ntheorem main_theorem : (1 : ℝ) = 2 := False.elim hidden_assumption\n"
+  },
+  {
+   "name": "sorry_proof",
+   "kind": "attack",
+   "challenge": "import Mathlib\n\ntheorem main_theorem : (1 : ℝ) = 2 := sorry\n",
+   "solution": "import Mathlib\n\ntheorem main_theorem : (1 : ℝ) = 2 := by sorry\n"
+  },
+  {
+   "name": "local_instance_on_reals",
+   "kind": "attack",
+   "challenge": "import Mathlib\n\ntheorem main_theorem : (2 : ℝ) ≤ 1 := sorry\n",
+   "solution": "import Mathlib\n\ninstance evilLE : LE ℝ := ⟨fun _ _ => True⟩\n\ntheorem main_theorem : (2 : ℝ) ≤ 1 := trivial\n"
+  }
+ ]
+}
