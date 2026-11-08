@@ -1,0 +1,105 @@
+{
+ "_about": "Probe S8.3.T3 solutions, re-judged by lake comparator against the original statements.",
+ "toolchain": "leanprover/lean4:v4.35.0",
+ "mathlib_rev": "v4.35.0",
+ "theorem_names": [
+  "main_theorem"
+ ],
+ "permitted_axioms": [
+  "propext",
+  "Quot.sound",
+  "Classical.choice"
+ ],
+ "cases": [
+  {
+   "name": "r01",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r01 (f : ℝ → ℝ) (hf : ConvexOn ℝ univ f) (hd : Differentiable ℝ f) (x y : ℝ) :\n    f x + deriv f x * (y - x) ≤ f y := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r01 (f : ℝ → ℝ) (hf : ConvexOn ℝ univ f) (hd : Differentiable ℝ f) (x y : ℝ) :\n    f x + deriv f x * (y - x) ≤ f y := by\n  rcases lt_trichotomy x y with h | h | h\n  · have h1 := hf.deriv_le_slope (mem_univ x) (mem_univ y) h (hd x)\n    rw [slope_def_field, le_div_iff₀ (sub_pos.2 h)] at h1\n    linarith\n  · subst h\n    simp\n  · have h1 := hf.slope_le_deriv (mem_univ y) (mem_univ x) h (hd x)\n    rw [slope_def_field, div_le_iff₀ (sub_pos.2 h)] at h1\n    have h2 : deriv f x * (y - x) = -(deriv f x * (x - y)) := by ring\n    linarith\n",
+   "theorem_names": [
+    "r01"
+   ]
+  },
+  {
+   "name": "r02",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r02 (f : ℝ → ℝ) (hf : ConvexOn ℝ univ f) (hd : Differentiable ℝ f) (x : ℝ)\n    (h0 : deriv f x = 0) (y : ℝ) : f x ≤ f y := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r02 (f : ℝ → ℝ) (hf : ConvexOn ℝ univ f) (hd : Differentiable ℝ f) (x : ℝ)\n    (h0 : deriv f x = 0) (y : ℝ) : f x ≤ f y := by\n  rcases lt_trichotomy x y with h | h | h\n  · have hs := hf.deriv_le_slope (mem_univ x) (mem_univ y) h (hd x)\n    rw [h0, slope_def_field, le_div_iff₀ (sub_pos.mpr h), zero_mul] at hs\n    linarith\n  · rw [h]\n  · have hs := hf.slope_le_deriv (mem_univ y) (mem_univ x) h (hd x)\n    rw [h0, slope_def_field, div_le_iff₀ (sub_pos.mpr h), zero_mul] at hs\n    linarith\n",
+   "theorem_names": [
+    "r02"
+   ]
+  },
+  {
+   "name": "r03",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r03 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] (f : E → ℝ) (hf : ConvexOn ℝ univ f) (x y z : E) :\n    f ((1 / 3 : ℝ) • x + (1 / 3 : ℝ) • y + (1 / 3 : ℝ) • z) ≤ (f x + f y + f z) / 3 := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r03 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] (f : E → ℝ) (hf : ConvexOn ℝ univ f) (x y z : E) :\n    f ((1 / 3 : ℝ) • x + (1 / 3 : ℝ) • y + (1 / 3 : ℝ) • z) ≤ (f x + f y + f z) / 3 := by\n  have h := hf.map_sum_le (t := Finset.univ) (w := fun _ : Fin 3 => (1 / 3 : ℝ)) (p := ![x, y, z])\n    (fun _ _ => by norm_num) (by rw [Fin.sum_univ_three]; norm_num) (fun _ _ => mem_univ _)\n  have h2 : f ((1 / 3 : ℝ) • x + (1 / 3 : ℝ) • y + (1 / 3 : ℝ) • z) ≤\n      (1 / 3 : ℝ) • f x + (1 / 3 : ℝ) • f y + (1 / 3 : ℝ) • f z := by\n    rw [Fin.sum_univ_three, Fin.sum_univ_three] at h\n    exact h\n  simp only [smul_eq_mul] at h2\n  linarith\n",
+   "theorem_names": [
+    "r03"
+   ]
+  },
+  {
+   "name": "r04",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r04 (f : ℝ → ℝ) (m : ℝ) (hm : 0 < m) (hf : StrongConvexOn univ m f) (x y : ℝ)\n    (hx : ∀ z, f x ≤ f z) (hy : ∀ z, f y ≤ f z) : x = y := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r04 (f : ℝ → ℝ) (m : ℝ) (hm : 0 < m) (hf : StrongConvexOn univ m f) (x y : ℝ)\n    (hx : ∀ z, f x ≤ f z) (hy : ∀ z, f y ≤ f z) : x = y := by\n  exact (hf.strictConvexOn hm).eq_of_isMinOn\n    (isMinOn_iff.mpr fun z _ => hx z) (isMinOn_iff.mpr fun z _ => hy z)\n    (mem_univ x) (mem_univ y)\n",
+   "theorem_names": [
+    "r04"
+   ]
+  },
+  {
+   "name": "r05",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r05 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] : StrongConvexOn univ 2 (fun x : E => ‖x‖ ^ 2) := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r05 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] : StrongConvexOn univ 2 (fun x : E => ‖x‖ ^ 2) := by\n  rw [strongConvexOn_iff_convex]\n  refine (convexOn_const (0 : ℝ) (convex_univ (𝕜 := ℝ) (E := E))).congr ?_\n  intro x _\n  simp only []\n  ring\n",
+   "theorem_names": [
+    "r05"
+   ]
+  },
+  {
+   "name": "r06",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r06 (f : ℝ → ℝ) (L : ℝ) (hL : 0 ≤ L) (hd : Differentiable ℝ f)\n    (hlip : ∀ a b, |deriv f a - deriv f b| ≤ L * |a - b|) (x y : ℝ) :\n    f y ≤ f x + deriv f x * (y - x) + L / 2 * (y - x) ^ 2 := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r06 (f : ℝ → ℝ) (L : ℝ) (hL : 0 ≤ L) (hd : Differentiable ℝ f)\n    (hlip : ∀ a b, |deriv f a - deriv f b| ≤ L * |a - b|) (x y : ℝ) :\n    f y ≤ f x + deriv f x * (y - x) + L / 2 * (y - x) ^ 2 := by\n  obtain ⟨G, hG⟩ : ∃ G : ℝ → ℝ,\n      G = fun t => f t - f x - deriv f x * (t - x) - L / 2 * ((t - x) * (t - x)) := ⟨_, rfl⟩\n  have hg : ∀ t, HasDerivAt G\n      (deriv f t - deriv f x * 1 - L / 2 * (1 * (t - x) + (t - x) * 1)) t := by\n    intro t\n    have h1 := (hd t).hasDerivAt\n    have h2 : HasDerivAt (fun s => s - x) 1 t := (hasDerivAt_id t).sub_const x\n    have h3 : HasDerivAt (fun s => (s - x) * (s - x)) (1 * (t - x) + (t - x) * 1) t :=\n      h2.mul h2\n    have h4 := ((h1.sub_const (f x)).sub (h2.const_mul (deriv f x))).sub (h3.const_mul (L / 2))\n    rw [hG]\n    exact h4\n  have hGd : Differentiable ℝ G := fun t => (hg t).differentiableAt\n  have h0 : G x = 0 := by simp only [hG]; ring\n  have hy : G y = f y - (f x + deriv f x * (y - x) + L / 2 * (y - x) ^ 2) := by\n    simp only [hG]; ring\n  rcases le_total x y with hxy | hxy\n  · have hA : AntitoneOn G (Ici x) := by\n      apply antitoneOn_of_deriv_nonpos (convex_Ici x) hGd.continuous.continuousOn\n        hGd.differentiableOn\n      intro t ht\n      rw [interior_Ici] at ht\n      have ht' : x < t := ht\n      rw [(hg t).deriv]\n      have hl := hlip t x\n      rw [abs_of_pos (sub_pos.mpr ht')] at hl\n      have := le_abs_self (deriv f t - deriv f x)\n      linarith\n    have key : G y ≤ G x := hA (mem_Ici.mpr le_rfl) (mem_Ici.mpr hxy) hxy\n    linarith\n  · have hM : MonotoneOn G (Iic x) := by\n      apply monotoneOn_of_deriv_nonneg (convex_Iic x) hGd.continuous.continuousOn\n        hGd.differentiableOn\n      intro t ht\n      rw [interior_Iic] at ht\n      have ht' : t < x := ht\n      rw [(hg t).deriv]\n      have hl := hlip t x\n      rw [abs_of_neg (sub_neg.mpr ht')] at hl\n      have := neg_abs_le (deriv f t - deriv f x)\n      linarith\n    have key : G y ≤ G x := hM (mem_Iic.mpr hxy) (mem_Iic.mpr le_rfl) hxy\n    linarith\n",
+   "theorem_names": [
+    "r06"
+   ]
+  },
+  {
+   "name": "r07",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r07 (f : ℝ → ℝ) (m : ℝ) (hm : 0 < m) (hf : StrongConvexOn univ m f) (hd : Differentiable ℝ f)\n    (x : ℝ) (h0 : deriv f x = 0) (y : ℝ) : f x + m / 2 * (y - x) ^ 2 ≤ f y := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r07 (f : ℝ → ℝ) (m : ℝ) (hm : 0 < m) (hf : StrongConvexOn univ m f) (hd : Differentiable ℝ f)\n    (x : ℝ) (h0 : deriv f x = 0) (y : ℝ) : f x + m / 2 * (y - x) ^ 2 ≤ f y := by\n  have heq : (fun z : ℝ => f z - m / 2 * z ^ 2) = fun z => f z - m / (2 : ℝ) * ‖z‖ ^ 2 := by\n    funext z\n    rw [Real.norm_eq_abs, sq_abs]\n  have hc : ConvexOn ℝ univ (fun z : ℝ => f z - m / 2 * z ^ 2) := by\n    rw [heq]\n    exact strongConvexOn_iff_convex.mp hf\n  have h1 : HasDerivAt f 0 x := by\n    rw [← h0]\n    exact (hd x).hasDerivAt\n  have hg : HasDerivAt (fun z : ℝ => f z - m / 2 * z ^ 2) (-(m * x)) x := by\n    have h3 := h1.sub ((hasDerivAt_pow 2 x).const_mul (m / 2))\n    have e : (0:ℝ) - m / 2 * (((2:ℕ):ℝ) * x ^ (2 - 1)) = -(m * x) := by\n      rw [show (2:ℕ) - 1 = 1 from rfl, pow_one, Nat.cast_ofNat]\n      ring\n    exact h3.congr_deriv e\n  rcases lt_trichotomy x y with hxy | hxy | hxy\n  · have h := hc.le_slope_of_hasDerivAt (mem_univ x) (mem_univ y) hxy hg\n    simp only [slope_def_field] at h\n    rw [le_div_iff₀ (sub_pos.2 hxy)] at h\n    nlinarith [h]\n  · subst hxy\n    simp\n  · have h := hc.slope_le_of_hasDerivAt (mem_univ y) (mem_univ x) hxy hg\n    simp only [slope_def_field] at h\n    rw [div_le_iff₀ (sub_pos.2 hxy)] at h\n    nlinarith [h]\n",
+   "theorem_names": [
+    "r07"
+   ]
+  },
+  {
+   "name": "r08",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r08 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] (K : Set E) (hK : Convex ℝ K) (x y px py : E) (hpx : px ∈ K) (hpy : py ∈ K)\n    (hx : ∀ z ∈ K, ‖x - px‖ ≤ ‖x - z‖) (hy : ∀ z ∈ K, ‖y - py‖ ≤ ‖y - z‖) :\n    ‖px - py‖ ≤ ‖x - y‖ := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\ntheorem r08 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] (K : Set E) (hK : Convex ℝ K) (x y px py : E) (hpx : px ∈ K) (hpy : py ∈ K)\n    (hx : ∀ z ∈ K, ‖x - px‖ ≤ ‖x - z‖) (hy : ∀ z ∈ K, ‖y - py‖ ≤ ‖y - z‖) :\n    ‖px - py‖ ≤ ‖x - y‖ := by\n  have hinf : ∀ (u v : E), v ∈ K → (∀ z ∈ K, ‖u - v‖ ≤ ‖u - z‖) →\n      ‖u - v‖ = ⨅ w : K, ‖u - w‖ := by\n    intro u v hv h\n    haveI : Nonempty K := ⟨⟨v, hv⟩⟩\n    apply le_antisymm\n    · exact le_ciInf (fun w => h w w.2)\n    · have hb : BddBelow (Set.range fun w : K => ‖u - (w : E)‖) := by\n        refine ⟨0, ?_⟩\n        rintro _ ⟨w, rfl⟩\n        exact norm_nonneg _\n      exact ciInf_le hb ⟨v, hv⟩\n  have h1 := (norm_eq_iInf_iff_real_inner_le_zero hK hpx).1 (hinf x px hpx hx) py hpy\n  have h2 := (norm_eq_iInf_iff_real_inner_le_zero hK hpy).1 (hinf y py hpy hy) px hpx\n  have hxy : x - y = (x - px) - (y - py) + (px - py) := by abel\n  have e0 : inner ℝ (x - y) (px - py) = inner ℝ (x - px) (px - py)\n      - inner ℝ (y - py) (px - py) + ‖px - py‖ ^ 2 := by\n    rw [hxy, inner_add_left, inner_sub_left (x - px) (y - py) (px - py),\n      real_inner_self_eq_norm_sq]\n  have e1 : inner ℝ (x - px) (px - py) = -inner ℝ (x - px) (py - px) := by\n    rw [← inner_neg_right, neg_sub]\n  have key : ‖px - py‖ ^ 2 ≤ inner ℝ (x - y) (px - py) := by linarith\n  have hle := real_inner_le_norm (x - y) (px - py)\n  rcases eq_or_lt_of_le (norm_nonneg (px - py)) with h | h\n  · rw [← h]; exact norm_nonneg _\n  · exact le_of_mul_le_mul_right (by nlinarith) h\n",
+   "theorem_names": [
+    "r08"
+   ]
+  },
+  {
+   "name": "r09",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r09 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] [CompleteSpace E] (f : E → ℝ) (L : ℝ) (hL : 0 < L) (hd : Differentiable ℝ f)\n    (hlip : ∀ a b, ‖gradient f a - gradient f b‖ ≤ L * ‖a - b‖) (x : E) :\n    f (x - (1 / L) • gradient f x) ≤ f x - 1 / (2 * L) * ‖gradient f x‖ ^ 2 := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\nlemma r09_descent {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] [CompleteSpace E] (f : E → ℝ) (L : ℝ)\n    (hd : Differentiable ℝ f)\n    (hlip : ∀ a b, ‖gradient f a - gradient f b‖ ≤ L * ‖a - b‖) (x d : E) :\n    f (x + d) ≤ f x + inner ℝ (gradient f x) d + L / 2 * ‖d‖ ^ 2 := by\n  let φ : ℝ → ℝ := fun t =>\n    f (x + t • d) - t * inner ℝ (gradient f x) d - L / 2 * t ^ 2 * ‖d‖ ^ 2\n  let φ' : ℝ → ℝ := fun t =>\n    inner ℝ (gradient f (x + t • d)) d - inner ℝ (gradient f x) d - L * t * ‖d‖ ^ 2\n  have hderiv : ∀ t, HasDerivAt φ (φ' t) t := by\n    intro t\n    have h1 : HasDerivAt (fun s : ℝ => x + s • d) d t := by\n      simpa using ((hasDerivAt_id t).smul_const d).const_add x\n    have h2 : HasDerivAt (fun s : ℝ => f (x + s • d))\n        (inner ℝ (gradient f (x + t • d)) d) t := by\n      have := (hd (x + t • d)).hasFDerivAt.comp_hasDerivAt t h1\n      rw [inner_gradient_left]\n      exact this\n    have h3 : HasDerivAt (fun s : ℝ => s * inner ℝ (gradient f x) d)\n        (inner ℝ (gradient f x) d) t := by\n      simpa using (hasDerivAt_id t).mul_const (inner ℝ (gradient f x) d)\n    have h4 : HasDerivAt (fun s : ℝ => L / 2 * s ^ 2 * ‖d‖ ^ 2) (L * t * ‖d‖ ^ 2) t := by\n      have hp : HasDerivAt (fun s : ℝ => s ^ 2) (2 * t) t := by\n        simpa using hasDerivAt_pow 2 t\n      have := (hp.const_mul (L / 2)).mul_const (‖d‖ ^ 2)\n      refine this.congr_deriv ?_\n      ring\n    exact (h2.sub h3).sub h4\n  obtain ⟨c, hcm, hc⟩ := exists_hasDerivAt_eq_slope φ φ' (by norm_num : (0:ℝ) < 1)\n    (fun t _ => (hderiv t).continuousAt.continuousWithinAt) (fun t _ => hderiv t)\n  have hc0 : 0 < c := hcm.1\n  have hle : φ' c ≤ 0 := by\n    have e1 : inner ℝ (gradient f (x + c • d)) d - inner ℝ (gradient f x) d\n        = inner ℝ (gradient f (x + c • d) - gradient f x) d := (inner_sub_left _ _ _).symm\n    have e2 := real_inner_le_norm (gradient f (x + c • d) - gradient f x) d\n    have e3 := hlip (x + c • d) x\n    have e4 : ‖x + c • d - x‖ = c * ‖d‖ := by\n      rw [show x + c • d - x = c • d by abel, norm_smul, Real.norm_of_nonneg hc0.le]\n    rw [e4] at e3\n    have e5 : ‖gradient f (x + c • d) - gradient f x‖ * ‖d‖ ≤ L * (c * ‖d‖) * ‖d‖ :=\n      mul_le_mul_of_nonneg_right e3 (norm_nonneg _)\n    show inner ℝ (gradient f (x + c • d)) d - inner ℝ (gradient f x) d - L * c * ‖d‖ ^ 2 ≤ 0\n    nlinarith [e1, e2, e5]\n  have hφ : φ 1 ≤ φ 0 := by\n    rw [sub_zero, div_one] at hc\n    linarith\n  have h1 : φ 1 = f (x + d) - inner ℝ (gradient f x) d - L / 2 * ‖d‖ ^ 2 := by\n    show f (x + (1:ℝ) • d) - 1 * inner ℝ (gradient f x) d - L / 2 * 1 ^ 2 * ‖d‖ ^ 2 = _\n    rw [one_smul]\n    ring\n  have h0 : φ 0 = f x := by\n    show f (x + (0:ℝ) • d) - 0 * inner ℝ (gradient f x) d - L / 2 * 0 ^ 2 * ‖d‖ ^ 2 = f x\n    rw [zero_smul, add_zero]\n    ring\n  rw [h1, h0] at hφ\n  linarith\n\ntheorem r09 {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] [CompleteSpace E] (f : E → ℝ) (L : ℝ) (hL : 0 < L) (hd : Differentiable ℝ f)\n    (hlip : ∀ a b, ‖gradient f a - gradient f b‖ ≤ L * ‖a - b‖) (x : E) :\n    f (x - (1 / L) • gradient f x) ≤ f x - 1 / (2 * L) * ‖gradient f x‖ ^ 2 := by\n  have h := r09_descent f L hd hlip x (-((1 / L) • gradient f x))\n  have hi : inner ℝ (gradient f x) (-((1 / L) • gradient f x)) = -(1 / L * ‖gradient f x‖ ^ 2) := by\n    rw [inner_neg_right, real_inner_smul_right, real_inner_self_eq_norm_sq]\n  have hn : ‖-((1 / L) • gradient f x)‖ ^ 2 = (1 / L) ^ 2 * ‖gradient f x‖ ^ 2 := by\n    rw [norm_neg, norm_smul, Real.norm_of_nonneg (le_of_lt (one_div_pos.mpr hL)), mul_pow]\n  have hx : x - (1 / L) • gradient f x = x + -((1 / L) • gradient f x) := sub_eq_add_neg _ _\n  rw [hi, hn] at h\n  rw [hx]\n  have hinv : L * L⁻¹ = 1 := mul_inv_cancel₀ hL.ne'\n  have key : f x + -(1 / L * ‖gradient f x‖ ^ 2) + L / 2 * ((1 / L) ^ 2 * ‖gradient f x‖ ^ 2)\n      = f x - 1 / (2 * L) * ‖gradient f x‖ ^ 2 := by\n    first\n      | linear_combination (1 / 2 * L⁻¹ * ‖gradient f x‖ ^ 2) * hinv\n      | (field_simp; done)\n      | (field_simp; ring1)\n  linarith [h, key]\n",
+   "theorem_names": [
+    "r09"
+   ]
+  },
+  {
+   "name": "r10",
+   "kind": "control-pass",
+   "challenge": "import Mathlib\n\nopen Set\n\ntheorem r10 (f : ℝ → ℝ) (m L : ℝ) (hm : 0 < m) (hmL : m ≤ L) (hf : StrongConvexOn univ m f)\n    (hd : Differentiable ℝ f) (hlip : ∀ a b, |deriv f a - deriv f b| ≤ L * |a - b|)\n    (x : ℕ → ℝ) (hx : ∀ k, x (k + 1) = x k - 1 / L * deriv f (x k)) (xs : ℝ) (hmin : ∀ z, f xs ≤ f z) (k : ℕ) :\n    f (x k) - f xs ≤ (1 - m / L) ^ k * (f (x 0) - f xs) := by\n  sorry\n",
+   "solution": "import Mathlib\n\nopen Set\n\nlemma r10_descent (f : ℝ → ℝ) (L : ℝ) (hd : Differentiable ℝ f)\n    (hlip : ∀ a b, |deriv f a - deriv f b| ≤ L * |a - b|) (x y : ℝ) :\n    f y ≤ f x + deriv f x * (y - x) + L / 2 * ((y - x) * (y - x)) := by\n  set h : ℝ → ℝ := fun y => f x + deriv f x * (y - x) + L / 2 * ((y - x) * (y - x)) - f y with hh\n  have key : ∀ z, HasDerivAt h (deriv f x + L * (z - x) - deriv f z) z := by\n    intro z\n    have hs : HasDerivAt (fun y : ℝ => y - x) 1 z := (hasDerivAt_id' z).sub_const x\n    exact ((((hs.const_mul (deriv f x)).const_add (f x)).add\n      ((hs.mul hs).const_mul (L / 2))).sub (hd z).hasDerivAt).congr_deriv (by ring)\n  have hx0 : h x = 0 := by simp [hh]\n  suffices 0 ≤ h y by simp only [hh] at this; linarith\n  rcases le_total x y with hxy | hxy\n  · have hmono : MonotoneOn h (Ici x) := by\n      apply monotoneOn_of_deriv_nonneg (convex_Ici x)\n      · exact fun z _ => (key z).continuousAt.continuousWithinAt\n      · exact fun z _ => (key z).differentiableAt.differentiableWithinAt\n      · intro z hz\n        rw [interior_Ici] at hz\n        have hz' : x < z := hz\n        rw [(key z).deriv]\n        have h1 := hlip z x\n        rw [abs_of_pos (sub_pos.mpr hz')] at h1\n        have h2 := le_abs_self (deriv f z - deriv f x)\n        linarith\n    have := hmono (left_mem_Ici) (show y ∈ Ici x from hxy) hxy\n    linarith\n  · have hanti : AntitoneOn h (Iic x) := by\n      apply antitoneOn_of_deriv_nonpos (convex_Iic x)\n      · exact fun z _ => (key z).continuousAt.continuousWithinAt\n      · exact fun z _ => (key z).differentiableAt.differentiableWithinAt\n      · intro z hz\n        rw [interior_Iic] at hz\n        have hz' : z < x := hz\n        rw [(key z).deriv]\n        have h1 := hlip x z\n        rw [abs_of_pos (sub_pos.mpr hz')] at h1\n        have h2 := le_abs_self (deriv f x - deriv f z)\n        linarith\n    have := hanti (show y ∈ Iic x from hxy) right_mem_Iic hxy\n    linarith\n\nlemma r10_first (f : ℝ → ℝ) (m : ℝ) (hf : StrongConvexOn univ m f) (hd : Differentiable ℝ f)\n    (x z : ℝ) : f x + deriv f x * (z - x) + m / 2 * ((z - x) * (z - x)) ≤ f z := by\n  have hc : ConvexOn ℝ univ (fun z => f z - m / 2 * (z * z)) := by\n    refine (strongConvexOn_iff_convex.mp hf).congr ?_\n    intro z _\n    simp only [Real.norm_eq_abs, sq_abs]\n    ring\n  have hg : HasDerivAt (fun z => f z - m / 2 * (z * z)) (deriv f x - m * x) x := by\n    have := (hd x).hasDerivAt.sub (((hasDerivAt_id' x).mul (hasDerivAt_id' x)).const_mul (m / 2))\n    exact this.congr_deriv (by ring)\n  rcases lt_trichotomy x z with hxz | rfl | hxz\n  · have h := hc.le_slope_of_hasDerivAt (mem_univ x) (mem_univ z) hxz hg\n    rw [slope_def_field, le_div_iff₀ (sub_pos.mpr hxz)] at h\n    have h2 : (deriv f x - m * x) * (z - x) ≤ (f z - m / 2 * (z * z)) - (f x - m / 2 * (x * x)) := h\n    nlinarith [h2]\n  · simp\n  · have h := hc.slope_le_of_hasDerivAt (mem_univ z) (mem_univ x) hxz hg\n    rw [slope_def_field, div_le_iff₀ (sub_pos.mpr hxz)] at h\n    have h2 : (f x - m / 2 * (x * x)) - (f z - m / 2 * (z * z)) ≤ (deriv f x - m * x) * (x - z) := h\n    nlinarith [h2]\n\ntheorem r10 (f : ℝ → ℝ) (m L : ℝ) (hm : 0 < m) (hmL : m ≤ L) (hf : StrongConvexOn univ m f)\n    (hd : Differentiable ℝ f) (hlip : ∀ a b, |deriv f a - deriv f b| ≤ L * |a - b|)\n    (x : ℕ → ℝ) (hx : ∀ k, x (k + 1) = x k - 1 / L * deriv f (x k)) (xs : ℝ) (hmin : ∀ z, f xs ≤ f z) (k : ℕ) :\n    f (x k) - f xs ≤ (1 - m / L) ^ k * (f (x 0) - f xs) := by\n  have hL : 0 < L := lt_of_lt_of_le hm hmL\n  have hq : 0 ≤ 1 - m / L := by\n    have : m / L ≤ 1 := (div_le_one hL).mpr hmL\n    linarith\n  -- PL inequality\n  have hPL : ∀ y, 2 * m * (f y - f xs) ≤ (deriv f y) ^ 2 := by\n    intro y\n    have fo := r10_first f m hf hd y xs\n    have := mul_le_mul_of_nonneg_left fo (by positivity : (0:ℝ) ≤ 2 * m)\n    nlinarith [sq_nonneg (m * (xs - y) + deriv f y)]\n  have hstep : ∀ n, f (x (n + 1)) - f xs ≤ (1 - m / L) * (f (x n) - f xs) := by\n    intro n\n    have d := r10_descent f L hd hlip (x n) (x (n + 1))\n    rw [hx n] at d\n    have e : deriv f (x n) * (x n - 1 / L * deriv f (x n) - x n)\n        + L / 2 * ((x n - 1 / L * deriv f (x n) - x n) * (x n - 1 / L * deriv f (x n) - x n))\n        = - (deriv f (x n)) ^ 2 / (2 * L) := by\n      field_simp\n      ring\n    have d2 : f (x n - 1 / L * deriv f (x n)) ≤ f (x n) - (deriv f (x n)) ^ 2 / (2 * L) := by\n      have : f (x n) - (deriv f (x n)) ^ 2 / (2 * L) = f (x n) + (- (deriv f (x n)) ^ 2 / (2 * L)) := by\n        ring\n      rw [this, ← e]\n      linarith\n    have hP := hPL (x n)\n    have h3 : m * (f (x n) - f xs) / L ≤ (deriv f (x n)) ^ 2 / (2 * L) := by\n      rw [div_le_div_iff₀ hL (by positivity)]\n      nlinarith [mul_le_mul_of_nonneg_left hP hL.le]\n    have eq : (1 - m / L) * (f (x n) - f xs) = (f (x n) - f xs) - m * (f (x n) - f xs) / L := by\n      ring\n    rw [eq, hx n]\n    linarith\n  induction k with\n  | zero => simp\n  | succ n ih =>\n    calc f (x (n + 1)) - f xs ≤ (1 - m / L) * (f (x n) - f xs) := hstep n\n      _ ≤ (1 - m / L) * ((1 - m / L) ^ n * (f (x 0) - f xs)) := mul_le_mul_of_nonneg_left ih hq\n      _ = (1 - m / L) ^ (n + 1) * (f (x 0) - f xs) := by ring\n",
+   "theorem_names": [
+    "r10"
+   ]
+  }
+ ]
+}

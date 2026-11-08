@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-MATHLIB_CASES_FILE = HERE / "mathlib_cases.json"
+MATHLIB_CASES_FILE = HERE / os.environ.get("SPIKE_CASES", "mathlib_cases.json")
 MATHLIB_GIT_URL = "https://github.com/leanprover-community/mathlib4.git"
 TIMEOUT_SECONDS = 40 * 60  # 40 minutes
 
