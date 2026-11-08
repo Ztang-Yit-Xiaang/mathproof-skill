@@ -26,5 +26,5 @@ All four runs answered `INVALID` on `logic-002` and `analysis-002`, where the ex
 
 ## Files
 
-- `summary.json`: per-case scores for every run.
+- `summary.json`: per-case scores for every run. Runs from now on also record `skill_sha256`, the hash of the skill text used. These results predate that, and were produced with the skill as of 0.2.1, so they don't reflect later changes to `SKILL.md`.
 - `raw/<model>/<condition>/<id>.txt`: every model answer, unedited.

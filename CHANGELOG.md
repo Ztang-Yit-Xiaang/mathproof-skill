@@ -4,6 +4,8 @@
 
 - Added `INVESTIGATE` mode ([investigate.md](skill/references/investigate.md)): a durable record of one claim. `skill/scripts/mathproof.py` keeps an append-only ledger, runs Lean checks through the checker, derives each claim's status, re-runs every check with `verify`, and renders a report. No record carries a status. At this stage the strongest result is `kernel-passed-local`, with the verdict `UNVERIFIED`, and nothing an agent writes can raise it. The other modes are unchanged and don't need any of this.
 - Checker 2.5: a killed or crashed Lean now exits `2` instead of reporting a failure.
+- Corrected `logic-001`, `analysis-001`, and `sets-001` from `instance` to `faithful`. Their Lean statements negate the whole claim, and `instance` means a specific case of it. Verdicts are unchanged.
+- `run_benchmark.py` now records the hash of the skill text, and no longer reuses a `skill` answer produced with different text. So a rerun re-asks those cases, which costs model calls.
 
 ## 0.2.2 — 2026-11-05
 
