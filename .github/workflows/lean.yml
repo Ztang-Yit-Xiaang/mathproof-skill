@@ -23,3 +23,5 @@ jobs:
       - run: python3 scripts/check_lean_evals.py -j 2
       - run: python3 tests/lean_check/test_pins.py
       - run: python3 tests/lean_check/run_tests.py
+      - run: python3 -m unittest discover -s tests/research/lean -v
+      - run: python3 scripts/m0_demo.py
