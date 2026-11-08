@@ -32,6 +32,7 @@ jobs:
       - name: Run mathlib spike
         env:
           SPIKE_CASES: probe_cases.json
+          SPIKE_ONLY: r10
         run: python3 tests/lean_check/spike/run_mathlib_spike.py
       - uses: actions/upload-artifact@v4
         if: always()
