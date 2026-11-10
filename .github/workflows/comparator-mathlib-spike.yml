@@ -31,7 +31,7 @@ jobs:
           bwrap --ro-bind / / true && echo "BWRAP WORKS"
       - name: Run mathlib spike
         env:
-          SPIKE_CASES: probe2_cases.json
+          SPIKE_CASES: woodruff_cases.json
         run: python3 tests/lean_check/spike/run_mathlib_spike.py
       - uses: actions/upload-artifact@v4
         if: always()
