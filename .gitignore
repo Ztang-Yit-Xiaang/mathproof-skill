@@ -3,3 +3,4 @@ __pycache__/
 .lake/
 .mps_check_*.lean
 .DS_Store
+.agy-work/

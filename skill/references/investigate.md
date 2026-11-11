@@ -37,6 +37,17 @@ Say what the checked theorem is, relative to the claim:
 
 `--decl` needs the exact full name, including namespaces, and it must be a theorem.
 
+## Experiments
+
+A numerical experiment is evidence, never a proof or a refutation: it can't raise a claim's status, and a violation it reports shows up only as a candidate to examine. Write the experiment as one Python or R file that reads `MP_SEED` (an integer), `MP_PARAMS` (a JSON object) and writes one JSON object to the path in `MP_OUT`, with any counterexample candidates as a list under `"violations"`:
+
+```bash
+python3 scripts/mathproof.py experiment run --dir <dir> --claim inv/c1 --code check.R --lang r --seed 1 --params '{"n": 100}' --timeout 600
+python3 scripts/mathproof.py experiment rerun --dir <dir> --seq <event seq>
+```
+
+`run` records the code, seed, parameters, an environment fingerprint, and a hash of the results, whatever the outcome (`completed`, `timeout`, or `error`). Nothing is made up when the program fails or R is missing. `rerun` runs the stored code again and exits 0 only when the outcome and results match. Experiments aren't sandboxed, and the memory limit can't be enforced on macOS; each record says so. Put an `renv.lock` next to an R file to pin its packages.
+
 ## Other records
 
 Add these with `event add --dir <dir> --claim <id> --kind <kind> --data '<json>'`. Store a file first with `artifact add --dir <dir> <file>`, which prints the hash these records need:
