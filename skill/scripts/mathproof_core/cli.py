@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .experiments import record_experiment, rerun_experiment, run_experiment
 from .gate import EnvironmentFailure, record_check
 from .ledger import Ledger
 from .replay import verify_investigation
@@ -146,6 +147,47 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     return 2 if result["environment_errors"] else 0
 
 
+def _cmd_experiment_run(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    try:
+        params = json.loads(args.params)
+    except Exception as exc:
+        return _fail(f"invalid JSON for --params: {exc}")
+    if not isinstance(params, dict):
+        return _fail("--params must decode to a JSON object")
+    if not Path(args.code).is_file():
+        return _fail(f"no such code file: {args.code}")
+    record = run_experiment(
+        args.code,
+        language=args.lang,
+        seed=args.seed,
+        params=params,
+        timeout_s=args.timeout,
+        memory_mb=args.memory_mb,
+    )
+    try:
+        event = record_experiment(ledger, args.claim, args.code, record, _actor())
+    except ValueError as exc:
+        return _fail(str(exc))
+    print(json.dumps(event, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_experiment_rerun(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    events = ledger.read()
+    matching = [e for e in events if e.get("seq") == args.seq]
+    if not matching:
+        return _fail(f"no event with seq {args.seq}")
+    event = matching[0]
+    if event.get("kind") != "experiment":
+        return _fail(f"event {args.seq} is not an experiment event")
+    diffs = rerun_experiment(ledger, event)
+    for d in diffs:
+        print(d)
+    return 0 if not diffs else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mathproof", description="Mathproof records CLI.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -234,6 +276,26 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--project", metavar="DIR", help="Use this Lean project, not the recorded one.")
     verify.add_argument("--json", action="store_true", help="Print a JSON report.")
     verify.set_defaults(handler=_cmd_verify)
+
+    # experiment ...
+    experiment_parser = subparsers.add_parser("experiment", help="Run and re-run experiments.")
+    experiment_sub = experiment_parser.add_subparsers(dest="experiment_command", required=True)
+
+    exp_run = experiment_sub.add_parser("run", help="Run an experiment and record the event.")
+    exp_run.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    exp_run.add_argument("--claim", required=True, metavar="C", help="Claim identifier.")
+    exp_run.add_argument("--code", required=True, metavar="FILE", help="Experiment program file.")
+    exp_run.add_argument("--lang", required=True, choices=("python", "r"), help="Experiment language.")
+    exp_run.add_argument("--seed", type=int, default=0, metavar="N", help="Integer seed.")
+    exp_run.add_argument("--params", default="{}", metavar="JSON", help="Parameters as JSON object.")
+    exp_run.add_argument("--timeout", type=float, default=60, metavar="S", help="Timeout in seconds.")
+    exp_run.add_argument("--memory-mb", type=int, default=2048, metavar="M", help="Memory limit in MB.")
+    exp_run.set_defaults(handler=_cmd_experiment_run)
+
+    exp_rerun = experiment_sub.add_parser("rerun", help="Re-run a recorded experiment event.")
+    exp_rerun.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    exp_rerun.add_argument("--seq", required=True, type=int, metavar="N", help="Event sequence number.")
+    exp_rerun.set_defaults(handler=_cmd_experiment_rerun)
 
     return parser
 
