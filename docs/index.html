@@ -183,6 +183,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
     </a>
     <div class="links">
       <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#investigate">Investigate</a>
       <a class="opt" href="#examples">Examples</a>
       <a class="opt" href="#showcase">Showcase</a>
       <a href="#install">Install</a>
@@ -254,7 +255,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
   <div class="wrap">
     <div class="eyebrow">How it works</div>
     <h2>A pipeline that tries to say no.</h2>
-    <p class="lede">Four modes — <code>PROVE</code>, <code>AUDIT</code>, <code>EXPLAIN</code>, <code>RESEARCH</code> — share one workflow. Every verdict carries a Lean status.</p>
+    <p class="lede">Four modes — <code>PROVE</code>, <code>AUDIT</code>, <code>EXPLAIN</code>, <code>RESEARCH</code> — share one workflow. Every verdict carries a Lean status. A fifth, <a href="#investigate"><code>INVESTIGATE</code></a>, keeps a durable record of one claim.</p>
     <div class="pipe">
       <div class="st"><b>Assumptions</b><span>Type every object; write down every hypothesis.</span></div>
       <div class="st"><b>Adversarial audit</b><span>Hunt edge cases and counterexamples first.</span></div>
@@ -268,6 +269,62 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
       <span style="width:12px"></span>
       <span class="tag ok">LEAN-CHECKED</span><span class="tag warn">LEAN-CHECKED (partial)</span><span class="tag bad">LEAN-FAILED</span><span class="tag neutral">NOT FORMALIZED</span>
     </div>
+  </div>
+</section>
+
+<section id="investigate">
+  <div class="wrap">
+    <div class="eyebrow">Investigate mode · new on <code>main</code>, not yet in a release</div>
+    <h2>A record you can re-run, with a status no one can write.</h2>
+    <p class="lede">For a claim worth keeping, <code>INVESTIGATE</code> mode records everything that happens to it — Lean checks, numerical experiments, fidelity tables, notes — in an append-only ledger. The status is <em>derived</em> from that record by the tool. The agent never writes a status, and one it writes has no effect.</p>
+    <div class="pipe">
+      <div class="st"><b>Claim</b><span>State it once. A revised statement is a new claim.</span></div>
+      <div class="st"><b>Lean check</b><span>Proof, refutation, or one step, run through the checker.</span></div>
+      <div class="st"><b>Experiments</b><span>Seeded Python or R, with code, seed and results hashed.</span></div>
+      <div class="st"><b>Fidelity</b><span>Compare the Lean statement with the informal one.</span></div>
+      <div class="st"><b>Status</b><span>Derived from the ledger, never typed in.</span></div>
+      <div class="st"><b>Verify</b><span>Re-run every check from scratch, then report.</span></div>
+    </div>
+
+    <div class="two" style="margin-top:30px">
+      <div>
+<pre><code>mathproof.py init inv
+mathproof.py claim add --dir inv --id inv/c1 --kind theorem \
+    --text "The informal claim."
+mathproof.py check --dir inv --claim inv/c1 --polarity claim \
+    --decl Full.Name --project &lt;lean-project&gt; File.lean
+mathproof.py experiment run --dir inv --claim inv/c1 \
+    --code check.R --lang r --seed 1
+mathproof.py status --dir inv --claim inv/c1
+mathproof.py verify inv</code></pre>
+<pre class="out"><code>"headline": "kernel-passed-local",
+"verdict":  "UNVERIFIED",
+"lean_status": "KERNEL-PASSED (local; claim, fidelity: none)",
+"computational": { "runs": 1, "candidates": 0 }
+…
+<span class="pass">OK</span>: 10 checks re-run.</code></pre>
+      </div>
+      <div>
+        <ul class="checks">
+          <li><span><strong>Hash-chained ledger.</strong> Every event links to the one before it, so an edited line is caught. Files are stored by their SHA-256.</span></li>
+          <li><span><strong>Polarity is explicit.</strong> A check proves the claim, refutes it, or proves one step. A step never counts as settling the claim.</span></li>
+          <li><span><strong>Experiments are evidence, never proof.</strong> A seeded Python or R program is recorded with its code, seed, parameters, environment and results hash, and <code>experiment rerun</code> checks it reproduces. It can flag a counterexample candidate. It can't raise a status.</span></li>
+          <li><span><strong><code>verify</code> trusts nothing recorded.</strong> It re-runs every Lean check with the installed checker. A recorded PASS counts for nothing until the re-run agrees.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="found">
+      <div class="card">
+        <h3>The ceiling, stated plainly</h3>
+        <p>Today the strongest result is <span class="tag ok">kernel-passed-local</span> with the verdict <span class="tag neutral">UNVERIFIED</span>. A check on your own machine can't stand in for a clean-machine check plus a person's signature, so nothing reaches <code>VALID</code> or <code>INVALID</code> through this mode yet. The local ledger catches accidents and simple edits, not a determined agent that rewrites it whole. That limit is in the docs, not hidden.</p>
+      </div>
+      <div class="card">
+        <h3>What comes next</h3>
+        <p>An authoritative tier: a sandboxed Linux CI run of <code>lake comparator</code>, which in our tests rejected every attack we built, with and without Mathlib. Then a signed human review of fidelity. We're already using the workflow on research-level results from the matrix-sketching literature, with formal proofs and numerical checks kept in one ledger.</p>
+      </div>
+    </div>
+    <p style="margin-top:18px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/skill/references/investigate.md">Read the INVESTIGATE guide →</a></p>
   </div>
 </section>
 
@@ -421,7 +478,7 @@ theorem t (n : Nat) : n * 1 = n := by trust_me</code></pre>
   <div class="wrap">
     <div class="stats">
       <div class="card stat"><b>22</b><span>benchmark cases</span></div>
-      <div class="card stat"><b>21</b><span>formalized and checked in Lean</span></div>
+      <div class="card stat"><b>22</b><span>formalized and checked in Lean</span></div>
       <div class="card stat"><b>28</b><span>checker regression fixtures</span></div>
       <div class="card stat"><b>3</b><span>agents supported</span></div>
     </div>

@@ -210,7 +210,7 @@ The full write-up, with proofs of every lemma, the post-audit, and the fidelity 
 
 More worked audits, including fidelity tables, are in [`examples/`](examples/). [Example 7](examples/07-assumption-that-hurts.md) shows the assumption cost audit rejecting a tempting repair: "assume $A$ invertible" fixes the proof of "$A^2=0 \implies A=0$" only by making its hypotheses unsatisfiable.
 
-## Four modes
+## Modes
 
 | Mode | Purpose | Typical output |
 | --- | --- | --- |
@@ -218,8 +218,29 @@ More worked audits, including fidelity tables, are in [`examples/`](examples/). 
 | `AUDIT` | Inspect a supplied proof without silently repairing it | First bad step, diagnosis, verdict, optional repair |
 | `EXPLAIN` | Teach a proof while preserving its logic | Typed notation, intuition, step-by-step dependencies |
 | `RESEARCH` | Verify named, recent, or uncertain external results | Exact theorem, hypothesis bridge, primary citation |
+| `INVESTIGATE` | Keep a durable, re-runnable record of one claim | Ledger of checks and experiments, derived status, `verify` result |
 
 Possible verdicts are `VALID`, `INVALID`, `CONDITIONALLY VALID`, `INCOMPLETE`, and `UNVERIFIED`. Each one also carries a Lean status: `LEAN-CHECKED`, `LEAN-CHECKED (partial: …)`, `LEAN-FAILED`, or `NOT FORMALIZED`.
+
+### `INVESTIGATE`: a record you can re-run
+
+*On `main`, not yet in a release.* For a claim worth keeping, the skill records everything that happens to it in an append-only, hash-chained ledger: Lean checks, numerical experiments, fidelity tables, and notes. The status is derived from that record by the tool. The agent never writes a status, and a status it writes has no effect.
+
+```bash
+python3 skill/scripts/mathproof.py init inv
+python3 skill/scripts/mathproof.py claim add --dir inv --id inv/c1 --kind theorem --text "The informal claim."
+python3 skill/scripts/mathproof.py check --dir inv --claim inv/c1 --polarity claim --decl Full.Name --project <lean-project> File.lean
+python3 skill/scripts/mathproof.py experiment run --dir inv --claim inv/c1 --code check.R --lang r --seed 1
+python3 skill/scripts/mathproof.py status --dir inv --claim inv/c1
+python3 skill/scripts/mathproof.py verify inv
+```
+
+- **Polarity is explicit.** A check proves the claim (`claim`), refutes it (`negation`), or proves one `step`. A step never settles the claim.
+- **Experiments are evidence, never proof.** A seeded Python or R program is recorded with its code, seed, parameters, environment, and results hash, and `experiment rerun` checks that it reproduces. It can flag a counterexample candidate. It can't raise a status.
+- **`verify` trusts nothing recorded.** It re-runs every Lean check with the installed checker, so a recorded PASS counts for nothing until the re-run agrees.
+- **The ceiling, stated plainly.** Today the strongest result is `kernel-passed-local` with the verdict `UNVERIFIED`. A check on your own machine can't stand in for a clean-machine check plus a person's signature, so nothing reaches `VALID` or `INVALID` through this mode yet. The ledger catches accidents and simple edits, not an agent that rewrites it whole. An authoritative tier (`lake comparator` in sandboxed Linux CI) and signed fidelity review come next.
+
+The full guide is in [`skill/references/investigate.md`](skill/references/investigate.md).
 
 ## Lean verification
 
@@ -263,12 +284,13 @@ mathproof-skill/
 ├── skill/                  # Installable, runtime-only skill
 │   ├── SKILL.md
 │   ├── references/         # Includes lean-verification.md
-│   └── scripts/            # lean_check.py, lean_audit.lean
+│   └── scripts/            # lean_check.py, lean_audit.lean, mathproof.py + mathproof_core/ (INVESTIGATE)
 ├── lean/                   # Lean 4 + Mathlib project; machine-checks every eval case
 ├── examples/               # Human-readable demonstrations
 ├── evals/                  # Adversarial benchmark cases, linked to Lean files
 ├── scripts/                # Eval validation and Lean eval checking
 ├── tests/lean_check/       # Regression fixtures for the checker
+├── tests/research/         # Tests for the ledger, statuses, replay, and experiments
 └── launch/                 # Xiaohongshu launch materials
 ```
 
@@ -336,13 +358,14 @@ cd lean && lake exe cache get && cd ..
 python3 scripts/check_lean_evals.py
 python3 tests/lean_check/run_tests.py   # checker regression tests
 python3 tests/lean_check/test_pins.py   # Lean and Mathlib pins agree
+python3 -m unittest discover -s tests/research   # INVESTIGATE records and experiments
 ```
 
 The benchmark tests whether an agent localizes the right failure; it is not evidence that every future verdict is correct.
 
 ## Project status
 
-This is an experimental `v0.2.0` release. The immediate goal is to expand the benchmark with independently reviewed valid proofs and subtle research-math failure cases.
+This is experimental. The latest release is `v0.2.2`, and `INVESTIGATE` mode is on `main` for the next one. The immediate goal is to expand the benchmark with independently reviewed valid proofs and subtle research-math failure cases.
 
 Contributions are welcome, especially minimal counterexamples, missing-assumption cases, and valid proofs that prevent the auditor from becoming reflexively negative. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
