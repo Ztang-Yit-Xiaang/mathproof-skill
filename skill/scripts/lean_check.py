@@ -89,8 +89,8 @@ TARGET_MODULE = "MpsTarget"
 DEFAULT_PROJECT = Path.home() / ".mathproof" / "lean"
 
 # Kept in sync with lean/lean-toolchain and lean/lakefile.toml in the repository.
-LEAN_TOOLCHAIN = "leanprover/lean4:v4.32.0"
-MATHLIB_REV = "v4.32.0"
+LEAN_TOOLCHAIN = "leanprover/lean4:v4.35.0"
+MATHLIB_REV = "v4.35.0"
 
 FORBIDDEN_SOURCE = [
     (re.compile(r"\bsorry\b"), "`sorry`"),
