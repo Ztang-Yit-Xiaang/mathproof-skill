@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Lean and Mathlib move from v4.32.0 to v4.35.0**, the version `lake comparator` needs. Local checks and authoritative checks now run on one version, so a proof that passes locally no longer needs porting before the comparator can judge it. If you have your own Lean project pinned to v4.32.0, results checked there may not compile on v4.35.0.
 - Added `INVESTIGATE` mode ([investigate.md](skill/references/investigate.md)): a durable record of one claim. `skill/scripts/mathproof.py` keeps an append-only ledger, runs Lean checks through the checker, derives each claim's status, re-runs every check with `verify`, and renders a report. No record carries a status. At this stage the strongest result is `kernel-passed-local`, with the verdict `UNVERIFIED`, and nothing an agent writes can raise it. The other modes are unchanged and don't need any of this.
 - Experiments: `mathproof.py experiment run` and `experiment rerun` record a seeded Python or R program with its code, seed, parameters, environment fingerprint, and results hash, and re-run it to compare. Experiments are evidence only and can't raise a status. R replaces MATLAB as the second experiment language.
 - Checker 2.5: a killed or crashed Lean now exits `2` instead of reporting a failure.
