@@ -62,6 +62,12 @@ A real session on [worked example 5](examples/05-lean-checked-refutation.md), th
 
 **Machine check.** In this session the Lean kernel accepted Theorem 1, stated as the negation of the claim. It uses only Lean's standard axioms, and its recorded status is `kernel-passed-local`. Theorem 2 is `isMinOn_of_deriv_eq_zero` in [`Optimization002.lean`](lean/MathProofSkill/Evals/Optimization002.lean), which the eval suite checks in CI. The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review.
 
+**Numerical check in R.** [`check_sample.R`](docs/demo/check_sample.R) tests both theorems numerically. It was recorded in the same ledger with `experiment run --lang r --seed 1`, and `experiment rerun` reproduced it exactly.
+- *Theorem 1:* central differences give $f'(0)=0$ at every step size from $10^{-1}$ to $10^{-6}$, while $f(1)=-1<0=f(0)$. On a grid over $[-10,10]$, $f(0)$ is the largest value. The run logs this as one counterexample candidate to the original claim.
+- *Theorem 2:* the script draws 1,000 random convex functions and finds each one's critical point $x_0$ by root-finding. Across 200 random $y$ per function, it finds no case with $f(y)<f(x_0)$. The smallest gap $f(y)-f(x_0)$ was $2.2\times10^{-9}\ge 0$.
+
+These runs are evidence, not proof: they don't change the status, and only the Lean check does.
+
 Each step of the proof of Theorem 1 has a matching line in the Lean proof:
 
 | Proof step | Lean line in `claim_false` |
@@ -97,6 +103,7 @@ A chatbot gives a fluent answer you must still check yourself, and rarely says i
 
 - **The exact first failing step plus a counterexample**, pinpointing where reasoning breaks down rather than offering vague skepticism.
 - **A Lean 4 proof or refutation checked by the kernel**, where the checker rejects `sorry`, custom axioms, and `native_decide`.
+- **Numerical checks in R** (or Python) that test the math on many random instances. They are seeded and recorded, so anyone can re-run them. They can flag a counterexample, but they never count as a proof.
 - **A fidelity check comparing the Lean statement with the original question**, ensuring it cannot quietly prove an easier theorem.
 - **Honest labels** (`LEAN-CHECKED (partial)`, `NOT FORMALIZED`, `UNVERIFIED`) instead of a confident guess.
 
