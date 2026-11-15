@@ -34,6 +34,26 @@ A real session on [worked example 5](examples/05-lean-checked-refutation.md), th
   </tr>
 </table>
 
+### The theorem this session produced
+
+**Claim as submitted.** If $f:\mathbb{R}\to\mathbb{R}$ is differentiable and $f'(x_0)=0$, then $f$ attains its global minimum at $x_0$.
+
+**Result.** The claim is false. The skill found the counterexample $f(x)=-x^2$ at $x_0=0$, since $f(1)=-1<0=f(0)$. It then proved the negation in Lean, and the kernel accepted the proof:
+
+```lean
+def Claim : Prop :=
+  ∀ f : ℝ → ℝ, Differentiable ℝ f → ∀ x, deriv f x = 0 → IsMinOn f univ x
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  have hd : Differentiable ℝ (fun x : ℝ => -x ^ 2) := by fun_prop
+  have hstat : deriv (fun x : ℝ => -x ^ 2) 0 = 0 := by simp
+  have := h _ hd 0 hstat (mem_univ 1)
+  norm_num at this
+```
+
+**Recorded status:** `kernel-passed-local`. The proof uses only Lean's standard axioms (`propext`, `Classical.choice`, `Quot.sound`). The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review. File: [`Optimization001.lean`](lean/MathProofSkill/Evals/Optimization001.lean).
+
 The GIFs are rendered by [`docs/demo/render_gifs.py`](docs/demo/render_gifs.py) from the recorded output in [`docs/demo/session.json`](docs/demo/session.json).
 <!-- END demo-gifs -->
 
