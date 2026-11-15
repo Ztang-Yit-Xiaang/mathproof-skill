@@ -140,7 +140,8 @@ nav.top .links a:hover{color:var(--ink)}
 .tablebox{overflow-x:auto;margin-top:18px}
 .theorem{padding:24px 26px;margin-top:22px}
 .theorem .hd{font:600 .78rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.theorem p{font-family:var(--serif);font-size:1.08rem}
+.theorem p,.theorem li{font-family:var(--serif);font-size:1.08rem}
+.theorem li{margin:6px 0}
 .found{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
 @media (max-width:820px){.found{grid-template-columns:1fr}}
 .found .card{padding:20px 22px}
@@ -242,27 +243,43 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
       </figure>
     </div>
 
-    <p style="margin-top:30px">The submitted claim was "if $f'(x_0)=0$, then $f$ has a global minimum at $x_0$". The skill showed it is false and stated the result as:</p>
+    <h3 style="margin-top:34px">The theorem this session produced</h3>
+    <p><b>The submitted argument.</b> <em>Let $f:\mathbb R\to\mathbb R$ be differentiable with $f'(x_0)=0$. Then $x_0$ is a critical point, so $f$ attains its global minimum at $x_0$.</em></p>
+    <p><b>Audit.</b> The first unsupported step is "critical point, so global minimum". Fermat's theorem gives the <em>necessary</em> condition: an interior minimum of a differentiable function is a critical point. The argument uses its converse, which is not a theorem. So the skill tried to refute the claim, and succeeded.</p>
     <div class="card theorem">
-      <div class="hd">Theorem · a critical point need not be a global minimum</div>
-      <p>There exist a differentiable function $f:\mathbb R\to\mathbb R$ and a point $x_0\in\mathbb R$ such that $f'(x_0)=0$, but $f$ does not attain its global minimum at $x_0$.</p>
-      <p><em>Proof.</em> Let $f(x)=-x^2$ and $x_0=0$. Then $f$ is differentiable with $f'(x)=-2x$, so $f'(0)=0$. But $f(1)=-1&lt;0=f(0)$, so $f(0)$ is not the minimum value of $f$. $\blacksquare$</p>
-      <p><em>Repair.</em> If $f$ is also convex, then $f'(x_0)=0$ does imply that $x_0$ is a global minimum.</p>
+      <div class="hd">Theorem 1 · a critical point need not be a global minimum</div>
+      <p>There exist a differentiable function $f:\mathbb R\to\mathbb R$ and a point $x_0\in\mathbb R$ with $f'(x_0)=0$ such that $f$ does not attain its global minimum at $x_0$. That is, it is false that $f(x_0)\le f(x)$ for all $x\in\mathbb R$.</p>
+      <p><em>Proof.</em> Let $f(x)=-x^2$ and $x_0=0$. We check the three requirements in turn.</p>
+      <ol>
+        <li><em>$f$ is differentiable on $\mathbb R$.</em> Fix $x$. For $h\ne0$, $$\frac{f(x+h)-f(x)}{h}=\frac{-(x+h)^2+x^2}{h}=\frac{-2xh-h^2}{h}=-2x-h\;\xrightarrow[h\to0]{}\;-2x.$$ So $f$ is differentiable at every $x$, with $f'(x)=-2x$.</li>
+        <li><em>$x_0=0$ is a critical point.</em> By step 1, $f'(0)=0$.</li>
+        <li><em>$f$ has no global minimum at $0$.</em> A global minimum at $0$ would need $f(0)\le f(x)$ for every $x$, in particular for $x=1$. But $f(1)=-1&lt;0=f(0)$.</li>
+      </ol>
+      <p>Hence $f$ is differentiable and $f'(0)=0$, yet $f$ does not attain its global minimum at $0$. In fact $f(x)=-x^2\le0=f(0)$ for all $x$, so $0$ is the global <strong>maximum</strong>. $\blacksquare$</p>
     </div>
-    <p style="margin-top:14px"><b>Machine check.</b> The same proof in Lean, accepted by the kernel:</p>
+    <div class="card theorem" style="margin-top:18px">
+      <div class="hd">Theorem 2 · the repair: add convexity</div>
+      <p>Let $f:\mathbb R\to\mathbb R$ be convex and differentiable, and let $f'(x_0)=0$. Then $f(x_0)\le f(y)$ for every $y\in\mathbb R$.</p>
+      <p><em>Proof.</em> Fix $y\ne x_0$. For a convex differentiable function, the derivative at a point is bounded by the slopes of chords through that point: $$f'(x_0)\le\frac{f(y)-f(x_0)}{y-x_0}\ \ (x_0&lt;y),\qquad \frac{f(x_0)-f(y)}{x_0-y}\le f'(x_0)\ \ (y&lt;x_0).$$ Put $f'(x_0)=0$ and multiply by the positive denominator. Either case gives $f(x_0)\le f(y)$. $\blacksquare$</p>
+    </div>
+    <p style="margin-top:18px"><b>Machine check.</b> In this session the Lean kernel accepted Theorem 1, stated as the negation of the claim. It uses only Lean's standard axioms, and its recorded status is <span class="tag ok">kernel-passed-local</span> <span class="tag neutral">UNVERIFIED</span>. Theorem 2 is <code>isMinOn_of_deriv_eq_zero</code> in <code>Optimization002.lean</code>, which the eval suite checks in CI. Each step of the proof of Theorem 1 has a matching line in the Lean proof:</p>
+    <div class="tablebox"><table class="lemmas">
+      <tr><th>Proof step</th><th>Lean line in <code>claim_false</code></th></tr>
+      <tr><td>Assume the claim, aiming for a contradiction</td><td><code>intro h</code></td></tr>
+      <tr><td>1. $f(x)=-x^2$ is differentiable</td><td><code>have hd : Differentiable ℝ (fun x =&gt; -x ^ 2) := by fun_prop</code></td></tr>
+      <tr><td>2. $f'(0)=0$</td><td><code>have hstat : deriv (fun x =&gt; -x ^ 2) 0 = 0 := by simp</code></td></tr>
+      <tr><td>3. The claim would give $f(0)\le f(1)$</td><td><code>have := h _ hd 0 hstat (mem_univ 1)</code></td></tr>
+      <tr><td>That says $0\le-1$, which is false</td><td><code>norm_num at this</code></td></tr>
+    </table></div>
 <pre><code>def Claim : Prop :=
   ∀ f : ℝ → ℝ, Differentiable ℝ f → ∀ x, deriv f x = 0 → IsMinOn f univ x
 
 theorem claim_false : ¬ Claim := by
   intro h
-  have hd : Differentiable ℝ (fun x : ℝ => -x ^ 2) := by fun_prop
-  have hstat : deriv (fun x : ℝ => -x ^ 2) 0 = 0 := by simp
+  have hd : Differentiable ℝ (fun x : ℝ =&gt; -x ^ 2) := by fun_prop
+  have hstat : deriv (fun x : ℝ =&gt; -x ^ 2) 0 = 0 := by simp
   have := h _ hd 0 hstat (mem_univ 1)
   norm_num at this</code></pre>
-<pre class="out"><code>"headline":    "kernel-passed-local",
-"verdict":     "UNVERIFIED",
-"lean_status": "KERNEL-PASSED (local; negation, fidelity: none)"
-axioms: Classical.choice, Quot.sound, propext</code></pre>
     <p style="margin-top:12px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/lean/MathProofSkill/Evals/Optimization001.lean">Open <code>Optimization001.lean</code> →</a></p>
   </div>
 </section>

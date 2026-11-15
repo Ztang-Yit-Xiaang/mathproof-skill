@@ -36,17 +36,43 @@ A real session on [worked example 5](examples/05-lean-checked-refutation.md), th
 
 ### The theorem this session produced
 
-The submitted claim was "if $f'(x_0)=0$, then $f$ has a global minimum at $x_0$". The skill showed it is false and stated the result as:
+**The submitted argument.** *Let $f:\mathbb{R}\to\mathbb{R}$ be differentiable with $f'(x_0)=0$. Then $x_0$ is a critical point, so $f$ attains its global minimum at $x_0$.*
 
-> **Theorem (a critical point need not be a global minimum).** There exist a differentiable function $f:\mathbb{R}\to\mathbb{R}$ and a point $x_0\in\mathbb{R}$ such that $f'(x_0)=0$, but $f$ does not attain its global minimum at $x_0$.
+**Audit.** The first unsupported step is "$x_0$ is a critical point, so $f$ attains its global minimum at $x_0$". Fermat's theorem says that an interior minimum of a differentiable function is a critical point. That is a *necessary* condition. The argument uses its converse, which is not a theorem. So the skill tried to refute the claim, and succeeded.
+
+> **Theorem 1 (a critical point need not be a global minimum).** There exist a differentiable function $f:\mathbb{R}\to\mathbb{R}$ and a point $x_0\in\mathbb{R}$ with $f'(x_0)=0$ such that $f$ does not attain its global minimum at $x_0$. That is, it is false that $f(x_0)\le f(x)$ for all $x\in\mathbb{R}$.
 >
-> *Proof.* Let $f(x)=-x^2$ and $x_0=0$. Then $f$ is differentiable with $f'(x)=-2x$, so $f'(0)=0$. But $f(1)=-1<0=f(0)$, so $f(0)$ is not the minimum value of $f$. $\blacksquare$
+> *Proof.* Let $f(x)=-x^2$ and $x_0=0$. We check the three requirements in turn.
 >
-> *Repair.* If $f$ is also convex, then $f'(x_0)=0$ does imply that $x_0$ is a global minimum.
+> 1. *$f$ is differentiable on $\mathbb{R}$.* Fix $x\in\mathbb{R}$. For $h\neq 0$,
+>    $$\frac{f(x+h)-f(x)}{h}=\frac{-(x+h)^2+x^2}{h}=\frac{-2xh-h^2}{h}=-2x-h.$$
+>    As $h\to 0$ this tends to $-2x$. So $f$ is differentiable at every $x$, with $f'(x)=-2x$.
+> 2. *$x_0=0$ is a critical point.* By step 1, $f'(0)=-2\cdot 0=0$.
+> 3. *$f$ has no global minimum at $0$.* A global minimum at $0$ would need $f(0)\le f(x)$ for every $x$, in particular for $x=1$. But $f(1)=-1<0=f(0)$, so that inequality fails.
+>
+> Hence $f$ is differentiable and $f'(0)=0$, yet $f$ does not attain its global minimum at $0$. In fact $f(x)=-x^2\le 0=f(0)$ for all $x$, so $0$ is the global **maximum**. $\blacksquare$
 
-**Machine check.** The Lean kernel accepted this proof (status `kernel-passed-local`, standard axioms only). The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review.
+**Repair.** The claim becomes true once $f$ is also convex.
 
-<details><summary>Lean statement and proof (<a href="lean/MathProofSkill/Evals/Optimization001.lean">Optimization001.lean</a>)</summary>
+> **Theorem 2.** Let $f:\mathbb{R}\to\mathbb{R}$ be convex and differentiable, and let $f'(x_0)=0$. Then $f(x_0)\le f(y)$ for every $y\in\mathbb{R}$.
+>
+> *Proof.* Fix $y$. If $y=x_0$ there is nothing to prove. For a convex differentiable function, the derivative at a point is bounded by the slopes of chords through that point:
+> $$f'(x_0)\le\frac{f(y)-f(x_0)}{y-x_0}\quad\text{if } x_0<y,\qquad \frac{f(x_0)-f(y)}{x_0-y}\le f'(x_0)\quad\text{if } y<x_0.$$
+> Put $f'(x_0)=0$. If $x_0<y$, then $0\le\frac{f(y)-f(x_0)}{y-x_0}$. Multiplying by $y-x_0>0$ gives $f(x_0)\le f(y)$. If $y<x_0$, then $\frac{f(x_0)-f(y)}{x_0-y}\le 0$. Multiplying by $x_0-y>0$ gives $f(x_0)-f(y)\le 0$, which is the same inequality. $\blacksquare$
+
+**Machine check.** In this session the Lean kernel accepted Theorem 1, stated as the negation of the claim. It uses only Lean's standard axioms, and its recorded status is `kernel-passed-local`. Theorem 2 is `isMinOn_of_deriv_eq_zero` in [`Optimization002.lean`](lean/MathProofSkill/Evals/Optimization002.lean), which the eval suite checks in CI. The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review.
+
+Each step of the proof of Theorem 1 has a matching line in the Lean proof:
+
+| Proof step | Lean line in `claim_false` |
+|---|---|
+| Assume the claim, aiming for a contradiction | `intro h` |
+| 1. $f(x)=-x^2$ is differentiable | `have hd : Differentiable ℝ (fun x => -x ^ 2) := by fun_prop` |
+| 2. $f'(0)=0$ | `have hstat : deriv (fun x => -x ^ 2) 0 = 0 := by simp` |
+| 3. The claim would give $f(0)\le f(1)$ | `have := h _ hd 0 hstat (mem_univ 1)` |
+| That says $0\le -1$, which is false | `norm_num at this` |
+
+<details><summary>Full Lean source (<a href="lean/MathProofSkill/Evals/Optimization001.lean">Optimization001.lean</a>)</summary>
 
 ```lean
 def Claim : Prop :=
