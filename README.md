@@ -14,20 +14,28 @@ AI-generated proofs often fail in a dangerous way: the algebra looks polished, b
 
 The reasoning is informal, and an informal audit does **not guarantee correctness**. To check results, the skill uses **Lean 4 with Mathlib**: it formalizes the claim (or its negation), checks that the formal statement says what the informal one says, proves it, and runs a checker that rejects `sorry`, custom axioms, and kernel bypasses. Only a check that passes counts as machine-checked.
 
-<!-- BEGIN portfolio-project-animations -->
-## Recorded project interactions
+<!-- BEGIN demo-gifs -->
+## See it run
 
-These previews record interaction with original project figures, saved notebook outputs, source tests, or the actual project interface. They do not represent new experiments, model inference, or benchmark runs. Pointer-driven inspection, saved-result selection, and browser controls are captured below.
+A real session on [worked example 5](examples/05-lean-checked-refutation.md), the claim "a critical point is a global minimum".
 
-### Explore the published MathProof site
+<table>
+  <tr>
+    <th width="50%">1. Use the skill in the terminal</th>
+    <th width="50%">2. Open the overall theorem</th>
+  </tr>
+  <tr>
+    <td><img src="docs/demo/terminal-steps.gif" alt="Terminal: /mathproof-skill request, then mathproof init, claim add, check and status"></td>
+    <td><img src="docs/demo/open-theorem.gif" alt="mathproof report, then the Lean file with theorem claim_false and the kernel PASS line"></td>
+  </tr>
+  <tr>
+    <td>Ask with <code>/mathproof-skill</code>. The skill records the claim, runs the Lean checker on the refutation, and reads back the status derived from the ledger.</td>
+    <td><code>mathproof report</code> summarizes the record, and the Lean file holds the exact statement and proof the kernel checked.</td>
+  </tr>
+</table>
 
-![Explore the published MathProof site - recorded project interaction](docs/portfolio-previews/mathproof-skill.gif)
-
-The published project website and its worked examples. Browsing examples does not execute an agent or Lean checker.
-
-[Original project material](https://github.com/Ztang-Yit-Xiaang/mathproof-skill)
-
-<!-- END portfolio-project-animations -->
+The GIFs are rendered by [`docs/demo/render_gifs.py`](docs/demo/render_gifs.py) from the recorded output in [`docs/demo/session.json`](docs/demo/session.json).
+<!-- END demo-gifs -->
 
 ## Why not just ask an LLM?
 
