@@ -36,9 +36,17 @@ A real session on [worked example 5](examples/05-lean-checked-refutation.md), th
 
 ### The theorem this session produced
 
-**Claim as submitted.** If $f:\mathbb{R}\to\mathbb{R}$ is differentiable and $f'(x_0)=0$, then $f$ attains its global minimum at $x_0$.
+The submitted claim was "if $f'(x_0)=0$, then $f$ has a global minimum at $x_0$". The skill showed it is false and stated the result as:
 
-**Result.** The claim is false. The skill found the counterexample $f(x)=-x^2$ at $x_0=0$, since $f(1)=-1<0=f(0)$. It then proved the negation in Lean, and the kernel accepted the proof:
+> **Theorem (a critical point need not be a global minimum).** There exist a differentiable function $f:\mathbb{R}\to\mathbb{R}$ and a point $x_0\in\mathbb{R}$ such that $f'(x_0)=0$, but $f$ does not attain its global minimum at $x_0$.
+>
+> *Proof.* Let $f(x)=-x^2$ and $x_0=0$. Then $f$ is differentiable with $f'(x)=-2x$, so $f'(0)=0$. But $f(1)=-1<0=f(0)$, so $f(0)$ is not the minimum value of $f$. $\blacksquare$
+>
+> *Repair.* If $f$ is also convex, then $f'(x_0)=0$ does imply that $x_0$ is a global minimum.
+
+**Machine check.** The Lean kernel accepted this proof (status `kernel-passed-local`, standard axioms only). The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review.
+
+<details><summary>Lean statement and proof (<a href="lean/MathProofSkill/Evals/Optimization001.lean">Optimization001.lean</a>)</summary>
 
 ```lean
 def Claim : Prop :=
@@ -52,7 +60,7 @@ theorem claim_false : ¬ Claim := by
   norm_num at this
 ```
 
-**Recorded status:** `kernel-passed-local`. The proof uses only Lean's standard axioms (`propext`, `Classical.choice`, `Quot.sound`). The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review. File: [`Optimization001.lean`](lean/MathProofSkill/Evals/Optimization001.lean).
+</details>
 
 The GIFs are rendered by [`docs/demo/render_gifs.py`](docs/demo/render_gifs.py) from the recorded output in [`docs/demo/session.json`](docs/demo/session.json).
 <!-- END demo-gifs -->
