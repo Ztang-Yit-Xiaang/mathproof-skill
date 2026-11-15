@@ -242,11 +242,14 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
       </figure>
     </div>
 
-    <div class="card theorem" style="margin-top:30px">
-      <div class="hd">The theorem this session produced · worked example 5</div>
-      <p><b>Claim as submitted.</b> If $f:\mathbb R\to\mathbb R$ is differentiable and $f'(x_0)=0$, then $f$ attains its global minimum at $x_0$.</p>
-      <p><b>Result.</b> The claim is false. Counterexample: $f(x)=-x^2$ at $x_0=0$, since $f(1)=-1&lt;0=f(0)$. The negation is proved in Lean, and the kernel accepted it.</p>
+    <p style="margin-top:30px">The submitted claim was "if $f'(x_0)=0$, then $f$ has a global minimum at $x_0$". The skill showed it is false and stated the result as:</p>
+    <div class="card theorem">
+      <div class="hd">Theorem · a critical point need not be a global minimum</div>
+      <p>There exist a differentiable function $f:\mathbb R\to\mathbb R$ and a point $x_0\in\mathbb R$ such that $f'(x_0)=0$, but $f$ does not attain its global minimum at $x_0$.</p>
+      <p><em>Proof.</em> Let $f(x)=-x^2$ and $x_0=0$. Then $f$ is differentiable with $f'(x)=-2x$, so $f'(0)=0$. But $f(1)=-1&lt;0=f(0)$, so $f(0)$ is not the minimum value of $f$. $\blacksquare$</p>
+      <p><em>Repair.</em> If $f$ is also convex, then $f'(x_0)=0$ does imply that $x_0$ is a global minimum.</p>
     </div>
+    <p style="margin-top:14px"><b>Machine check.</b> The same proof in Lean, accepted by the kernel:</p>
 <pre><code>def Claim : Prop :=
   ∀ f : ℝ → ℝ, Differentiable ℝ f → ∀ x, deriv f x = 0 → IsMinOn f univ x
 
