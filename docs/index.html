@@ -231,7 +231,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
   <div class="wrap">
     <div class="eyebrow">See it run</div>
     <h2>One request, four steps, one checked theorem.</h2>
-    <p class="lede">A real session on worked example 5: the claim "a critical point is a global minimum". Left, the steps in the terminal. Right, the result opened: the report and the Lean file the kernel checked.</p>
+    <p class="lede">A real session on worked example 5: the claim "a critical point is a global minimum". Left, the steps in the terminal. Right, the result opened: the report and the Lean file the kernel checked. Below, the theorem written out, with its proof, the Lean check, and a numerical check in R.</p>
     <div class="two demo">
       <figure>
         <img src="demo/terminal-steps.gif" width="720" height="500" loading="lazy" alt="Terminal recording: asking Claude Code with /mathproof-skill, then mathproof init, claim add, check and status">
@@ -280,7 +280,16 @@ theorem claim_false : ¬ Claim := by
   have hstat : deriv (fun x : ℝ =&gt; -x ^ 2) 0 = 0 := by simp
   have := h _ hd 0 hstat (mem_univ 1)
   norm_num at this</code></pre>
-    <p style="margin-top:12px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/lean/MathProofSkill/Evals/Optimization001.lean">Open <code>Optimization001.lean</code> →</a></p>
+    <p style="margin-top:18px"><b>Numerical check in R.</b> <code>check_sample.R</code> tests both theorems numerically. It was recorded in the same ledger with <code>experiment run --lang r --seed 1</code>, and <code>experiment rerun</code> reproduced it exactly. These runs are evidence, not proof: they don't change the status.</p>
+<pre class="out"><code># Theorem 1: f(x) = -x^2 at x0 = 0
+central differences, h = 1e-1 … 1e-6:  max |f'(0) estimate| = 0
+f(1) = -1  &lt;  f(0) = 0;  f(0) is the maximum on a grid over [-10, 10]
+→ 1 counterexample candidate to the original claim
+
+# Theorem 2: 1,000 random convex f, 200 random y each
+failures with f(y) &lt; f(x0):  0
+smallest gap f(y) - f(x0):   2.2e-09</code></pre>
+    <p style="margin-top:12px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/lean/MathProofSkill/Evals/Optimization001.lean">Open <code>Optimization001.lean</code> →</a> · <a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/docs/demo/check_sample.R">Open <code>check_sample.R</code> →</a></p>
   </div>
 </section>
 
@@ -308,6 +317,7 @@ theorem claim_false : ¬ Claim := by
     <ul class="checks">
       <li><span><strong>The exact first failing step plus a counterexample</strong>, pinpointing where reasoning breaks down rather than offering vague skepticism.</span></li>
       <li><span><strong>A Lean 4 proof or refutation checked by the kernel</strong>, where the checker rejects <code>sorry</code>, custom axioms, and <code>native_decide</code>.</span></li>
+      <li><span><strong>Numerical checks in R</strong> (or Python) that test the math on many random instances. They are seeded and recorded, so anyone can re-run them. They can flag a counterexample, but they never count as a proof.</span></li>
       <li><span><strong>A fidelity check comparing the Lean statement with the original question</strong>, ensuring it cannot quietly prove an easier theorem.</span></li>
       <li><span><strong>Honest labels</strong> (<code>LEAN-CHECKED (partial)</code>, <code>NOT FORMALIZED</code>, <code>UNVERIFIED</code>) instead of a confident guess.</span></li>
     </ul>
