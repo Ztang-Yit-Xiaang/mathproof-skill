@@ -5,22 +5,26 @@ timestamps are never read. Events carry no status of their own.
 
 Three rules govern it (planning contract IF-claim-status-v2):
 
-1. Only the authoritative tier plus a human signature can give VALID or INVALID. That tier does not
-   exist yet in M0, and nothing an agent writes can stand in for it: a `tier` field, a `judge`
-   field, a signature field, or `env`. So in M0 the verdict is never VALID or INVALID.
+1. Only the authoritative tier plus a human signature can give VALID or INVALID. Nothing an agent
+   writes can stand in for either: a `tier` field, a `judge` field, or a signature field. The
+   authoritative tier reaches derivation only through `env["judged"]`, which `authority.py` builds
+   from an attested judge report. No signature can be verified yet, so the strongest headline it
+   gives is `judged-unreviewed`, and the verdict is never VALID or INVALID.
 2. A claim's statement never changes.
 3. A retraction needs authority at or above its target, so unsigned retractions and resolutions
    change nothing. No signature can be verified in M0.
 
-The headline is the first row that matches, in the order of the contract's table. Rows that need
-the authoritative tier arrive in M1. `compat` already covers them, so that it stays total.
+The headline is the first row that matches, in the order of the contract's table. Rows 3 to 5
+need signatures, which arrive with S2.3.T3. `compat` already covers them, so that it stays total.
 """
 
 from __future__ import annotations
 
+import re
+
 from .events import is_status_bearing, validate_event
 
-DERIVATION_VERSION = "m0-1"
+DERIVATION_VERSION = "m1-1"
 
 HEADLINES = (
     "conflict", "judge-rejected", "refuted-certified", "established", "established(partial)", "conditional",
@@ -32,6 +36,11 @@ HUMAN_AUDITED = 'UNVERIFIED, labeled "informal proof, human-audited, not machine
 
 # Worst first, for combining judgments of one artifact.
 _FIDELITY_ORDER = ("unfaithful", "partial", "instance", "faithful")
+
+_HEX64 = re.compile(r"[0-9a-f]{64}")
+
+# What is never satisfied until signatures can be verified (S2.3.T3).
+_UNSIGNED = ("statement signature", "fidelity signature")
 
 # The direction a judgment needs depends on what was checked: a proof of F needs F => I, and a
 # refutation (a check of not F) needs I => F.
@@ -168,8 +177,45 @@ def _computational(events: list[dict]) -> dict:
             "artifacts": sorted({r["code_hash"] for r in runs})}
 
 
+def _judged(env: dict, claim: str, usable: list[dict], passing: list[dict]) -> tuple[set, set]:
+    """The passing local checks of this claim the authoritative judge accepted, and those it rejected.
+
+    A result counts only if it is well formed, names this claim, and names by seq a passing check
+    event of this claim with the same artifact, target, and polarity. `authority.py` has already
+    matched that event, its Challenge, and the ledger head. Results are returned as check keys; a
+    rejection of an artifact beats an acceptance of the same one.
+    """
+    results = env.get("judged") if isinstance(env, dict) else None
+    if not isinstance(results, list):
+        return set(), set()
+    key = lambda c: (c["artifact"], c["target_decl"], c["polarity"])  # noqa: E731
+    passing_keys = {key(c) for c in passing}
+    events = {(e["seq"], key(e["data"])) for e in usable
+              if e["kind"] == "check" and e["data"]["result"] == "pass" and key(e["data"]) in passing_keys}
+    accepted, rejected = set(), set()
+    for result in results:
+        if not isinstance(result, dict) or result.get("claim") != claim:
+            continue
+        seq = result.get("seq")
+        if isinstance(seq, bool) or not isinstance(seq, int):
+            continue
+        entry = (result.get("artifact"), result.get("target_decl"), result.get("polarity"))
+        if not all(isinstance(part, str) for part in entry):
+            continue
+        challenge = result.get("challenge_hash")
+        if not isinstance(challenge, str) or not _HEX64.fullmatch(challenge):
+            continue
+        if (seq, entry) not in events:
+            continue
+        if result.get("result") == "pass":
+            accepted.add(entry)
+        elif result.get("result") == "fail":
+            rejected.add(entry)
+    return accepted - rejected, rejected
+
+
 def derive_status(events: list[dict], claim: str, env: dict) -> dict:
-    """Derive a claim's status. `env` can add version notes, and cannot raise anything in M0."""
+    """Derive a claim's status. Only `env["judged"]` can raise it, and only up to judged-unreviewed."""
     env = env or {}
     usable, ignored = usable_events(events, claim)
     of_kind = lambda kind: [e["data"] for e in usable if e["kind"] == kind]  # noqa: E731
@@ -188,9 +234,26 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
     budget_stopped, abandoned = bool(of_kind("budget_stop")), bool(of_kind("abandon"))
     search = "budget-stopped" if budget_stopped else "abandoned" if abandoned else "active"
     polarities = {c["polarity"] for c in passing}
+    judged, rejected = _judged(env, claim, usable, passing)
+    if rejected:
+        kernel = "judge-rejected"
+    elif judged:
+        kernel = "judged"
+    missing: list[str] = []
+    blocked: list[str] = []
+    if judged:
+        missing = list(_UNSIGNED)
+        if "claim" in {polarity for _, _, polarity in judged}:
+            missing.append("vacuity witness")
+        if fidelity["class"] == "unfaithful":
+            blocked.append("unfaithful")
 
     if {"claim", "negation"} <= polarities:
         headline = "conflict"
+    elif rejected:
+        headline = "judge-rejected"
+    elif judged:
+        headline = "judged-unreviewed"
     elif kernel == "passed-local":
         headline = "kernel-passed-local"
     elif budget_stopped:
@@ -211,7 +274,8 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
         # Only closed values go in this line. Scope text is free text, so it stays in the axis.
         judged = f"{fidelity['class']}, {fidelity['provenance']}" if fidelity["class"] else "none"
         label = f"{'+'.join(sorted(polarities))}, fidelity: {judged}"
-    verdict, lean_status = compat(headline, kernel_passed=bool(passing), attempted=attempted, label=label)
+    verdict, lean_status = compat(headline, kernel_passed=bool(passing), attempted=attempted, label=label,
+                                  missing=tuple(missing))
 
     return {
         "claim": claim,
@@ -221,6 +285,8 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
         "lean_status": lean_status,
         "axes": {"kernel": kernel, "fidelity": fidelity, "informal": informal,
                  "computational": computational, "search": search},
+        "missing": missing,
+        "blocked": blocked,
         "warnings": warnings,
         "ignored_events": ignored,
         "derivation_version": DERIVATION_VERSION,

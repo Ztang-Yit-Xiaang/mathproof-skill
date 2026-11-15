@@ -17,7 +17,8 @@ from pathlib import Path
 from _paths import ROOT
 
 HERE = Path(__file__).resolve().parent
-SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report", "test_replay_stub"]
+SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report", "test_replay_stub",
+          "test_authority"]
 
 MUTANTS = {
     "status.py": [
@@ -52,6 +53,21 @@ MUTANTS = {
         ('"signed": False}, warnings', '"signed": worst["judge"] == "signed-human"}, warnings'),
         ('search = "budget-stopped" if budget_stopped else "abandoned" if abandoned else "active"',
          'search = "abandoned" if abandoned else "budget-stopped" if budget_stopped else "active"'),
+        # S2.1.T7: the authoritative judge's results
+        ("return accepted - rejected, rejected", "return accepted, rejected"),
+        # The claim check in _judged has no mutant: matching the seq of this claim's own event implies it.
+        ("if (seq, entry) not in events:", "if False:"),
+        ("if isinstance(seq, bool) or not isinstance(seq, int):", "if False:"),
+        ("if not isinstance(challenge, str) or not _HEX64.fullmatch(challenge):", "if False:"),
+        ('if result.get("result") == "pass":', 'if result.get("result") in ("pass", "error"):'),
+        ('elif result.get("result") == "fail":', "elif False:"),
+        ("if not all(isinstance(part, str) for part in entry):", "if False:"),
+        ("    elif rejected:\n        headline = \"judge-rejected\"\n", ""),
+        ('        headline = "judged-unreviewed"', '        headline = "established"'),
+        ('            missing.append("vacuity witness")', "            pass"),
+        ('if "claim" in {polarity for _, _, polarity in judged}:', "if True:"),
+        ('            blocked.append("unfaithful")', "            pass"),
+        ('    if rejected:\n        kernel = "judge-rejected"', '    if False:\n        kernel = "judge-rejected"'),
     ],
     "ledger.py": [
         ('if event["prev"] != expected_prev:', "if False:"),
@@ -103,6 +119,56 @@ MUTANTS = {
         ('"fidelity": ("statement_hash",),', ""),
         ("if claim not in with_statement:", "if False:"),
         ('environment_errors.append({"claim": claim, "seq": seq, "detail": str(error)})', "pass"),
+    ],
+    "judge.py": [
+        ('if polarity not in ("claim", "negation"):\n            continue', "if False:\n            continue"),
+        ("if not _DECL.fullmatch(data[\"target_decl\"]):", "if False:"),
+        ("if challenge is None:", "if False:"),
+        ('key = (event["claim"], data["artifact"]', 'key = (data["artifact"]'),
+        ("jobs.setdefault(key, {", "jobs.setdefault(len(jobs), {"),
+        ('if control["rc"] != 0:', "if False:"),
+        ('    if rc == 0:\n        return "pass"', '    if rc == 0 or rc == "timeout":\n        return "pass"'),
+        ('if isinstance(rc, int) and not isinstance(rc, bool):\n        return "fail"', 'if False:\n        return "fail"'),
+        ("if result.errors:\n        raise JudgeError", "if False:\n        raise JudgeError"),
+        ('"theorem_names": [target]', '"theorem_names": []'),
+        ("challenge, solution = ledger.get_artifact(job[\"challenge_hash\"]), ledger.get_artifact(job[\"artifact\"])",
+         "challenge, solution = ledger.get_artifact(job[\"artifact\"]), ledger.get_artifact(job[\"artifact\"])"),
+        ("return events[-1][\"seq\"], Ledger.event_hash(events[-1])", "return events[-1][\"seq\"], Ledger.event_hash(events[0])"),
+        ("env = {key: os.environ[key] for key in _ENV_KEEP if key in os.environ} | _ENV_SET", "env = dict(os.environ)"),
+        ("            os.killpg(proc.pid, signal.SIGKILL)", "            pass"),
+        ("root.mkdir(parents=True, exist_ok=False)", "root.mkdir(parents=True, exist_ok=True)"),
+        ("not 0 <= index < len(jobs):", "not 0 <= index:"),
+        ("except (ValueError, RecursionError, OSError) as error:", "except (ValueError, OSError) as error:"),
+        ("elif any(case.get(field) != job[field] for field in _JOB_FIELDS):", "elif False:"),
+        ('elif case.get("result") not in ("pass", "fail", "error"):', "elif False:"),
+        ("except (OSError, ValueError, RecursionError):\n        return None", "except (OSError, ValueError):\n        return None"),
+        ("case = _read_case(Path(cases_dir), index)", "case = _read_case(Path(cases_dir), 0)"),
+        ("        if not stat.S_ISDIR(directory.lstat().st_mode):\n            return None", "        pass"),
+        ("if entries != [path] or not stat.S_ISREG(path.lstat().st_mode):", "if not path.exists():"),
+        ("if entries != [path] or not stat.S_ISREG(path.lstat().st_mode):", "if not stat.S_ISREG(path.lstat().st_mode):"),
+        ("if entries != [path] or not stat.S_ISREG(path.lstat().st_mode):", "if entries != [path]:"),
+    ],
+    "authority.py": [
+        ('"--signer-workflow", f"{repo}/{WORKFLOW}", "--source-ref", SOURCE_REF,', ""),
+        ('            "--deny-self-hosted-runners", "--format", "json"]', '            "--format", "json"]'),
+        ('if not _REPO.fullmatch(repo) or ".." in repo:', "if False:"),
+        ("if proc.returncode != 0:", "if False:"),
+        ('if report.get("sandboxed") is not True:', "if False:"),
+        ('if type(report.get("judge_version")) is not int or report["judge_version"] != JUDGE_VERSION:', "if False:"),
+        ('if type(report.get("judge_version")) is not int or report["judge_version"] != JUDGE_VERSION:',
+         'if report.get("judge_version") != JUDGE_VERSION:'),
+        ('if report.get("permitted_axioms") != PERMITTED_AXIOMS or report.get("definition_names") != []:', "if False:"),
+        ('if report.get("toolchain") != pin["toolchain"] or report.get("mathlib_rev") != pin["mathlib_rev"]:', "if False:"),
+        ('if report.get("format") != FORMAT:', "if False:"),
+        ("if ledger.verify().errors:", "if False:"),
+        ('if seq >= len(events) or Ledger.event_hash(events[seq]) != report["ledger_head"]:', "if seq >= len(events):"),
+        ("not 0 <= where <= seq:", "not 0 <= where:"),
+        ("if local != claimed:", "if False:"),
+        ('if challenges.get(event["claim"], {}).get(data["polarity"]) != result["challenge_hash"]:', "if False:"),
+        ('if result["result"] not in ("pass", "fail"):', "if False:"),
+        ('if not isinstance(event, dict) or event.get("kind") != "check" or validate_event(event):', "if False:"),
+        ("if reason:\n        return [], [f\"judge report ignored", "if False:\n        return [], [f\"judge report ignored"),
+        ("path.write_bytes(content)", 'path.write_bytes(b"{}")'),
     ],
     "report.py": [
         (r"""return [f"> \\{line}" if line[:1] in ("=", "-", "+") else f"> {line}" for line in lines] or [">"]""", "return lines"),

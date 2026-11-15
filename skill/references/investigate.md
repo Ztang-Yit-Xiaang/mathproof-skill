@@ -6,7 +6,7 @@ The rule is simple: **record what happened, and let the tool derive the status.*
 
 ## What the status can say
 
-Status is computed from the ledger. At this stage nothing can reach `VALID` or `INVALID` through this tool. The strongest result is `kernel-passed-local`, with the verdict `UNVERIFIED`, because a local check cannot stand in for a clean-machine check and a person's signature. Report that plainly. Do not upgrade it in your own words.
+Status is computed from the ledger. At this stage nothing can reach `VALID` or `INVALID` through this tool, because no signature can be verified yet. A local check gives at most `kernel-passed-local`. An authoritative judge report, described below, gives at most `judged-unreviewed`, and `judge-rejected` if the judge failed a check that passed locally. The verdict stays `UNVERIFIED` either way. Report that plainly. Do not upgrade it in your own words.
 
 Your ordinary verdict in `AUDIT` or `PROVE` is a separate thing. If you give one alongside a record, say which is which.
 
@@ -26,6 +26,24 @@ python3 scripts/mathproof.py verify <dir>
 `check` exits 0 on a pass, 1 on a failure, and 2 if it could not run, for example when a file or Mathlib is missing or a time limit ran out. Exit 2 records nothing. A failure is worth keeping: it stays in the ledger as a record of what was tried.
 
 The status line reads like `KERNEL-PASSED (local; negation, fidelity: faithful, self-declared)`. `KERNEL-PASSED` is not one of the `Lean status` values in the main protocol: it means the local checker passed and the verdict stays `UNVERIFIED`. A proof and a refutation share the headline `kernel-passed-local`, so read the polarity in this line.
+
+## Authoritative judgment
+
+A local check runs on a machine an agent can change. The authoritative judge runs `lake comparator`, in its sandbox, in a GitHub Actions workflow on a clean checkout of `main`. It compares each checked file against a Challenge: the statement alone, proved by `sorry`. Register one per claim and polarity:
+
+```bash
+python3 scripts/mathproof.py challenge-file --dir <dir> --claim inv/c1 --polarity claim Statement.lean
+```
+
+The ledger must be committed to `main`. A person then runs the `Authoritative judge` workflow with the ledger's path, downloads its `judge-report` artifact, and runs:
+
+```bash
+python3 scripts/mathproof.py verify <dir> --authoritative judge-report.json --repo OWNER/NAME
+```
+
+`verify` uses the report only if `gh attestation verify` shows that this repository's `.github/workflows/authoritative.yml` produced it, on `refs/heads/main`, on a GitHub-hosted runner. It also checks that the report's ledger head is in this ledger, and that each result names a recorded check and the Challenge registered now. Each note says why a report or result was ignored. Never run `judge` yourself: it needs Linux `bwrap` and refuses to run without it.
+
+What this rests on: GitHub's attestations, and branch protection on `main`, which keeps the workflow file reviewed. Challenges are unsigned for now, so a judged result shows `missing: statement signature, fidelity signature`, plus `vacuity witness` for a proof.
 
 ## Choosing the polarity
 
