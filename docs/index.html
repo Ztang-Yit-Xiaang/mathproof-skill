@@ -241,6 +241,26 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
         <figcaption><b>The overall theorem.</b> <code>mathproof report</code> summarizes the record; the Lean file holds the exact statement and its proof.</figcaption>
       </figure>
     </div>
+
+    <div class="card theorem" style="margin-top:30px">
+      <div class="hd">The theorem this session produced · worked example 5</div>
+      <p><b>Claim as submitted.</b> If $f:\mathbb R\to\mathbb R$ is differentiable and $f'(x_0)=0$, then $f$ attains its global minimum at $x_0$.</p>
+      <p><b>Result.</b> The claim is false. Counterexample: $f(x)=-x^2$ at $x_0=0$, since $f(1)=-1&lt;0=f(0)$. The negation is proved in Lean, and the kernel accepted it.</p>
+    </div>
+<pre><code>def Claim : Prop :=
+  ∀ f : ℝ → ℝ, Differentiable ℝ f → ∀ x, deriv f x = 0 → IsMinOn f univ x
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  have hd : Differentiable ℝ (fun x : ℝ => -x ^ 2) := by fun_prop
+  have hstat : deriv (fun x : ℝ => -x ^ 2) 0 = 0 := by simp
+  have := h _ hd 0 hstat (mem_univ 1)
+  norm_num at this</code></pre>
+<pre class="out"><code>"headline":    "kernel-passed-local",
+"verdict":     "UNVERIFIED",
+"lean_status": "KERNEL-PASSED (local; negation, fidelity: none)"
+axioms: Classical.choice, Quot.sound, propext</code></pre>
+    <p style="margin-top:12px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/lean/MathProofSkill/Evals/Optimization001.lean">Open <code>Optimization001.lean</code> →</a></p>
   </div>
 </section>
 
