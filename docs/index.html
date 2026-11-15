@@ -140,7 +140,8 @@ nav.top .links a:hover{color:var(--ink)}
 .tablebox{overflow-x:auto;margin-top:18px}
 .theorem{padding:24px 26px;margin-top:22px}
 .theorem .hd{font:600 .78rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.theorem p{font-family:var(--serif);font-size:1.08rem}
+.theorem p,.theorem li{font-family:var(--serif);font-size:1.08rem}
+.theorem li{margin:6px 0}
 .found{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
 @media (max-width:820px){.found{grid-template-columns:1fr}}
 .found .card{padding:20px 22px}
@@ -230,7 +231,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
   <div class="wrap">
     <div class="eyebrow">See it run</div>
     <h2>One request, four steps, one checked theorem.</h2>
-    <p class="lede">A real session on worked example 5: the claim "a critical point is a global minimum". Left, the steps in the terminal. Right, the result opened: the report and the Lean file the kernel checked.</p>
+    <p class="lede">A real session on worked example 5: the claim "a critical point is a global minimum". Left, the steps in the terminal. Right, the result opened: the report and the Lean file the kernel checked. Below, the theorem written out, with its proof, the Lean check, and a numerical check in R.</p>
     <div class="two demo">
       <figure>
         <img src="demo/terminal-steps.gif" width="720" height="500" loading="lazy" alt="Terminal recording: asking Claude Code with /mathproof-skill, then mathproof init, claim add, check and status">
@@ -241,6 +242,54 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
         <figcaption><b>The overall theorem.</b> <code>mathproof report</code> summarizes the record; the Lean file holds the exact statement and its proof.</figcaption>
       </figure>
     </div>
+
+    <h3 style="margin-top:34px">The theorem this session produced</h3>
+    <p><b>The submitted argument.</b> <em>Let $f:\mathbb R\to\mathbb R$ be differentiable with $f'(x_0)=0$. Then $x_0$ is a critical point, so $f$ attains its global minimum at $x_0$.</em></p>
+    <p><b>Audit.</b> The first unsupported step is "critical point, so global minimum". Fermat's theorem gives the <em>necessary</em> condition: an interior minimum of a differentiable function is a critical point. The argument uses its converse, which is not a theorem. So the skill tried to refute the claim, and succeeded.</p>
+    <div class="card theorem">
+      <div class="hd">Theorem 1 · a critical point need not be a global minimum</div>
+      <p>There exist a differentiable function $f:\mathbb R\to\mathbb R$ and a point $x_0\in\mathbb R$ with $f'(x_0)=0$ such that $f$ does not attain its global minimum at $x_0$. That is, it is false that $f(x_0)\le f(x)$ for all $x\in\mathbb R$.</p>
+      <p><em>Proof.</em> Let $f(x)=-x^2$ and $x_0=0$. We check the three requirements in turn.</p>
+      <ol>
+        <li><em>$f$ is differentiable on $\mathbb R$.</em> Fix $x$. For $h\ne0$, $$\frac{f(x+h)-f(x)}{h}=\frac{-(x+h)^2+x^2}{h}=\frac{-2xh-h^2}{h}=-2x-h\;\xrightarrow[h\to0]{}\;-2x.$$ So $f$ is differentiable at every $x$, with $f'(x)=-2x$.</li>
+        <li><em>$x_0=0$ is a critical point.</em> By step 1, $f'(0)=0$.</li>
+        <li><em>$f$ has no global minimum at $0$.</em> A global minimum at $0$ would need $f(0)\le f(x)$ for every $x$, in particular for $x=1$. But $f(1)=-1&lt;0=f(0)$.</li>
+      </ol>
+      <p>Hence $f$ is differentiable and $f'(0)=0$, yet $f$ does not attain its global minimum at $0$. In fact $f(x)=-x^2\le0=f(0)$ for all $x$, so $0$ is the global <strong>maximum</strong>. $\blacksquare$</p>
+    </div>
+    <div class="card theorem" style="margin-top:18px">
+      <div class="hd">Theorem 2 · the repair: add convexity</div>
+      <p>Let $f:\mathbb R\to\mathbb R$ be convex and differentiable, and let $f'(x_0)=0$. Then $f(x_0)\le f(y)$ for every $y\in\mathbb R$.</p>
+      <p><em>Proof.</em> Fix $y\ne x_0$. For a convex differentiable function, the derivative at a point is bounded by the slopes of chords through that point: $$f'(x_0)\le\frac{f(y)-f(x_0)}{y-x_0}\ \ (x_0&lt;y),\qquad \frac{f(x_0)-f(y)}{x_0-y}\le f'(x_0)\ \ (y&lt;x_0).$$ Put $f'(x_0)=0$ and multiply by the positive denominator. Either case gives $f(x_0)\le f(y)$. $\blacksquare$</p>
+    </div>
+    <p style="margin-top:18px"><b>Machine check.</b> In this session the Lean kernel accepted Theorem 1, stated as the negation of the claim. It uses only Lean's standard axioms, and its recorded status is <span class="tag ok">kernel-passed-local</span> <span class="tag neutral">UNVERIFIED</span>. Theorem 2 is <code>isMinOn_of_deriv_eq_zero</code> in <code>Optimization002.lean</code>, which the eval suite checks in CI. Each step of the proof of Theorem 1 has a matching line in the Lean proof:</p>
+    <div class="tablebox"><table class="lemmas">
+      <tr><th>Proof step</th><th>Lean line in <code>claim_false</code></th></tr>
+      <tr><td>Assume the claim, aiming for a contradiction</td><td><code>intro h</code></td></tr>
+      <tr><td>1. $f(x)=-x^2$ is differentiable</td><td><code>have hd : Differentiable ℝ (fun x =&gt; -x ^ 2) := by fun_prop</code></td></tr>
+      <tr><td>2. $f'(0)=0$</td><td><code>have hstat : deriv (fun x =&gt; -x ^ 2) 0 = 0 := by simp</code></td></tr>
+      <tr><td>3. The claim would give $f(0)\le f(1)$</td><td><code>have := h _ hd 0 hstat (mem_univ 1)</code></td></tr>
+      <tr><td>That says $0\le-1$, which is false</td><td><code>norm_num at this</code></td></tr>
+    </table></div>
+<pre><code>def Claim : Prop :=
+  ∀ f : ℝ → ℝ, Differentiable ℝ f → ∀ x, deriv f x = 0 → IsMinOn f univ x
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  have hd : Differentiable ℝ (fun x : ℝ =&gt; -x ^ 2) := by fun_prop
+  have hstat : deriv (fun x : ℝ =&gt; -x ^ 2) 0 = 0 := by simp
+  have := h _ hd 0 hstat (mem_univ 1)
+  norm_num at this</code></pre>
+    <p style="margin-top:18px"><b>Numerical check in R.</b> <code>check_sample.R</code> tests both theorems numerically. It was recorded in the same ledger with <code>experiment run --lang r --seed 1</code>, and <code>experiment rerun</code> reproduced it exactly. These runs are evidence, not proof: they don't change the status.</p>
+<pre class="out"><code># Theorem 1: f(x) = -x^2 at x0 = 0
+central differences, h = 1e-1 … 1e-6:  max |f'(0) estimate| = 0
+f(1) = -1  &lt;  f(0) = 0;  f(0) is the maximum on a grid over [-10, 10]
+→ 1 counterexample candidate to the original claim
+
+# Theorem 2: 1,000 random convex f, 200 random y each
+failures with f(y) &lt; f(x0):  0
+smallest gap f(y) - f(x0):   2.2e-09</code></pre>
+    <p style="margin-top:12px"><a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/lean/MathProofSkill/Evals/Optimization001.lean">Open <code>Optimization001.lean</code> →</a> · <a href="https://github.com/Ztang-Yit-Xiaang/mathproof-skill/blob/main/docs/demo/check_sample.R">Open <code>check_sample.R</code> →</a></p>
   </div>
 </section>
 
@@ -268,6 +317,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
     <ul class="checks">
       <li><span><strong>The exact first failing step plus a counterexample</strong>, pinpointing where reasoning breaks down rather than offering vague skepticism.</span></li>
       <li><span><strong>A Lean 4 proof or refutation checked by the kernel</strong>, where the checker rejects <code>sorry</code>, custom axioms, and <code>native_decide</code>.</span></li>
+      <li><span><strong>Numerical checks in R</strong> (or Python) that test the math on many random instances. They are seeded and recorded, so anyone can re-run them. They can flag a counterexample, but they never count as a proof.</span></li>
       <li><span><strong>A fidelity check comparing the Lean statement with the original question</strong>, ensuring it cannot quietly prove an easier theorem.</span></li>
       <li><span><strong>Honest labels</strong> (<code>LEAN-CHECKED (partial)</code>, <code>NOT FORMALIZED</code>, <code>UNVERIFIED</code>) instead of a confident guess.</span></li>
     </ul>

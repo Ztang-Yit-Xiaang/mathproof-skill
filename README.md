@@ -34,6 +34,66 @@ A real session on [worked example 5](examples/05-lean-checked-refutation.md), th
   </tr>
 </table>
 
+### The theorem this session produced
+
+**The submitted argument.** *Let $f:\mathbb{R}\to\mathbb{R}$ be differentiable with $f'(x_0)=0$. Then $x_0$ is a critical point, so $f$ attains its global minimum at $x_0$.*
+
+**Audit.** The first unsupported step is "$x_0$ is a critical point, so $f$ attains its global minimum at $x_0$". Fermat's theorem says that an interior minimum of a differentiable function is a critical point. That is a *necessary* condition. The argument uses its converse, which is not a theorem. So the skill tried to refute the claim, and succeeded.
+
+> **Theorem 1 (a critical point need not be a global minimum).** There exist a differentiable function $f:\mathbb{R}\to\mathbb{R}$ and a point $x_0\in\mathbb{R}$ with $f'(x_0)=0$ such that $f$ does not attain its global minimum at $x_0$. That is, it is false that $f(x_0)\le f(x)$ for all $x\in\mathbb{R}$.
+>
+> *Proof.* Let $f(x)=-x^2$ and $x_0=0$. We check the three requirements in turn.
+>
+> 1. *$f$ is differentiable on $\mathbb{R}$.* Fix $x\in\mathbb{R}$. For $h\neq 0$,
+>    $$\frac{f(x+h)-f(x)}{h}=\frac{-(x+h)^2+x^2}{h}=\frac{-2xh-h^2}{h}=-2x-h.$$
+>    As $h\to 0$ this tends to $-2x$. So $f$ is differentiable at every $x$, with $f'(x)=-2x$.
+> 2. *$x_0=0$ is a critical point.* By step 1, $f'(0)=-2\cdot 0=0$.
+> 3. *$f$ has no global minimum at $0$.* A global minimum at $0$ would need $f(0)\le f(x)$ for every $x$, in particular for $x=1$. But $f(1)=-1<0=f(0)$, so that inequality fails.
+>
+> Hence $f$ is differentiable and $f'(0)=0$, yet $f$ does not attain its global minimum at $0$. In fact $f(x)=-x^2\le 0=f(0)$ for all $x$, so $0$ is the global **maximum**. $\blacksquare$
+
+**Repair.** The claim becomes true once $f$ is also convex.
+
+> **Theorem 2.** Let $f:\mathbb{R}\to\mathbb{R}$ be convex and differentiable, and let $f'(x_0)=0$. Then $f(x_0)\le f(y)$ for every $y\in\mathbb{R}$.
+>
+> *Proof.* Fix $y$. If $y=x_0$ there is nothing to prove. For a convex differentiable function, the derivative at a point is bounded by the slopes of chords through that point:
+> $$f'(x_0)\le\frac{f(y)-f(x_0)}{y-x_0}\quad\text{if } x_0<y,\qquad \frac{f(x_0)-f(y)}{x_0-y}\le f'(x_0)\quad\text{if } y<x_0.$$
+> Put $f'(x_0)=0$. If $x_0<y$, then $0\le\frac{f(y)-f(x_0)}{y-x_0}$. Multiplying by $y-x_0>0$ gives $f(x_0)\le f(y)$. If $y<x_0$, then $\frac{f(x_0)-f(y)}{x_0-y}\le 0$. Multiplying by $x_0-y>0$ gives $f(x_0)-f(y)\le 0$, which is the same inequality. $\blacksquare$
+
+**Machine check.** In this session the Lean kernel accepted Theorem 1, stated as the negation of the claim. It uses only Lean's standard axioms, and its recorded status is `kernel-passed-local`. Theorem 2 is `isMinOn_of_deriv_eq_zero` in [`Optimization002.lean`](lean/MathProofSkill/Evals/Optimization002.lean), which the eval suite checks in CI. The verdict stays `UNVERIFIED` until a clean-machine check and a signed fidelity review.
+
+**Numerical check in R.** [`check_sample.R`](docs/demo/check_sample.R) tests both theorems numerically. It was recorded in the same ledger with `experiment run --lang r --seed 1`, and `experiment rerun` reproduced it exactly.
+- *Theorem 1:* central differences give $f'(0)=0$ at every step size from $10^{-1}$ to $10^{-6}$, while $f(1)=-1<0=f(0)$. On a grid over $[-10,10]$, $f(0)$ is the largest value. The run logs this as one counterexample candidate to the original claim.
+- *Theorem 2:* the script draws 1,000 random convex functions and finds each one's critical point $x_0$ by root-finding. Across 200 random $y$ per function, it finds no case with $f(y)<f(x_0)$. The smallest gap $f(y)-f(x_0)$ was $2.2\times10^{-9}\ge 0$.
+
+These runs are evidence, not proof: they don't change the status, and only the Lean check does.
+
+Each step of the proof of Theorem 1 has a matching line in the Lean proof:
+
+| Proof step | Lean line in `claim_false` |
+|---|---|
+| Assume the claim, aiming for a contradiction | `intro h` |
+| 1. $f(x)=-x^2$ is differentiable | `have hd : Differentiable ℝ (fun x => -x ^ 2) := by fun_prop` |
+| 2. $f'(0)=0$ | `have hstat : deriv (fun x => -x ^ 2) 0 = 0 := by simp` |
+| 3. The claim would give $f(0)\le f(1)$ | `have := h _ hd 0 hstat (mem_univ 1)` |
+| That says $0\le -1$, which is false | `norm_num at this` |
+
+<details><summary>Full Lean source (<a href="lean/MathProofSkill/Evals/Optimization001.lean">Optimization001.lean</a>)</summary>
+
+```lean
+def Claim : Prop :=
+  ∀ f : ℝ → ℝ, Differentiable ℝ f → ∀ x, deriv f x = 0 → IsMinOn f univ x
+
+theorem claim_false : ¬ Claim := by
+  intro h
+  have hd : Differentiable ℝ (fun x : ℝ => -x ^ 2) := by fun_prop
+  have hstat : deriv (fun x : ℝ => -x ^ 2) 0 = 0 := by simp
+  have := h _ hd 0 hstat (mem_univ 1)
+  norm_num at this
+```
+
+</details>
+
 The GIFs are rendered by [`docs/demo/render_gifs.py`](docs/demo/render_gifs.py) from the recorded output in [`docs/demo/session.json`](docs/demo/session.json).
 <!-- END demo-gifs -->
 
@@ -43,6 +103,7 @@ A chatbot gives a fluent answer you must still check yourself, and rarely says i
 
 - **The exact first failing step plus a counterexample**, pinpointing where reasoning breaks down rather than offering vague skepticism.
 - **A Lean 4 proof or refutation checked by the kernel**, where the checker rejects `sorry`, custom axioms, and `native_decide`.
+- **Numerical checks in R** (or Python) that test the math on many random instances. They are seeded and recorded, so anyone can re-run them. They can flag a counterexample, but they never count as a proof.
 - **A fidelity check comparing the Lean statement with the original question**, ensuring it cannot quietly prove an easier theorem.
 - **Honest labels** (`LEAN-CHECKED (partial)`, `NOT FORMALIZED`, `UNVERIFIED`) instead of a confident guess.
 

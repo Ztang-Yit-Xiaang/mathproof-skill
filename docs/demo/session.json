@@ -43,5 +43,39 @@
   "Depends on this file's MathProofSkill.Evals.Optimization001.Claim:",
   "    Prop",
   "    := ∀ (f : ℝ → ℝ), Differentiable ℝ f → ∀ (x : ℝ), deriv f x = 0 → IsMinOn f Set.univ x"
- ]
+ ],
+ "r_check": {
+  "command": "mathproof experiment run --claim demo/critical-point --code docs/demo/check_sample.R --lang r --seed 1 --params '{\"n\":1000,\"m\":200}'",
+  "ledger_seq": 2,
+  "outcome": "completed",
+  "rerun": "no differences",
+  "results_hash": "b487da747643a187d77adc062da1993d1e75ee075efeb7a5b2d5cebcad58de4c",
+  "results": {
+   "counterexample": {
+    "f0_is_grid_maximum": true,
+    "f_at_0": 0,
+    "f_at_1": -1,
+    "max_abs_central_difference": 0
+   },
+   "m": 200,
+   "n": 1000,
+   "repair": {
+    "failures": 0,
+    "instances": 1000,
+    "min_gap_f_y_minus_f_x0": 2.2017800915819e-09,
+    "points_each": 200
+   },
+   "seed": 1,
+   "violations": [
+    {
+     "f": "-x^2",
+     "f_x0": 0,
+     "f_y": -1,
+     "note": "f'(x0) = 0 but f(y) < f(x0)",
+     "x0": 0,
+     "y": 1
+    }
+   ]
+  }
+ }
 }
