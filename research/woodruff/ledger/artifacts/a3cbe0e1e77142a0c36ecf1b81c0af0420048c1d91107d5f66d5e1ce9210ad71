@@ -1,0 +1,159 @@
+import Mathlib
+
+/-!
+Woodruff, "Sketching as a Tool for Numerical Linear Algebra" (arXiv 1411.4357), §4.2, Lemma 48
+(due to Boutsidis, Drineas and Magdon-Ismail). Definitions and statement copied verbatim from `cur/Statement.lean`; the proof is our own.
+
+Survey text: "Let A = AZZᵀ + E ∈ ℝ^{m×n} be a low-rank matrix factorization of A, with
+Z ∈ ℝ^{n×k}, and ZᵀZ = I_k. Let S ∈ ℝ^{n×c} (c ≥ k) be any matrix such that
+rank(ZᵀS) = rank(Z) = k. Let C = AS ∈ ℝ^{m×c}. Then
+‖A − CC†A‖_F² ≤ ‖A − Π_{C,k}(A)‖_F² ≤ ‖E‖_F² + ‖ES(ZᵀS)†‖_F².
+Here, Π_{C,k}(A) = CX_opt, where X_opt has rank at most k and CX_opt is the best rank k
+approximation to A in the column space of C."
+
+Encoding.
+* ‖·‖_F is `frob`. C is written A·S.
+* CC†A is the projection of A onto the column space of C, i.e. C·P for any P minimizing
+  ‖A − CX‖_F over all X; Π_{C,k}(A) is C·X_k for any X_k minimizing ‖A − CX‖_F over rank(X) ≤ k.
+  The second conjunct states both inequalities for every such P and X_k.
+* (ZᵀS)† is generalized to any right inverse W of ZᵀS (ZᵀS·W = I_k). Since ZᵀS has full row rank
+  k, its pseudoinverse is such a W, so this is a stronger claim than the survey's.
+* The first conjunct makes the bound non-vacuous without assuming minimizers exist: some X of rank
+  ≤ k already achieves ‖A − CX‖_F² ≤ ‖E‖_F² + ‖ESW‖_F².
+-/
+
+/-- Frobenius norm. -/
+noncomputable def frob {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : ℝ :=
+  Real.sqrt (∑ a, ∑ b, M a b ^ 2)
+
+namespace L48
+
+/-- Squared Frobenius norm. -/
+def fs {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : ℝ := ∑ a, ∑ b, M a b ^ 2
+
+/-- Frobenius inner product. -/
+def ip {m p : ℕ} (X Y : Matrix (Fin m) (Fin p) ℝ) : ℝ := ∑ a, ∑ b, X a b * Y a b
+
+theorem fs_nonneg {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : 0 ≤ fs M :=
+  Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => sq_nonneg _
+
+theorem frob_eq {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : frob M = Real.sqrt (fs M) := rfl
+
+theorem fs_transpose {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : fs M.transpose = fs M := by
+  unfold fs
+  simp only [Matrix.transpose_apply]
+  exact Finset.sum_comm
+
+theorem frob_transpose {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : frob M.transpose = frob M := by
+  rw [frob_eq, frob_eq, fs_transpose]
+
+theorem fs_sub_comm {m p : ℕ} (X Y : Matrix (Fin m) (Fin p) ℝ) : fs (X - Y) = fs (Y - X) := by
+  unfold fs
+  refine Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => ?_
+  simp only [Matrix.sub_apply]; ring
+
+theorem frob_sub_comm {m p : ℕ} (X Y : Matrix (Fin m) (Fin p) ℝ) :
+    frob (X - Y) = frob (Y - X) := by
+  rw [frob_eq, frob_eq, fs_sub_comm]
+
+/-- `fs` of a difference. -/
+theorem fs_sub {m p : ℕ} (X Y : Matrix (Fin m) (Fin p) ℝ) :
+    fs (X - Y) = fs X - 2 * ip X Y + fs Y := by
+  unfold fs ip
+  rw [Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl fun a _ => ?_
+  rw [Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl fun b _ => ?_
+  rw [Matrix.sub_apply]; ring
+
+/-- From √a ≤ √b with a, b ≥ 0, get a ≤ b. -/
+theorem le_of_sqrt_le' {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (h : Real.sqrt a ≤ Real.sqrt b) :
+    a ≤ b :=
+  calc a = Real.sqrt a ^ 2 := (Real.sq_sqrt ha).symm
+    _ ≤ Real.sqrt b ^ 2 := pow_le_pow_left₀ (Real.sqrt_nonneg _) h 2
+    _ = b := Real.sq_sqrt hb
+
+theorem sum3_swap {α β γ : Type*} [Fintype α] [Fintype β] [Fintype γ] (f : α → β → γ → ℝ) :
+    ∑ a, ∑ b, ∑ c, f a b c = ∑ c, ∑ b, ∑ a, f a b c :=
+  calc ∑ a, ∑ b, ∑ c, f a b c = ∑ b, ∑ a, ∑ c, f a b c := Finset.sum_comm
+    _ = ∑ b, ∑ c, ∑ a, f a b c := Finset.sum_congr rfl fun _ _ => Finset.sum_comm
+    _ = ∑ c, ∑ b, ∑ a, f a b c := Finset.sum_comm
+
+/-- ⟨X, YZ⟩ = ⟨YᵀX, Z⟩ (from our Lemma 45 file). -/
+theorem ip_mul {m p q : ℕ} (X : Matrix (Fin m) (Fin p) ℝ) (Y : Matrix (Fin m) (Fin q) ℝ)
+    (Z : Matrix (Fin q) (Fin p) ℝ) :
+    ∑ a, ∑ b, X a b * (Y * Z) a b = ∑ c, ∑ b, (Y.transpose * X) c b * Z c b := by
+  have hL : ∀ a b, X a b * (Y * Z) a b = ∑ c, X a b * Y a c * Z c b := fun a b => by
+    rw [Matrix.mul_apply, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun c _ => by ring
+  have hR : ∀ c b, (Y.transpose * X) c b * Z c b = ∑ a, X a b * Y a c * Z c b := fun c b => by
+    rw [Matrix.mul_apply, Finset.sum_mul]
+    exact Finset.sum_congr rfl fun a _ => by simp only [Matrix.transpose_apply]; ring
+  simp only [hL, hR]
+  exact sum3_swap _
+
+/-- Pythagoras: `UᵀE = 0`, `UᵀU = 1` give ‖E − UT‖² = ‖E‖² + ‖T‖² (from our Lemma 45 file). -/
+theorem pythag {n k d : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1)
+    (E : Matrix (Fin n) (Fin d) ℝ) (hUE : U.transpose * E = 0) (T : Matrix (Fin k) (Fin d) ℝ) :
+    fs (E - U * T) = fs E + fs T := by
+  have h1 := ip_mul E U T
+  have h2 := ip_mul (U * T) U T
+  rw [hUE] at h1
+  rw [← Matrix.mul_assoc, hU, Matrix.one_mul] at h2
+  simp only [Matrix.zero_apply, zero_mul, Finset.sum_const_zero] at h1
+  rw [fs_sub]
+  unfold ip fs
+  rw [h1]
+  have h3 : ∑ i, ∑ j, (U * T) i j ^ 2 = ∑ a, ∑ j, T a j ^ 2 := by
+    simp only [sq]; rw [h2]
+  rw [h3]; ring
+
+end L48
+
+open L48 in
+theorem woodruff_lemma48 {m n k c : ℕ} (A : Matrix (Fin m) (Fin n) ℝ)
+    (Z : Matrix (Fin n) (Fin k) ℝ) (hZ : Z.transpose * Z = 1)
+    (E : Matrix (Fin m) (Fin n) ℝ) (hE : A = A * Z * Z.transpose + E)
+    (S : Matrix (Fin n) (Fin c) ℝ) (hck : k ≤ c) (hrank : (Z.transpose * S).rank = k)
+    (W : Matrix (Fin c) (Fin k) ℝ) (hW : Z.transpose * S * W = 1) :
+    (∃ X : Matrix (Fin c) (Fin n) ℝ, X.rank ≤ k ∧
+      frob (A - A * S * X) ^ 2 ≤ frob E ^ 2 + frob (E * S * W) ^ 2) ∧
+    ∀ P Xk : Matrix (Fin c) (Fin n) ℝ,
+      (∀ X : Matrix (Fin c) (Fin n) ℝ, frob (A - A * S * P) ≤ frob (A - A * S * X)) →
+      Xk.rank ≤ k →
+      (∀ X : Matrix (Fin c) (Fin n) ℝ, X.rank ≤ k → frob (A - A * S * Xk) ≤ frob (A - A * S * X)) →
+      frob (A - A * S * P) ^ 2 ≤ frob (A - A * S * Xk) ^ 2 ∧
+        frob (A - A * S * Xk) ^ 2 ≤ frob E ^ 2 + frob (E * S * W) ^ 2 := by
+  have hEZ : E * Z = 0 := by
+    have h : E = A - A * Z * Z.transpose := eq_sub_of_add_eq' hE.symm
+    rw [h, Matrix.sub_mul, Matrix.mul_assoc (A * Z), hZ, Matrix.mul_one, sub_self]
+  have hsplit : A - A * S * (W * Z.transpose) = E - E * S * W * Z.transpose := by
+    have h1 : A * S * (W * Z.transpose) = A * Z * Z.transpose + E * S * W * Z.transpose := by
+      conv_lhs => rw [hE]
+      rw [Matrix.add_mul, Matrix.add_mul]
+      congr 1
+      · rw [show A * Z * Z.transpose * S * (W * Z.transpose)
+            = A * Z * (Z.transpose * S * W) * Z.transpose by simp only [Matrix.mul_assoc], hW,
+          Matrix.mul_one]
+      · simp only [Matrix.mul_assoc]
+    calc A - A * S * (W * Z.transpose)
+        = (A * Z * Z.transpose + E) - (A * Z * Z.transpose + E * S * W * Z.transpose) := by
+          rw [h1, ← hE]
+      _ = E - E * S * W * Z.transpose := by abel
+  have hfs : fs (A - A * S * (W * Z.transpose)) = fs E + fs (E * S * W) := by
+    rw [hsplit, ← fs_transpose, Matrix.transpose_sub, Matrix.transpose_mul (E * S * W),
+      Matrix.transpose_transpose]
+    have hZE : Z.transpose * E.transpose = 0 := by
+      rw [← Matrix.transpose_mul, hEZ, Matrix.transpose_zero]
+    rw [pythag Z hZ E.transpose hZE, fs_transpose, fs_transpose]
+  have hsq : ∀ M : Matrix (Fin m) (Fin n) ℝ, frob M ^ 2 = fs M := fun M => by
+    rw [frob_eq, Real.sq_sqrt (fs_nonneg _)]
+  have hsq' : ∀ M : Matrix (Fin m) (Fin k) ℝ, frob M ^ 2 = fs M := fun M => by
+    rw [frob_eq, Real.sq_sqrt (fs_nonneg _)]
+  have hrk : (W * Z.transpose).rank ≤ k :=
+    (Matrix.rank_mul_le_left _ _).trans (Matrix.rank_le_width W)
+  have hcand : frob (A - A * S * (W * Z.transpose)) ^ 2 ≤ frob E ^ 2 + frob (E * S * W) ^ 2 := by
+    rw [hsq, hsq, hsq', hfs]
+  refine ⟨⟨W * Z.transpose, hrk, hcand⟩, fun P Xk hP hXk hbest => ⟨?_, ?_⟩⟩
+  · exact pow_le_pow_left₀ (Real.sqrt_nonneg _) (hP Xk) 2
+  · exact (pow_le_pow_left₀ (Real.sqrt_nonneg _) (hbest _ hrk) 2).trans hcand

@@ -1,0 +1,315 @@
+import Mathlib
+
+/-!
+Woodruff, "Sketching as a Tool for Numerical Linear Algebra" (arXiv 1411.4357), §2.4, Theorem 17,
+in a second-moment variant (our own statement and proof; DEC with the user, 2026-11-11).
+Definitions and statement copied verbatim from `lev/Statement.lean`.
+Chain: ‖(ZᵀΩD)ᵀx‖² − ‖x‖² = xᵀ(G − I)x with G − I = Σⱼ Yⱼ (`hdiff`); Cauchy–Schwarz bounds it by
+‖G − I‖_F‖x‖² (`hcs`); pairwise independence and E Yⱼ = 0 give E‖G − I‖_F² = (k² − k)/s (`hE`);
+Markov at ε².
+
+Survey text: "Suppose Z ∈ ℝ^{n×k} has orthonormal columns. Suppose s > 144k ln(2k/δ)/(βε²) and
+Ω and D are constructed from the RandSampling(Z, s, q) procedure. Then with probability at least
+1 − δ, simultaneously for all i, 1 − ε ≤ σᵢ²(ZᵀΩD) ≤ 1 + ε."
+
+Variant, recorded as a departure: the sample size is s ≥ k²/(ε²δ) instead of
+s > 144k ln(2k/δ)/(βε²). The survey's bound needs a matrix Chernoff inequality; ours needs only
+second moments and Markov, at the price of k² instead of k log k. As in Lemma 55, q = p (β = 1).
+
+Encoding.
+* RandSampling (Definition 16): `I ω j` is the j-th sampled row index, with law
+  P(I j = i) = pᵢ = ‖eᵢᵀZ‖²/k, and the samples are pairwise independent (Definition 16 picks them
+  independently, which implies this). ΩD is `sampleMat`, as in our Lemma 49 file.
+* "1 − ε ≤ σᵢ²(ZᵀΩD) ≤ 1 + ε for all i" is the equivalent quadratic-form statement
+  (1 − ε)‖x‖² ≤ ‖(ZᵀΩD)ᵀx‖² ≤ (1 + ε)‖x‖² for all x ∈ ℝᵏ.
+-/
+
+open MeasureTheory ProbabilityTheory
+
+/-- The product ΩD of RandSampling: column j is e_{I j} scaled by 1/√(q_{I j} s). -/
+noncomputable def sampleMat {n s : ℕ} (I : Fin s → Fin n) (q : Fin n → ℝ) :
+    Matrix (Fin n) (Fin s) ℝ :=
+  fun i j => if I j = i then 1 / Real.sqrt (q i * s) else 0
+
+
+namespace LS
+
+theorem integ_fin {Ω β : Type*} [MeasurableSpace Ω] {μ : Measure Ω} [IsFiniteMeasure μ]
+    [Fintype β] [MeasurableSpace β] [MeasurableSingletonClass β]
+    (Y : Ω → β) (hY : Measurable Y) (Φ : β → ℝ) : Integrable (fun ω => Φ (Y ω)) μ := by
+  refine Integrable.of_bound ((measurable_of_finite Φ).comp hY).aestronglyMeasurable
+    (∑ y, |Φ y|) (Filter.Eventually.of_forall fun ω => ?_)
+  rw [Real.norm_eq_abs]
+  exact Finset.single_le_sum (f := fun y => |Φ y|) (fun y _ => abs_nonneg _) (Finset.mem_univ (Y ω))
+
+/-- Expectation of a function of a discrete random variable with a known law. -/
+theorem int_law {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ] {n : ℕ}
+    (X : Ω → Fin n) (hX : Measurable X) (p : Fin n → ℝ) (hp : ∀ i, 0 ≤ p i)
+    (hlaw : ∀ i, μ {ω | X ω = i} = ENNReal.ofReal (p i)) (g : Fin n → ℝ) :
+    ∫ ω, g (X ω) ∂μ = ∑ i, g i * p i := by
+  have hms : ∀ i, MeasurableSet {ω | X ω = i} := fun i => hX (measurableSet_singleton i)
+  have hpt : (fun ω => g (X ω)) = fun ω => ∑ i, {ω' | X ω' = i}.indicator (fun _ => g i) ω := by
+    funext ω
+    simp only [Set.indicator_apply, Set.mem_setOf_eq]
+    rw [Finset.sum_ite_eq]; simp
+  rw [hpt, integral_finsetSum _ fun i _ => (integrable_const (g i)).indicator (hms i)]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [integral_indicator_const _ (hms i), measureReal_def, hlaw i, ENNReal.toReal_ofReal (hp i),
+    smul_eq_mul, mul_comm]
+
+theorem markov_tail {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    (F : Ω → ℝ) (hFnn : ∀ ω, 0 ≤ F ω) (hFint : Integrable F μ) {t c : ℝ} (ht : 0 < t)
+    (hE : ∫ ω, F ω ∂μ ≤ c) :
+    μ {ω | t ≤ F ω} ≤ ENNReal.ofReal (c / t) := by
+  have hMk := mul_meas_ge_le_integral_of_nonneg (Filter.Eventually.of_forall hFnn) hFint t
+  have hle : μ.real {ω | t ≤ F ω} ≤ c / t := by
+    rw [le_div_iff₀ ht]; linarith
+  rw [← ENNReal.ofReal_toReal (measure_ne_top μ {ω | t ≤ F ω})]
+  exact ENNReal.ofReal_le_ofReal hle
+
+theorem frob_sq_U {n k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1) :
+    ∑ i, ∑ a, U i a ^ 2 = k := by
+  have h : ∀ a b, ∑ i, U i a * U i b = (1 : Matrix (Fin k) (Fin k) ℝ) a b := by
+    intro a b
+    have := congrFun (congrFun hU a) b
+    simpa [Matrix.mul_apply] using this
+  rw [Finset.sum_comm]
+  simp_rw [sq, h, Matrix.one_apply_eq]
+  simp
+
+/-- Cauchy–Schwarz for a bilinear form: (Σ xₐx_b Q_ab)² ≤ ‖x‖⁴ ‖Q‖_F². -/
+theorem cs_quad {k : ℕ} (x : Fin k → ℝ) (Q : Fin k → Fin k → ℝ) :
+    (∑ a, ∑ b, x a * x b * Q a b) ^ 2 ≤ (∑ a, x a ^ 2) ^ 2 * ∑ a, ∑ b, Q a b ^ 2 := by
+  have h := Finset.sum_mul_sq_le_sq_mul_sq (Finset.univ : Finset (Fin k × Fin k))
+    (fun p => x p.1 * x p.2) (fun p => Q p.1 p.2)
+  simp only [Fintype.sum_prod_type] at h
+  have e : ∑ a, ∑ b, (x a * x b) ^ 2 = (∑ a, x a ^ 2) ^ 2 := by
+    rw [sq (∑ a, x a ^ 2), Finset.sum_mul_sum]
+    exact Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => by ring
+  rw [e] at h
+  exact h
+
+end LS
+
+theorem woodruff_theorem17_second_moment {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω)
+    [IsProbabilityMeasure μ] {n k s : ℕ} (Z : Matrix (Fin n) (Fin k) ℝ) (hZ : Z.transpose * Z = 1)
+    (I : Ω → Fin s → Fin n) (hI : ∀ j, Measurable fun ω => I ω j)
+    (hlaw : ∀ j i, μ {ω | I ω j = i} = ENNReal.ofReal ((∑ a, Z i a ^ 2) / k))
+    (hind : ∀ j j', j ≠ j' → IndepFun (fun ω => I ω j) (fun ω => I ω j') μ)
+    (ε δ : ℝ) (hε : 0 < ε) (hδ : 0 < δ) (hs : (k : ℝ) ^ 2 / (ε ^ 2 * δ) ≤ s) :
+    ENNReal.ofReal (1 - δ) ≤ μ {ω | ∀ x : Fin k → ℝ,
+      (1 - ε) * ∑ a, x a ^ 2 ≤
+        ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) (fun i => (∑ a, Z i a ^ 2) / k)) a j) ^ 2 ∧
+      ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) (fun i => (∑ a, Z i a ^ 2) / k)) a j) ^ 2 ≤
+        (1 + ε) * ∑ a, x a ^ 2} := by
+  rcases Nat.eq_zero_or_pos k with hk0 | hk
+  · subst hk0
+    calc ENNReal.ofReal (1 - δ) ≤ 1 := ENNReal.ofReal_le_one.mpr (by linarith)
+      _ = μ Set.univ := measure_univ.symm
+      _ ≤ _ := measure_mono fun ω _ => by intro x; simp
+  have hkR : (0 : ℝ) < k := by exact_mod_cast hk
+  have hs0 : (0 : ℝ) < s := lt_of_lt_of_le (by positivity) hs
+  set p : Fin n → ℝ := fun i => (∑ a, Z i a ^ 2) / k with hp
+  have hp0 : ∀ i, 0 ≤ p i := fun i => div_nonneg (Finset.sum_nonneg fun a _ => sq_nonneg _) hkR.le
+  have hN : ∀ i, ∑ a, Z i a ^ 2 = k * p i := fun i => by rw [hp]; field_simp
+  have hz0 : ∀ i, p i = 0 → ∀ a, Z i a = 0 := by
+    intro i hpi a
+    have h0 : ∑ a, Z i a ^ 2 = 0 := by rw [hN, hpi, mul_zero]
+    have := (Finset.sum_eq_zero_iff_of_nonneg fun a _ => sq_nonneg (Z i a)).mp h0 a
+      (Finset.mem_univ _)
+    exact pow_eq_zero_iff (two_ne_zero) |>.mp this
+  have hpsum : ∑ i, p i = 1 := by
+    have : ∑ i, p i = (∑ i, ∑ a, Z i a ^ 2) / k := by rw [hp, Finset.sum_div]
+    rw [this, LS.frob_sq_U Z hZ]; field_simp
+  set c : Fin n → ℝ := fun i => 1 / (p i * s) with hc
+  -- the sketched quadratic form in coordinates
+  have hsm : ∀ (J : Fin s → Fin n) (x : Fin k → ℝ) (j : Fin s),
+      (∑ a, x a * (Z.transpose * sampleMat J p) a j) ^ 2 = c (J j) * (∑ a, Z (J j) a * x a) ^ 2 := by
+    intro J x j
+    have h1 : ∀ a, (Z.transpose * sampleMat J p) a j = Z (J j) a * (1 / Real.sqrt (p (J j) * s)) := by
+      intro a
+      simp only [Matrix.mul_apply, Matrix.transpose_apply, sampleMat, mul_ite, mul_zero]
+      rw [Finset.sum_ite_eq]; simp
+    simp only [h1]
+    have h2 : (1 / Real.sqrt (p (J j) * s)) ^ 2 = c (J j) := by
+      rw [hc, div_pow, one_pow, Real.sq_sqrt (mul_nonneg (hp0 _) hs0.le)]
+    rw [← h2, ← mul_pow]
+    congr 1
+    rw [Finset.mul_sum]
+    exact Finset.sum_congr rfl fun a _ => by ring
+  set g : Fin k → Fin k → Fin n → ℝ := fun a b i =>
+    Z i a * Z i b * c i - (if a = b then 1 else 0) / s with hg
+  set F : Ω → ℝ := fun ω => ∑ a, ∑ b, (∑ j, g a b (I ω j)) ^ 2 with hF
+  -- the deviation as a bilinear form
+  have hdiff : ∀ (J : Fin s → Fin n) (x : Fin k → ℝ),
+      ∑ j, c (J j) * (∑ a, Z (J j) a * x a) ^ 2 - ∑ a, x a ^ 2 =
+        ∑ a, ∑ b, x a * x b * ∑ j, g a b (J j) := by
+    intro J x
+    have e1 : ∀ a b, ∑ j, g a b (J j) =
+        ∑ j, Z (J j) a * Z (J j) b * c (J j) - (if a = b then 1 else 0) := by
+      intro a b
+      simp only [hg]
+      rw [Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin,
+        nsmul_eq_mul]
+      field_simp
+    simp only [e1, mul_sub, Finset.sum_sub_distrib]
+    have e2 : ∑ a, ∑ b, x a * x b * (if a = b then (1 : ℝ) else 0) = ∑ a, x a ^ 2 := by
+      refine Finset.sum_congr rfl fun a _ => ?_
+      simp only [mul_ite, mul_one, mul_zero]
+      rw [Finset.sum_ite_eq]; simp [sq]
+    have e3 : ∑ a, ∑ b, x a * x b * ∑ j, Z (J j) a * Z (J j) b * c (J j) =
+        ∑ j, c (J j) * (∑ a, Z (J j) a * x a) ^ 2 := by
+      calc ∑ a, ∑ b, x a * x b * ∑ j, Z (J j) a * Z (J j) b * c (J j)
+          = ∑ a, ∑ j, ∑ b, x a * x b * (Z (J j) a * Z (J j) b * c (J j)) := by
+            refine Finset.sum_congr rfl fun a _ => ?_
+            simp only [Finset.mul_sum]
+            exact Finset.sum_comm
+        _ = ∑ j, ∑ a, ∑ b, x a * x b * (Z (J j) a * Z (J j) b * c (J j)) := Finset.sum_comm
+        _ = _ := by
+            refine Finset.sum_congr rfl fun j _ => ?_
+            rw [sq, Finset.sum_mul_sum, Finset.mul_sum]
+            refine Finset.sum_congr rfl fun a _ => ?_
+            rw [Finset.mul_sum]
+            exact Finset.sum_congr rfl fun b _ => by ring
+    rw [e2, e3]
+  -- Cauchy–Schwarz consequence
+  have hdev : ∀ ω (x : Fin k → ℝ),
+      (∑ j, c (I ω j) * (∑ a, Z (I ω j) a * x a) ^ 2 - ∑ a, x a ^ 2) ^ 2 ≤
+        (∑ a, x a ^ 2) ^ 2 * F ω := by
+    intro ω x; rw [hdiff]; exact LS.cs_quad x (fun a b => ∑ j, g a b (I ω j))
+  have hIv : Measurable (fun ω => I ω) := measurable_pi_iff.mpr hI
+  have hFint : Integrable F μ :=
+    LS.integ_fin (fun ω => I ω) hIv (fun J => ∑ a, ∑ b, (∑ j, g a b (J j)) ^ 2)
+  have hFnn : ∀ ω, 0 ≤ F ω := fun ω =>
+    Finset.sum_nonneg fun a _ => Finset.sum_nonneg fun b _ => sq_nonneg _
+  -- each sampled term has mean zero
+  have hmean : ∀ a b, ∑ i, g a b i * p i = 0 := by
+    intro a b
+    have h1 : ∀ i, g a b i * p i = Z i a * Z i b / s - (if a = b then 1 else 0) / s * p i := by
+      intro i
+      by_cases hpi : p i = 0
+      · simp [hg, hpi, hz0 i hpi a]
+      · have hcp : c i * p i = 1 / s := by rw [hc]; field_simp
+        simp only [hg]
+        rw [sub_mul, mul_assoc (Z i a * Z i b), hcp]
+        ring
+    simp only [h1, Finset.sum_sub_distrib, ← Finset.mul_sum, hpsum, mul_one]
+    have h2 : ∑ i, Z i a * Z i b / s = (if a = b then 1 else 0) / s := by
+      rw [← Finset.sum_div]
+      have := congrFun (congrFun hZ a) b
+      simp only [Matrix.mul_apply, Matrix.transpose_apply, Matrix.one_apply] at this
+      rw [this]
+    rw [h2, sub_self]
+  -- the variance of one sample
+  have hvar : ∀ i, p i * ∑ a, ∑ b, g a b i ^ 2 = ((k : ℝ) ^ 2 - k) * p i / s ^ 2 := by
+    intro i
+    by_cases hpi : p i = 0
+    · rw [hpi]; simp
+    · have e : ∀ a b, g a b i ^ 2 = (Z i a ^ 2 * c i ^ 2) * Z i b ^ 2 -
+          (if a = b then 2 * (c i / s) * Z i a ^ 2 else 0) + (if a = b then 1 / (s : ℝ) ^ 2 else 0) := by
+        intro a b; simp only [hg]; split_ifs with hab
+        · subst hab; ring
+        · ring
+      have hsum : ∑ a, ∑ b, g a b i ^ 2 =
+          (∑ a, Z i a ^ 2) ^ 2 * c i ^ 2 - 2 * (c i / s) * ∑ a, Z i a ^ 2 + k * (1 / s ^ 2) := by
+        simp only [e, Finset.sum_add_distrib, Finset.sum_sub_distrib, Finset.sum_ite_eq,
+          Finset.mem_univ, if_true]
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+        have h1 : ∑ a, ∑ b, Z i a ^ 2 * c i ^ 2 * Z i b ^ 2 = (∑ a, Z i a ^ 2) ^ 2 * c i ^ 2 := by
+          rw [sq (∑ a, Z i a ^ 2), Finset.sum_mul_sum, Finset.sum_mul]
+          exact Finset.sum_congr rfl fun a _ => by
+            rw [Finset.sum_mul]; exact Finset.sum_congr rfl fun b _ => by ring
+        rw [h1, ← Finset.mul_sum]
+      rw [hsum, hN i, hc]
+      field_simp
+      ring
+  -- the second moment
+  have hterm : ∀ a b, ∫ ω, (∑ j, g a b (I ω j)) ^ 2 ∂μ = s * ∑ i, g a b i ^ 2 * p i := by
+    intro a b
+    have hexp : (fun ω => (∑ j, g a b (I ω j)) ^ 2) =
+        fun ω => ∑ j, ∑ j', g a b (I ω j) * g a b (I ω j') := by
+      funext ω; rw [sq, Finset.sum_mul_sum]
+    rw [hexp, integral_finsetSum _ fun j _ => integrable_finsetSum _ fun j' _ =>
+      LS.integ_fin (fun ω => I ω) hIv (fun J => g a b (J j) * g a b (J j'))]
+    have hj : ∀ j : Fin s, ∫ ω, ∑ j', g a b (I ω j) * g a b (I ω j') ∂μ = ∑ i, g a b i ^ 2 * p i := by
+      intro j
+      rw [integral_finsetSum _ fun j' _ =>
+        LS.integ_fin (fun ω => I ω) hIv (fun J => g a b (J j) * g a b (J j'))]
+      rw [Finset.sum_eq_single j]
+      · rw [LS.int_law μ (fun ω => I ω j) (hI j) p hp0 (hlaw j) (fun i => g a b i * g a b i)]
+        exact Finset.sum_congr rfl fun i _ => by ring
+      · intro j' _ hj'
+        have hm := measurable_of_finite (g a b)
+        have hind' := (hind j j' (Ne.symm hj')).comp hm hm
+        have := hind'.integral_fun_mul_eq_mul_integral (hm.comp (hI j)).aestronglyMeasurable
+          (hm.comp (hI j')).aestronglyMeasurable
+        simp only [Function.comp_def] at this
+        rw [this, LS.int_law μ (fun ω => I ω j) (hI j) p hp0 (hlaw j) (g a b), hmean, zero_mul]
+      · intro h; exact absurd (Finset.mem_univ j) h
+    rw [Finset.sum_congr rfl fun j _ => hj j, Finset.sum_const, Finset.card_univ, Fintype.card_fin,
+      nsmul_eq_mul]
+  have hE : ∫ ω, F ω ∂μ = ((k : ℝ) ^ 2 - k) / s := by
+    have h2 : ∀ a, ∫ ω, ∑ b, (∑ j, g a b (I ω j)) ^ 2 ∂μ = ∑ b, s * ∑ i, g a b i ^ 2 * p i :=
+      fun a => by
+        rw [integral_finsetSum _ fun b _ =>
+          LS.integ_fin (fun ω => I ω) hIv (fun J => (∑ j, g a b (J j)) ^ 2)]
+        exact Finset.sum_congr rfl fun b _ => hterm a b
+    rw [hF]
+    rw [integral_finsetSum _ fun a _ => integrable_finsetSum _ fun b _ =>
+      LS.integ_fin (fun ω => I ω) hIv (fun J => (∑ j, g a b (J j)) ^ 2)]
+    rw [Finset.sum_congr rfl fun a _ => h2 a]
+    have h3 : ∑ a, ∑ b, (s : ℝ) * ∑ i, g a b i ^ 2 * p i = s * ∑ i, p i * ∑ a, ∑ b, g a b i ^ 2 := by
+      simp only [← Finset.mul_sum]
+      congr 1
+      calc ∑ a, ∑ b, ∑ i, g a b i ^ 2 * p i = ∑ a, ∑ i, ∑ b, g a b i ^ 2 * p i :=
+            Finset.sum_congr rfl fun a _ => Finset.sum_comm
+        _ = ∑ i, ∑ a, ∑ b, g a b i ^ 2 * p i := Finset.sum_comm
+        _ = _ := Finset.sum_congr rfl fun i _ => by
+            rw [Finset.mul_sum]
+            exact Finset.sum_congr rfl fun a _ => by
+              rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun b _ => by ring
+    rw [h3, Finset.sum_congr rfl fun i _ => hvar i, ← Finset.sum_div, ← Finset.mul_sum, hpsum]
+    field_simp
+  -- Markov
+  have hbad := LS.markov_tail μ F hFnn hFint (t := ε ^ 2) (pow_pos hε 2) (le_of_eq hE)
+  have hδb : ((k : ℝ) ^ 2 - k) / s / ε ^ 2 ≤ δ := by
+    have h1 : (k : ℝ) ^ 2 ≤ s * (ε ^ 2 * δ) := by
+      have := (div_le_iff₀ (by positivity : (0 : ℝ) < ε ^ 2 * δ)).mp hs
+      linarith
+    rw [div_div, div_le_iff₀ (by positivity)]
+    nlinarith
+  have hbad' : μ {ω | ε ^ 2 ≤ F ω} ≤ ENNReal.ofReal δ := hbad.trans (ENNReal.ofReal_le_ofReal hδb)
+  have hgood : {ω | ε ^ 2 ≤ F ω}ᶜ ⊆ {ω | ∀ x : Fin k → ℝ,
+      (1 - ε) * ∑ a, x a ^ 2 ≤ ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) p) a j) ^ 2 ∧
+      ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) p) a j) ^ 2 ≤ (1 + ε) * ∑ a, x a ^ 2} := by
+    intro ω hω x
+    simp only [Set.mem_compl_iff, Set.mem_setOf_eq, not_le] at hω
+    simp only [hsm (I ω) x]
+    have h1 := hdev ω x
+    set S := ∑ a, x a ^ 2 with hS
+    have hS0 : 0 ≤ S := Finset.sum_nonneg fun a _ => sq_nonneg _
+    have h2 : (∑ j, c (I ω j) * (∑ a, Z (I ω j) a * x a) ^ 2 - S) ^ 2 ≤ (ε * S) ^ 2 := by
+      calc _ ≤ S ^ 2 * F ω := h1
+        _ ≤ S ^ 2 * ε ^ 2 := mul_le_mul_of_nonneg_left hω.le (sq_nonneg _)
+        _ = (ε * S) ^ 2 := by ring
+    have h3 := abs_le_of_sq_le_sq' h2 (mul_nonneg hε.le hS0)
+    constructor <;> nlinarith [h3.1, h3.2]
+  have hone : (1 : ENNReal) ≤ μ {ω | ∀ x : Fin k → ℝ,
+      (1 - ε) * ∑ a, x a ^ 2 ≤ ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) p) a j) ^ 2 ∧
+      ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) p) a j) ^ 2 ≤ (1 + ε) * ∑ a, x a ^ 2} +
+      ENNReal.ofReal δ := by
+    calc (1 : ENNReal) = μ Set.univ := measure_univ.symm
+      _ ≤ μ ({ω | ∀ x : Fin k → ℝ,
+          (1 - ε) * ∑ a, x a ^ 2 ≤ ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) p) a j) ^ 2 ∧
+          ∑ j, (∑ a, x a * (Z.transpose * sampleMat (I ω) p) a j) ^ 2 ≤ (1 + ε) * ∑ a, x a ^ 2} ∪
+          {ω | ε ^ 2 ≤ F ω}) := measure_mono fun ω _ => by
+            by_cases h : ω ∈ {ω | ε ^ 2 ≤ F ω}
+            · exact Or.inr h
+            · exact Or.inl (hgood h)
+      _ ≤ _ := (measure_union_le _ _).trans (add_le_add le_rfl hbad')
+  by_cases hδ1 : 1 ≤ δ
+  · rw [ENNReal.ofReal_of_nonpos (by linarith)]; exact bot_le
+  · have h1 : ENNReal.ofReal (1 - δ) + ENNReal.ofReal δ = 1 := by
+      rw [← ENNReal.ofReal_add (by linarith) hδ.le]; norm_num
+    rw [← h1] at hone
+    exact (ENNReal.add_le_add_iff_right ENNReal.ofReal_ne_top).mp hone

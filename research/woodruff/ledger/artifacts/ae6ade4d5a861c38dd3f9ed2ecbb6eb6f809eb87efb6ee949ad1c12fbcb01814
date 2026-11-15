@@ -1,0 +1,460 @@
+import Mathlib
+
+/-!
+Woodruff, "Sketching as a Tool for Numerical Linear Algebra" (arXiv 1411.4357), Definition 12,
+Theorem 13 and Theorem 14. Statements only; the proofs are our own.
+
+Encoding.
+* Definition 12, the (ε, δ, ℓ)-JL moment property of a random k×d matrix `S`: for every x with
+  ‖x‖₂ = 1, E|‖Sx‖₂² − 1|^ℓ ≤ ε^ℓ·δ. The expectation is a lower Lebesgue integral in [0, ∞], so a
+  non-integrable quantity cannot satisfy the bound vacuously.
+* ‖·‖_F is written out as the square root of the sum of squared entries.
+* `S` is measurable entrywise (Mathlib has no measurable-space instance on `Matrix`).
+* Theorem 13 keeps the survey's ranges ε, δ ∈ (0, 1/2) and ℓ ≥ 2 (real).
+* Theorem 14 uses the sparse embedding of the survey's §2.1 with the same encoding as our
+  Theorem 9: `h` pairwise independent and uniform, `σ` ±1 and 4-wise independent, `h` independent
+  of `σ`. "At least 2/(ε²δ) rows" is `2/(ε²δ) ≤ r`.
+-/
+
+open MeasureTheory ProbabilityTheory
+
+/-- The sketch of a vector, as in our Theorem 9 file. -/
+def sketch {n r : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ) (v : Fin n → ℝ) : Fin r → ℝ :=
+  fun j => ∑ i, if h i = j then σ i * v i else 0
+
+/-- Definition 12: the (ε, δ, ℓ)-JL moment property. -/
+def JLMoment {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) {k d : ℕ}
+    (S : Ω → Matrix (Fin k) (Fin d) ℝ) (ε δ ℓ : ℝ) : Prop :=
+  ∀ x : Fin d → ℝ, ∑ i, x i ^ 2 = 1 →
+    ∫⁻ ω, ENNReal.ofReal (|∑ j, ((S ω).mulVec x j) ^ 2 - 1| ^ ℓ) ∂μ ≤ ENNReal.ofReal (ε ^ ℓ * δ)
+
+/-- Frobenius norm. -/
+noncomputable def frob {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : ℝ :=
+  Real.sqrt (∑ a, ∑ b, M a b ^ 2)
+
+/-- The CountSketch matrix of `h` and `σ`: entry `(j, i)` is `σ i` if `h i = j`, else 0. -/
+def countSketch {n r : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ) : Matrix (Fin r) (Fin n) ℝ :=
+  fun j i => if h i = j then σ i else 0
+
+
+/-! ## Lemmas copied from our checked file `../../proofs/Modular.lean` -/
+
+lemma L3_swap22 {α β γ δ : Type*} [Fintype α] [Fintype β] [Fintype γ] [Fintype δ]
+    (f : α → β → γ → δ → ℝ) :
+    ∑ a, ∑ b, ∑ c, ∑ d, f a b c d = ∑ c, ∑ d, ∑ a, ∑ b, f a b c d := by
+  calc ∑ a, ∑ b, ∑ c, ∑ d, f a b c d = ∑ a, ∑ c, ∑ b, ∑ d, f a b c d :=
+        Finset.sum_congr rfl fun a _ => Finset.sum_comm
+    _ = ∑ a, ∑ c, ∑ d, ∑ b, f a b c d :=
+        Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun c _ => Finset.sum_comm
+    _ = ∑ c, ∑ a, ∑ d, ∑ b, f a b c d := Finset.sum_comm
+    _ = ∑ c, ∑ d, ∑ a, ∑ b, f a b c d := Finset.sum_congr rfl fun c _ => Finset.sum_comm
+
+lemma L3_expand_gen {ι κ : Type*} [Fintype ι] [Fintype κ] (F : ι → ι → κ → κ → ℝ) :
+    ∑ a, ∑ b, (∑ i, ∑ j, F i j a b) ^ 2
+      = ∑ i, ∑ j, ∑ i', ∑ j', ∑ a, ∑ b, F i j a b * F i' j' a b := by
+  calc ∑ a, ∑ b, (∑ i, ∑ j, F i j a b) ^ 2
+        = ∑ a, ∑ b, ∑ i, ∑ j, ∑ i', ∑ j', F i j a b * F i' j' a b := by
+          simp_rw [sq, Finset.sum_mul, Finset.mul_sum]
+    _ = ∑ i, ∑ j, ∑ a, ∑ b, ∑ i', ∑ j', F i j a b * F i' j' a b := L3_swap22 _
+    _ = _ := Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ => L3_swap22 _
+
+lemma L3_expand {n k r : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (x : Fin n → Fin r) (s : Fin n → ℝ) :
+    ∑ a, ∑ b, (∑ i, ∑ j, if i ≠ j ∧ x i = x j then s i * s j * U i a * U j b else 0) ^ 2
+      = ∑ i, ∑ j, ∑ i', ∑ j',
+          ((if i ≠ j ∧ x i = x j then (1:ℝ) else 0) * (if i' ≠ j' ∧ x i' = x j' then (1:ℝ) else 0))
+            * (s i * s j * s i' * s j') * (∑ a, ∑ b, U i a * U j b * U i' a * U j' b) := by
+  rw [L3_expand_gen (fun i j a b => if i ≠ j ∧ x i = x j then s i * s j * U i a * U j b else 0)]
+  refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ =>
+    Finset.sum_congr rfl fun i' _ => Finset.sum_congr rfl fun j' _ => ?_
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun a _ => ?_
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun b _ => ?_
+  beta_reduce
+  split_ifs <;> ring
+
+lemma L3_int_congr {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) {f g : Ω → ℝ}
+    (hfg : ∀ ω, f ω = g ω) : ∫ ω, f ω ∂μ = ∫ ω, g ω ∂μ :=
+  congrArg (integral μ) (funext hfg)
+
+lemma L3_integral_sum4 {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω} {ι : Type*} [Fintype ι]
+    (F : ι → ι → ι → ι → Ω → ℝ) (hF : ∀ i j k l, Integrable (F i j k l) μ) :
+    ∫ ω, ∑ i, ∑ j, ∑ k, ∑ l, F i j k l ω ∂μ = ∑ i, ∑ j, ∑ k, ∑ l, ∫ ω, F i j k l ω ∂μ := by
+  rw [integral_finsetSum _ fun i _ => integrable_finsetSum _ fun j _ =>
+    integrable_finsetSum _ fun k _ => integrable_finsetSum _ fun l _ => hF i j k l]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [integral_finsetSum _ fun j _ => integrable_finsetSum _ fun k _ =>
+    integrable_finsetSum _ fun l _ => hF i j k l]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  rw [integral_finsetSum _ fun k _ => integrable_finsetSum _ fun l _ => hF i j k l]
+  refine Finset.sum_congr rfl fun k _ => ?_
+  rw [integral_finsetSum _ fun l _ => hF i j k l]
+
+lemma L3_pick {n : ℕ} (c : ℝ) (v : Fin n → Fin n → ℝ) (i j : Fin n) :
+    ∑ i', ∑ j', (if i' = i ∧ j' = j then c else 0) * v i' j' = c * v i j := by
+  rw [Fintype.sum_eq_single i (fun i' hi' => Finset.sum_eq_zero fun j' _ => by
+      rw [if_neg (fun hh => hi' hh.1), zero_mul]),
+    Fintype.sum_eq_single j (fun j' hj' => by rw [if_neg (fun hh => hj' hh.2), zero_mul]),
+    if_pos ⟨rfl, rfl⟩]
+
+lemma L3_sign_two {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) {n : ℕ} (σ : Ω → Fin n → ℝ)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    {a b : Fin n} (hab : a ≠ b) : ∫ ω, σ ω a * σ ω b ∂μ = 0 := by
+  have := σfour {a, b} (Finset.card_le_two.trans (by norm_num)) (by simp)
+  simpa only [Finset.prod_pair hab] using this
+
+lemma L3_sign_four {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) {n : ℕ} (σ : Ω → Fin n → ℝ)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    {a b c d : Fin n} (hab : a ≠ b) (hac : a ≠ c) (had : a ≠ d) (hbc : b ≠ c) (hbd : b ≠ d)
+    (hcd : c ≠ d) : ∫ ω, σ ω a * σ ω b * σ ω c * σ ω d ∂μ = 0 := by
+  have := σfour {a, b, c, d} Finset.card_le_four (by simp)
+  have key : ∀ ω, ∏ t ∈ ({a, b, c, d} : Finset (Fin n)), σ ω t
+      = σ ω a * σ ω b * σ ω c * σ ω d := by
+    intro ω
+    rw [Finset.prod_insert (by simp [hab, hac, had]), Finset.prod_insert (by simp [hbc, hbd]),
+      Finset.prod_pair hcd]
+    ring
+  simpa only [key] using this
+
+lemma L3_sign_moment {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n : ℕ} (σ : Ω → Fin n → ℝ)
+    (σsign : ∀ ω i, σ ω i = 1 ∨ σ ω i = -1)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    {i j i' j' : Fin n} (hij : i ≠ j) (hij' : i' ≠ j') :
+    ∫ ω, σ ω i * σ ω j * σ ω i' * σ ω j' ∂μ =
+      if (i' = i ∧ j' = j) ∨ (i' = j ∧ j' = i) then 1 else 0 := by
+  have hsq : ∀ ω t, σ ω t * σ ω t = 1 := by
+    intro ω t; rcases σsign ω t with e | e <;> rw [e] <;> norm_num
+  split_ifs with hD
+  · have h1 : ∀ ω, σ ω i * σ ω j * σ ω i' * σ ω j' = 1 := by
+      intro ω
+      rcases hD with ⟨e1, e2⟩ | ⟨e1, e2⟩ <;> rw [e1, e2] <;>
+        linear_combination (σ ω j * σ ω j) * hsq ω i + hsq ω j
+    simp [h1]
+  · by_cases h1 : i' = i
+    · subst i'
+      have hjj : j ≠ j' := fun e => hD (Or.inl ⟨rfl, e.symm⟩)
+      refine (L3_int_congr μ fun ω => ?_).trans (L3_sign_two μ σ σfour hjj)
+      linear_combination (σ ω j * σ ω j') * hsq ω i
+    by_cases h2 : i' = j
+    · subst i'
+      have hij2 : i ≠ j' := fun e => hD (Or.inr ⟨rfl, e.symm⟩)
+      refine (L3_int_congr μ fun ω => ?_).trans (L3_sign_two μ σ σfour hij2)
+      linear_combination (σ ω i * σ ω j') * hsq ω j
+    by_cases h3 : j' = i
+    · subst j'
+      have hji : j ≠ i' := fun e => h2 e.symm
+      refine (L3_int_congr μ fun ω => ?_).trans (L3_sign_two μ σ σfour hji)
+      linear_combination (σ ω j * σ ω i') * hsq ω i
+    by_cases h4 : j' = j
+    · subst j'
+      have hii : i ≠ i' := fun e => h1 e.symm
+      refine (L3_int_congr μ fun ω => ?_).trans (L3_sign_two μ σ σfour hii)
+      linear_combination (σ ω i * σ ω i') * hsq ω j
+    exact L3_sign_four μ σ σfour hij (fun e => h1 e.symm) (fun e => h3 e.symm)
+      (fun e => h2 e.symm) (fun e => h4 e.symm) hij'
+
+/-- L3: the second moment of the cross-term matrix, under pairwise-independent `h`,
+4-wise-independent ±1 signs `σ`, and `h` independent of `σ`. -/
+theorem L3 {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n k r : ℕ} (hr : 0 < r) (U : Matrix (Fin n) (Fin k) ℝ)
+    (h : Ω → Fin n → Fin r) (σ : Ω → Fin n → ℝ)
+    (hmeas : Measurable h) (σmeas : Measurable σ)
+    (hpair : ∀ i j : Fin n, i ≠ j → ∀ a b : Fin r,
+      μ {ω | h ω i = a ∧ h ω j = b} = ENNReal.ofReal (1 / (r : ℝ) ^ 2))
+    (σsign : ∀ ω i, σ ω i = 1 ∨ σ ω i = -1)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    (hσind : IndepFun h σ μ) :
+    ∫ ω, ∑ a, ∑ b, (∑ i, ∑ j, if i ≠ j ∧ h ω i = h ω j then σ ω i * σ ω j * U i a * U j b else 0) ^ 2 ∂μ
+      ≤ ((∑ i, ∑ a, U i a ^ 2) ^ 2 + ∑ i, ∑ j, (∑ a, U i a * U j a) ^ 2) / r := by
+  have hr' : (r:ℝ) ≠ 0 := Nat.cast_ne_zero.mpr hr.ne'
+  have hab : ∀ ω i, |σ ω i| = 1 := by
+    intro ω i; rcases σsign ω i with e | e <;> simp [e]
+  have hfm : ∀ i j i' j' : Fin n, Measurable (fun x : Fin n → Fin r =>
+      (if i ≠ j ∧ x i = x j then (1:ℝ) else 0) * (if i' ≠ j' ∧ x i' = x j' then (1:ℝ) else 0)) :=
+    fun _ _ _ _ => measurable_of_finite _
+  have hgm : ∀ i j i' j' : Fin n, Measurable (fun s : Fin n → ℝ => s i * s j * s i' * s j') := by
+    intro i j i' j'; fun_prop
+  -- integrability of each expanded term
+  have hint : ∀ i j i' j' : Fin n, Integrable (fun ω =>
+      ((if i ≠ j ∧ h ω i = h ω j then (1:ℝ) else 0) *
+        (if i' ≠ j' ∧ h ω i' = h ω j' then (1:ℝ) else 0)) *
+        (σ ω i * σ ω j * σ ω i' * σ ω j')) μ := by
+    intro i j i' j'
+    refine Integrable.of_bound
+      (((hfm i j i' j').comp hmeas).mul ((hgm i j i' j').comp σmeas)).aestronglyMeasurable 1
+      (Filter.Eventually.of_forall fun ω => ?_)
+    simp only [Real.norm_eq_abs, abs_mul, hab, mul_one]
+    split_ifs <;> norm_num
+  have hint' : ∀ i j i' j' : Fin n, Integrable (fun ω =>
+      ((if i ≠ j ∧ h ω i = h ω j then (1:ℝ) else 0) *
+        (if i' ≠ j' ∧ h ω i' = h ω j' then (1:ℝ) else 0)) *
+        (σ ω i * σ ω j * σ ω i' * σ ω j') * (∑ a, ∑ b, U i a * U j b * U i' a * U j' b)) μ :=
+    fun i j i' j' => (hint i j i' j').mul_const _
+  -- collision probability
+  have hcoll : ∀ i j : Fin n, i ≠ j →
+      ∫ ω, (if h ω i = h ω j then (1:ℝ) else 0) ∂μ = 1 / r := by
+    intro i j hij
+    have hmeasA : ∀ a : Fin r, MeasurableSet {ω | h ω i = a ∧ h ω j = a} := fun a =>
+      (Set.toFinite {x : Fin n → Fin r | x i = a ∧ x j = a}).measurableSet.preimage hmeas
+    have hI : ∀ a : Fin r, Integrable
+        (fun ω => Set.indicator {ω | h ω i = a ∧ h ω j = a} (1 : Ω → ℝ) ω) μ :=
+      fun a => (integrable_const (1:ℝ)).indicator (hmeasA a)
+    have hpt : ∀ ω, (if h ω i = h ω j then (1:ℝ) else 0)
+        = ∑ a : Fin r, Set.indicator {ω | h ω i = a ∧ h ω j = a} (1 : Ω → ℝ) ω := by
+      intro ω
+      simp only [Set.indicator_apply, Set.mem_setOf_eq, Pi.one_apply]
+      by_cases e : h ω i = h ω j
+      · rw [if_pos e, Finset.sum_eq_single (h ω i)]
+        · rw [if_pos ⟨rfl, e.symm⟩]
+        · intro a _ ha; rw [if_neg]; rintro ⟨h1, -⟩; exact ha h1.symm
+        · intro hh; exact absurd (Finset.mem_univ _) hh
+      · rw [if_neg e]; symm; refine Finset.sum_eq_zero fun a _ => ?_
+        rw [if_neg]; rintro ⟨h1, h2⟩; exact e (h1.trans h2.symm)
+    have hval : ∀ a : Fin r,
+        ∫ ω, Set.indicator {ω | h ω i = a ∧ h ω j = a} (1 : Ω → ℝ) ω ∂μ = 1 / (r:ℝ) ^ 2 := by
+      intro a
+      rw [integral_indicator_one (hmeasA a), measureReal_def, hpair i j hij a a,
+        ENNReal.toReal_ofReal (by positivity)]
+    rw [L3_int_congr μ hpt, integral_finsetSum _ (fun a _ => hI a)]
+    simp only [hval, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+    field_simp
+    try ring
+  -- one expectation term
+  have hE : ∀ i j i' j' : Fin n, ∫ ω, ((if i ≠ j ∧ h ω i = h ω j then (1:ℝ) else 0) *
+        (if i' ≠ j' ∧ h ω i' = h ω j' then (1:ℝ) else 0)) * (σ ω i * σ ω j * σ ω i' * σ ω j') ∂μ
+      = if i ≠ j ∧ ((i' = i ∧ j' = j) ∨ (i' = j ∧ j' = i)) then 1 / (r:ℝ) else 0 := by
+    intro i j i' j'
+    by_cases hij : i = j
+    · subst hij; simp
+    by_cases hij' : i' = j'
+    · subst hij'
+      rw [if_neg]
+      · simp
+      · rintro ⟨hne, ⟨h1, h2⟩ | ⟨h1, h2⟩⟩
+        · exact hne (h1.symm.trans h2)
+        · exact hne (h2.symm.trans h1)
+    have key : ∫ ω, ((if i ≠ j ∧ h ω i = h ω j then (1:ℝ) else 0) *
+        (if i' ≠ j' ∧ h ω i' = h ω j' then (1:ℝ) else 0)) * (σ ω i * σ ω j * σ ω i' * σ ω j') ∂μ
+        = (∫ ω, (if i ≠ j ∧ h ω i = h ω j then (1:ℝ) else 0) *
+            (if i' ≠ j' ∧ h ω i' = h ω j' then (1:ℝ) else 0) ∂μ) *
+          (∫ ω, σ ω i * σ ω j * σ ω i' * σ ω j' ∂μ) :=
+      (hσind.comp (hfm i j i' j') (hgm i j i' j')).integral_fun_mul_eq_mul_integral
+        ((hfm i j i' j').comp hmeas).aestronglyMeasurable
+        ((hgm i j i' j').comp σmeas).aestronglyMeasurable
+    rw [key, L3_sign_moment μ σ σsign σfour hij hij']
+    by_cases hD : (i' = i ∧ j' = j) ∨ (i' = j ∧ j' = i)
+    · rw [if_pos hD, if_pos ⟨hij, hD⟩, mul_one, ← hcoll i j hij]
+      refine L3_int_congr μ fun ω => ?_
+      rcases hD with ⟨e1, e2⟩ | ⟨e1, e2⟩ <;> rw [e1, e2] <;> by_cases e : h ω i = h ω j
+      all_goals first
+        | (simp [hij, Ne.symm hij, e]; done)
+        | simp [hij, Ne.symm hij, e, Ne.symm e]
+    · rw [if_neg hD, if_neg (fun hh => hD hh.2), mul_zero]
+  -- per-(i,j) bound on the surviving terms
+  have hinner : ∀ i j : Fin n, ∑ i', ∑ j',
+      (if i ≠ j ∧ ((i' = i ∧ j' = j) ∨ (i' = j ∧ j' = i)) then 1 / (r:ℝ) else 0) *
+        (∑ a, ∑ b, U i a * U j b * U i' a * U j' b)
+      ≤ ((∑ a, U i a ^ 2) * (∑ b, U j b ^ 2) + (∑ a, U i a * U j a) ^ 2) / r := by
+    intro i j
+    have hA : ∑ a, ∑ b, U i a * U j b * U i a * U j b = (∑ a, U i a ^ 2) * (∑ b, U j b ^ 2) := by
+      rw [Finset.sum_mul_sum]
+      exact Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => by ring
+    have hG : ∑ a, ∑ b, U i a * U j b * U j a * U i b = (∑ a, U i a * U j a) ^ 2 := by
+      rw [sq, Finset.sum_mul_sum]
+      exact Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => by ring
+    have hnn : 0 ≤ ((∑ a, U i a ^ 2) * (∑ b, U j b ^ 2) + (∑ a, U i a * U j a) ^ 2) / r := by
+      positivity
+    by_cases hij : i = j
+    · rw [Finset.sum_eq_zero (fun i' _ => Finset.sum_eq_zero fun j' _ => by
+        rw [if_neg (fun hh => hh.1 hij), zero_mul])]
+      exact hnn
+    · have hsplit : ∀ i' j' : Fin n,
+          (if i ≠ j ∧ ((i' = i ∧ j' = j) ∨ (i' = j ∧ j' = i)) then 1 / (r:ℝ) else 0)
+          = (if i' = i ∧ j' = j then 1 / (r:ℝ) else 0) + (if i' = j ∧ j' = i then 1 / (r:ℝ) else 0) := by
+        intro i' j'
+        by_cases h1 : i' = i ∧ j' = j
+        · rw [if_pos ⟨hij, Or.inl h1⟩, if_pos h1, if_neg (fun h2 => hij (h1.1.symm.trans h2.1)),
+            add_zero]
+        · by_cases h2 : i' = j ∧ j' = i
+          · rw [if_pos ⟨hij, Or.inr h2⟩, if_neg h1, if_pos h2, zero_add]
+          · rw [if_neg (fun hh => hh.2.elim h1 h2), if_neg h1, if_neg h2, add_zero]
+      simp_rw [hsplit, add_mul, Finset.sum_add_distrib]
+      rw [L3_pick, L3_pick, hA, hG]
+      exact le_of_eq (by ring)
+  -- assemble
+  rw [L3_int_congr μ (fun ω => L3_expand U (h ω) (σ ω)), L3_integral_sum4 _ hint']
+  simp_rw [integral_mul_const, hE]
+  refine (Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => hinner i j).trans (le_of_eq ?_)
+  rw [sq (∑ i, ∑ a, U i a ^ 2), Finset.sum_mul_sum, ← Finset.sum_add_distrib, Finset.sum_div]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [← Finset.sum_add_distrib, Finset.sum_div]
+
+/-- Layer 1: the sketch preserves inner products up to the colliding cross terms. -/
+theorem sketch_inner {n r : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ) (hσ : ∀ i, σ i = 1 ∨ σ i = -1)
+    (u w : Fin n → ℝ) :
+    ∑ j, sketch h σ u j * sketch h σ w j =
+      ∑ i, u i * w i + ∑ i, ∑ j, if i ≠ j ∧ h i = h j then σ i * σ j * u i * w j else 0 := by
+  have key : ∀ i i', (∑ j, (if h i = j then σ i * u i else 0) * (if h i' = j then σ i' * w i' else 0))
+      = if h i = h i' then σ i * u i * (σ i' * w i') else 0 := by
+    intro i i'
+    simp only [ite_mul, zero_mul]
+    rw [Finset.sum_ite_eq]
+    simp only [Finset.mem_univ, if_true]
+    by_cases hh : h i = h i'
+    · simp [hh]
+    · simp [hh, Ne.symm hh]
+  have split : ∀ i i', (if h i = h i' then σ i * u i * (σ i' * w i') else 0)
+      = (if i = i' then u i * w i else 0)
+        + (if i ≠ i' ∧ h i = h i' then σ i * σ i' * u i * w i' else 0) := by
+    intro i i'
+    by_cases hii : i = i'
+    · subst hii
+      have hs : σ i * σ i = 1 := by
+        rcases hσ i with h1 | h1 <;> rw [h1] <;> norm_num
+      simp only [if_true, ne_eq, not_true_eq_false, false_and, if_false, add_zero]
+      linear_combination (u i * w i) * hs
+    · by_cases hh : h i = h i'
+      · simp only [hh, hii, if_true, if_false, ne_eq, not_false_eq_true, and_self, zero_add]
+        ring
+      · simp [hii, hh]
+  calc
+    ∑ j, sketch h σ u j * sketch h σ w j
+        = ∑ i, ∑ i', ∑ j, (if h i = j then σ i * u i else 0) * (if h i' = j then σ i' * w i' else 0) := by
+      unfold sketch
+      simp only [Finset.sum_mul_sum]
+      rw [Finset.sum_comm]
+      refine Finset.sum_congr rfl (fun i _ => ?_)
+      rw [Finset.sum_comm]
+    _ = ∑ i, ∑ i', (if i = i' then u i * w i else 0)
+          + ∑ i, ∑ i', (if i ≠ i' ∧ h i = h i' then σ i * σ i' * u i * w i' else 0) := by
+      simp only [key, split, Finset.sum_add_distrib]
+    _ = _ := by
+      simp [Finset.sum_ite_eq]
+
+/-- Entry `(a, b)` of the approximate-matrix-multiplication error `(SU)ᵀ(SU) − UᵀU`. -/
+def ammErr {n r k : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ) (U : Matrix (Fin n) (Fin k) ℝ)
+    (a b : Fin k) : ℝ :=
+  ∑ j, sketch h σ (fun i => U i a) j * sketch h σ (fun i => U i b) j - ∑ i, U i a * U i b
+
+/-- Layer 1: the AMM error is exactly the colliding cross term. -/
+theorem ammErr_eq_cross {n r k : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ)
+    (hσ : ∀ i, σ i = 1 ∨ σ i = -1) (U : Matrix (Fin n) (Fin k) ℝ) (a b : Fin k) :
+    ammErr h σ U a b = ∑ i, ∑ j, if i ≠ j ∧ h i = h j then σ i * σ j * U i a * U j b else 0 := by
+  unfold ammErr
+  rw [sketch_inner h σ hσ]
+  ring
+
+/-- Cauchy–Schwarz on rows: ‖UUᵀ‖_F² ≤ ‖U‖_F⁴. -/
+theorem gram_le_frob_sq {n k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) :
+    ∑ i, ∑ j, (∑ a, U i a * U j a) ^ 2 ≤ (∑ i, ∑ a, U i a ^ 2) ^ 2 := by
+  rw [sq (∑ i, ∑ a, U i a ^ 2), Finset.sum_mul_sum]
+  refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
+  exact Finset.sum_mul_sq_le_sq_mul_sq _ _ _
+
+/-- Layer 2: second moment of the AMM error, for any matrix `U`. -/
+theorem amm_second_moment {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n k r : ℕ} (hr : 0 < r) (U : Matrix (Fin n) (Fin k) ℝ)
+    (h : Ω → Fin n → Fin r) (σ : Ω → Fin n → ℝ)
+    (hmeas : Measurable h) (σmeas : Measurable σ)
+    (hpair : ∀ i j : Fin n, i ≠ j → ∀ a b : Fin r,
+      μ {ω | h ω i = a ∧ h ω j = b} = ENNReal.ofReal (1 / (r : ℝ) ^ 2))
+    (σsign : ∀ ω i, σ ω i = 1 ∨ σ ω i = -1)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    (hσind : IndepFun h σ μ) :
+    ∫ ω, ∑ a, ∑ b, ammErr (h ω) (σ ω) U a b ^ 2 ∂μ ≤ 2 * (∑ i, ∑ a, U i a ^ 2) ^ 2 / r := by
+  have e : (fun ω => ∑ a, ∑ b, ammErr (h ω) (σ ω) U a b ^ 2) = fun ω => ∑ a, ∑ b,
+      (∑ i, ∑ j, if i ≠ j ∧ h ω i = h ω j then σ ω i * σ ω j * U i a * U j b else 0) ^ 2 := by
+    funext ω; simp only [ammErr_eq_cross (h ω) (σ ω) (σsign ω)]
+  rw [e]
+  refine (L3 μ hr U h σ hmeas σmeas hpair σsign σfour hσind).trans ?_
+  exact div_le_div_of_nonneg_right (by linarith [gram_le_frob_sq U]) (Nat.cast_nonneg r)
+
+/-- Layer 2 corollary, the shape of the survey's Theorem 14: E[(‖Sv‖² − ‖v‖²)²] ≤ 2‖v‖⁴ / r. -/
+theorem jl_moment {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n r : ℕ} (hr : 0 < r) (v : Fin n → ℝ)
+    (h : Ω → Fin n → Fin r) (σ : Ω → Fin n → ℝ)
+    (hmeas : Measurable h) (σmeas : Measurable σ)
+    (hpair : ∀ i j : Fin n, i ≠ j → ∀ a b : Fin r,
+      μ {ω | h ω i = a ∧ h ω j = b} = ENNReal.ofReal (1 / (r : ℝ) ^ 2))
+    (σsign : ∀ ω i, σ ω i = 1 ∨ σ ω i = -1)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    (hσind : IndepFun h σ μ) :
+    ∫ ω, (∑ j, sketch (h ω) (σ ω) v j ^ 2 - ∑ i, v i ^ 2) ^ 2 ∂μ ≤ 2 * (∑ i, v i ^ 2) ^ 2 / r := by
+  have hm := amm_second_moment μ hr (fun i (_ : Fin 1) => v i) h σ hmeas σmeas hpair σsign σfour
+    hσind
+  simpa [ammErr, sq] using hm
+
+
+/-! ## Theorem 14 -/
+
+/-- Step 1: the CountSketch matrix applied to `x` is the sketch of `x`. -/
+theorem countSketch_mulVec {n r : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ) (x : Fin n → ℝ) :
+    (countSketch h σ).mulVec x = sketch h σ x := by
+  funext j
+  simp only [Matrix.mulVec, dotProduct, countSketch, sketch, ite_mul, zero_mul]
+
+/-- A uniform bound on a sketch coordinate. -/
+theorem sketch_abs_le {n r : ℕ} (h : Fin n → Fin r) (σ : Fin n → ℝ) (hσ : ∀ i, σ i = 1 ∨ σ i = -1)
+    (x : Fin n → ℝ) (j : Fin r) : |sketch h σ x j| ≤ ∑ i, |x i| := by
+  unfold sketch
+  refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun i _ => ?_)
+  split_ifs
+  · have hsi : |σ i| = 1 := by rcases hσ i with h' | h' <;> simp [h']
+    rw [abs_mul, hsi, one_mul]
+  · simp only [abs_zero]; exact abs_nonneg _
+
+/-- Theorem 14. -/
+theorem woodruff_theorem14 {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n r : ℕ} (ε δ : ℝ) (hε : 0 < ε) (hδ : 0 < δ)
+    (hr : 2 / (ε ^ 2 * δ) ≤ r)
+    (h : Ω → Fin n → Fin r) (σ : Ω → Fin n → ℝ)
+    (hmeas : Measurable h) (σmeas : Measurable σ)
+    (hpair : ∀ i j : Fin n, i ≠ j → ∀ a b : Fin r,
+      μ {ω | h ω i = a ∧ h ω j = b} = ENNReal.ofReal (1 / (r : ℝ) ^ 2))
+    (σsign : ∀ ω i, σ ω i = 1 ∨ σ ω i = -1)
+    (σfour : ∀ T : Finset (Fin n), T.card ≤ 4 → T.Nonempty → ∫ ω, ∏ i ∈ T, σ ω i ∂μ = 0)
+    (hσind : IndepFun h σ μ) :
+    JLMoment μ (fun ω => countSketch (h ω) (σ ω)) ε δ 2 := by
+  intro x hx
+  have hεδ : 0 < ε ^ 2 * δ := mul_pos (pow_pos hε 2) hδ
+  have hrpos : (0 : ℝ) < r := lt_of_lt_of_le (div_pos two_pos hεδ) hr
+  have hr0 : 0 < r := by exact_mod_cast hrpos
+  have hJ := jl_moment μ hr0 x h σ hmeas σmeas hpair σsign σfour hσind
+  rw [hx] at hJ
+  simp only [countSketch_mulVec, Real.rpow_two, sq_abs]
+  -- integrability: measurable and bounded
+  have hhi : ∀ i, Measurable fun ω => h ω i := fun i => (measurable_pi_apply i).comp hmeas
+  have hσi : ∀ i, Measurable fun ω => σ ω i := fun i => (measurable_pi_apply i).comp σmeas
+  have hsk : ∀ j, Measurable fun ω => sketch (h ω) (σ ω) x j := by
+    intro j
+    unfold sketch
+    refine Finset.measurable_sum _ fun i _ => ?_
+    exact Measurable.ite (measurableSet_eq_fun (hhi i) measurable_const)
+      ((hσi i).mul_const _) measurable_const
+  have hXm : Measurable fun ω => (∑ j, sketch (h ω) (σ ω) x j ^ 2 - 1) ^ 2 := by
+    refine Measurable.pow_const (Measurable.sub_const ?_ _) 2
+    exact Finset.measurable_sum _ fun j _ => (hsk j).pow_const 2
+  set M : ℝ := ∑ i, |x i| with hM
+  have hM0 : 0 ≤ M := Finset.sum_nonneg fun i _ => abs_nonneg _
+  have hbound : ∀ ω, ‖(∑ j, sketch (h ω) (σ ω) x j ^ 2 - 1) ^ 2‖ ≤ ((r : ℝ) * M ^ 2 + 1) ^ 2 := by
+    intro ω
+    have hS0 : 0 ≤ ∑ j, sketch (h ω) (σ ω) x j ^ 2 := Finset.sum_nonneg fun j _ => sq_nonneg _
+    have hS1 : ∑ j, sketch (h ω) (σ ω) x j ^ 2 ≤ (r : ℝ) * M ^ 2 := by
+      have : ∀ j, sketch (h ω) (σ ω) x j ^ 2 ≤ M ^ 2 := by
+        intro j
+        rw [← sq_abs]
+        exact pow_le_pow_left₀ (abs_nonneg _) (sketch_abs_le (h ω) (σ ω) (σsign ω) x j) 2
+      refine (Finset.sum_le_sum fun j _ => this j).trans (le_of_eq ?_)
+      simp [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+    have hA : |∑ j, sketch (h ω) (σ ω) x j ^ 2 - 1| ≤ (r : ℝ) * M ^ 2 + 1 := by
+      rw [abs_le]; constructor <;> nlinarith [sq_nonneg M, hrpos.le]
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _), ← sq_abs]
+    exact pow_le_pow_left₀ (abs_nonneg _) hA 2
+  have hint : Integrable (fun ω => (∑ j, sketch (h ω) (σ ω) x j ^ 2 - 1) ^ 2) μ :=
+    Integrable.of_bound hXm.aestronglyMeasurable _ (Filter.Eventually.of_forall hbound)
+  rw [← ofReal_integral_eq_lintegral_ofReal hint (Filter.Eventually.of_forall fun ω => sq_nonneg _)]
+  refine ENNReal.ofReal_le_ofReal (hJ.trans ?_)
+  rw [one_pow, mul_one, div_le_iff₀ hrpos]
+  rw [div_le_iff₀ hεδ] at hr
+  linarith

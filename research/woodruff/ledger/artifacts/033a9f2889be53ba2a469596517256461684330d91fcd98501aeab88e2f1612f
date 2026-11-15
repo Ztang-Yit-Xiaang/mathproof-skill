@@ -1,0 +1,1 @@
+{"check":"lem44","min_gap":0.000966624827620777,"params":{"candidates_per_trial":20,"d":9,"k":2,"m":5,"n":12},"r_version":"R version 4.4.1 (2024-06-14)","seed":20261111,"statement":"B best rank-k of AU => BU' optimal among rank-k with rows in rowspace(U')","trials":300,"verdict":"consistent","violations":[]}
