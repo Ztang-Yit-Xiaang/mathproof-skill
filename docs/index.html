@@ -170,6 +170,10 @@ footer{border-top:1px solid var(--line);padding-block:36px 48px;color:var(--ink-
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
 .katex{font-size:1.04em}
 .hero-grid>*,.two>*,.found>*,.agents>*{min-width:0}
+.demo figure{margin:0}
+.demo img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line);box-shadow:var(--shadow);background:#15181d}
+.demo figcaption{margin-top:10px;color:var(--ink-2);font-size:.95rem}
+.demo figcaption b{color:var(--ink)}
 .katex-display{overflow-x:auto;overflow-y:hidden}
 </style>
 </head>
@@ -182,6 +186,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
       MathProof Skill
     </a>
     <div class="links">
+      <a class="opt" href="#demo">Demo</a>
       <a class="opt" href="#how">How it works</a>
       <a class="opt" href="#investigate">Investigate</a>
       <a class="opt" href="#examples">Examples</a>
@@ -220,6 +225,24 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
     </div>
   </div>
 </header>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="eyebrow">See it run</div>
+    <h2>One request, four steps, one checked theorem.</h2>
+    <p class="lede">A real session on worked example 5: the claim "a critical point is a global minimum". Left, the steps in the terminal. Right, the result opened: the report and the Lean file the kernel checked.</p>
+    <div class="two demo">
+      <figure>
+        <img src="demo/terminal-steps.gif" width="720" height="500" loading="lazy" alt="Terminal recording: asking Claude Code with /mathproof-skill, then mathproof init, claim add, check and status">
+        <figcaption><b>In the terminal.</b> Ask with <code>/mathproof-skill</code>; the skill records the claim, runs the Lean check on the refutation, and reads back the derived status.</figcaption>
+      </figure>
+      <figure>
+        <img src="demo/open-theorem.gif" width="720" height="500" loading="lazy" alt="Recording: mathproof report for the claim, then the Lean file Optimization001.lean with the theorem claim_false and the kernel PASS line">
+        <figcaption><b>The overall theorem.</b> <code>mathproof report</code> summarizes the record; the Lean file holds the exact statement and its proof.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
 
 <section id="problem">
   <div class="wrap two">

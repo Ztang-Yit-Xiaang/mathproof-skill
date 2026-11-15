@@ -1,0 +1,47 @@
+{
+ "recorded": "2026-11-14, local Lean 4 v4.32.0 + Mathlib, checker 2.5; the check took about 8 hours on this machine",
+ "init": [],
+ "claim": [],
+ "check": [
+  "{",
+  "  \"claim\": \"demo/critical-point\",",
+  "  \"seq\": 1,",
+  "  \"result\": \"pass\",",
+  "  \"type\": \"¬MathProofSkill.Evals.Optimization001.Claim\",",
+  "  \"axioms\": [\"Classical.choice\", \"Quot.sound\", \"propext\"],",
+  "  \"problems\": []",
+  "}"
+ ],
+ "status": [
+  "{",
+  "  \"claim\": \"demo/critical-point\",",
+  "  \"headline\": \"kernel-passed-local\",",
+  "  \"verdict\": \"UNVERIFIED\",",
+  "  \"lean_status\": \"KERNEL-PASSED (local; negation, fidelity: none)\",",
+  "  …",
+  "}"
+ ],
+ "report": [
+  "# Claim demo/critical-point",
+  "Statement as written:",
+  "> If f'(x0)=0 then f has a global minimum at x0",
+  "**Headline:** `kernel-passed-local`",
+  "**Verdict:** UNVERIFIED",
+  "**Lean status:** KERNEL-PASSED (local; negation, fidelity: none)",
+  "## Status axes",
+  "- Kernel: `passed-local`",
+  "- Fidelity: `none`, direction `none`, provenance `none`, signed: no",
+  "- Informal proof: `none`",
+  "- Experiments: 0 runs, 0 candidate counterexamples",
+  "- Search: `active`",
+  "## What Lean checked",
+  "MathProofSkill.Evals.Optimization001.claim\\_false, polarity negation, axioms: Classical.choice, Quot.sound, propext",
+  "Statement:",
+  "    ¬MathProofSkill.Evals.Optimization001.Claim",
+  "Explicit form:",
+  "    Not MathProofSkill.Evals.Optimization001.Claim",
+  "Depends on this file's MathProofSkill.Evals.Optimization001.Claim:",
+  "    Prop",
+  "    := ∀ (f : ℝ → ℝ), Differentiable ℝ f → ∀ (x : ℝ), deriv f x = 0 → IsMinOn f Set.univ x"
+ ]
+}
