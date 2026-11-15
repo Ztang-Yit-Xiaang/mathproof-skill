@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Sequence
 
 from .experiments import record_experiment, rerun_experiment, run_experiment
+from .authority import load_authoritative
 from .gate import EnvironmentFailure, record_check
 from .ledger import Ledger
+from .judge import JudgeError, assemble, judge_case, plan, register_challenge, sandbox_works
 from .replay import verify_investigation
 from .report import _clean, render_report
 from .status import derive_status
@@ -128,8 +130,15 @@ def _line(text: object) -> str:
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
-    _require_initialized_ledger(args.dir)
-    result = verify_investigation(args.dir, project=args.project)
+    ledger = _require_initialized_ledger(args.dir)
+    judged, judge_notes = None, None
+    if args.authoritative:
+        if not args.repo:
+            return _fail("--authoritative needs --repo OWNER/NAME, the repository whose workflow judged it")
+        judged, judge_notes = load_authoritative(args.authoritative, args.repo, ledger)
+        judge_notes = [f"authoritative: {note}" for note in judge_notes]
+        judge_notes.append(f"authoritative: {len(judged)} judge results matched, attested by {args.repo}")
+    result = verify_investigation(args.dir, project=args.project, judged=judged, judge_notes=judge_notes)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
@@ -145,6 +154,55 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     if result["differences"]:
         return 1
     return 2 if result["environment_errors"] else 0
+
+
+def _cmd_challenge_file(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    if not any(e.get("kind") == "claim_created" and e.get("claim") == args.claim for e in ledger.read()):
+        return _fail(f"no claim {args.claim} in this ledger")
+    digest = register_challenge(ledger, args.claim, args.polarity, Path(args.file).read_bytes())
+    print(digest)
+    return 0
+
+
+def _write_json(path: str, value: object) -> None:
+    Path(path).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _cmd_judge_plan(args: argparse.Namespace) -> int:
+    try:
+        planned = plan(args.dir)
+    except JudgeError as error:
+        return _fail(str(error))
+    _write_json(args.out, planned)
+    print(json.dumps(list(range(len(planned["jobs"])))))
+    return 0
+
+
+def _cmd_judge_case(args: argparse.Namespace) -> int:
+    """Authoritative CI only: the comparator's sandbox needs Linux bwrap."""
+    if not sandbox_works():
+        return _fail("bwrap cannot create a sandbox here; the judge runs only in the authoritative CI job")
+    try:
+        case = judge_case(args.dir, args.index, Path(args.project))
+    except JudgeError as error:
+        return _fail(str(error))
+    _write_json(args.out, case)
+    print(f"{case['claim']} event {case['seq']} ({case['polarity']}): {case['result']} in {case['seconds']}s")
+    return 0
+
+
+def _cmd_judge_assemble(args: argparse.Namespace) -> int:
+    try:
+        report = assemble(args.dir, args.cases)
+    except JudgeError as error:
+        return _fail(str(error))
+    _write_json(args.out, report)
+    for result in report["results"]:
+        print(f"{result['claim']} event {result['seq']} ({result['polarity']}): {result['result']}")
+    for note in report["notes"]:
+        print(f"Note: {note}")
+    return 0
 
 
 def _cmd_experiment_run(args: argparse.Namespace) -> int:
@@ -275,7 +333,39 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("dir", metavar="DIR", help="Ledger directory path.")
     verify.add_argument("--project", metavar="DIR", help="Use this Lean project, not the recorded one.")
     verify.add_argument("--json", action="store_true", help="Print a JSON report.")
+    verify.add_argument("--authoritative", metavar="REPORT",
+                        help="An attested judge report from the authoritative workflow.")
+    verify.add_argument("--repo", metavar="OWNER/NAME", help="The repository whose workflow must have attested it.")
     verify.set_defaults(handler=_cmd_verify)
+
+    # challenge-file
+    challenge_file = subparsers.add_parser(
+        "challenge-file", help="Register the comparator Challenge for a claim (unsigned until S2.2.T1).")
+    challenge_file.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    challenge_file.add_argument("--claim", required=True, metavar="ID", help="Claim identifier.")
+    challenge_file.add_argument("--polarity", required=True, choices=("claim", "negation"),
+                                help="Whether the file states the claim or exactly its negation.")
+    challenge_file.add_argument("file", metavar="FILE", help="Lean file with the statement, proved by sorry.")
+    challenge_file.set_defaults(handler=_cmd_challenge_file)
+
+    # judge plan | case | assemble (authoritative workflow only)
+    judge_parser = subparsers.add_parser("judge", help="Authoritative workflow only: the comparator judge's stages.")
+    judge_sub = judge_parser.add_subparsers(dest="judge_command", required=True)
+    judge_plan = judge_sub.add_parser("plan", help="List the jobs; prints their indices as JSON.")
+    judge_plan.add_argument("dir", metavar="DIR", help="Ledger directory path.")
+    judge_plan.add_argument("--out", required=True, metavar="FILE", help="Where to write the plan.")
+    judge_plan.set_defaults(handler=_cmd_judge_plan)
+    judge_case_parser = judge_sub.add_parser("case", help="Judge one job on this runner.")
+    judge_case_parser.add_argument("dir", metavar="DIR", help="Ledger directory path.")
+    judge_case_parser.add_argument("--index", required=True, type=int, metavar="N", help="Job index from the plan.")
+    judge_case_parser.add_argument("--project", required=True, metavar="DIR", help="New directory for the Lake project.")
+    judge_case_parser.add_argument("--out", required=True, metavar="FILE", help="Where to write the case result.")
+    judge_case_parser.set_defaults(handler=_cmd_judge_case)
+    judge_assemble = judge_sub.add_parser("assemble", help="Build the report from case results; runs no Lean.")
+    judge_assemble.add_argument("dir", metavar="DIR", help="Ledger directory path.")
+    judge_assemble.add_argument("--cases", required=True, metavar="DIR", help="Directory of case-N.json files.")
+    judge_assemble.add_argument("--out", required=True, metavar="FILE", help="Where to write the report.")
+    judge_assemble.set_defaults(handler=_cmd_judge_assemble)
 
     # experiment ...
     experiment_parser = subparsers.add_parser("experiment", help="Run and re-run experiments.")

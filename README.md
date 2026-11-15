@@ -307,7 +307,7 @@ python3 skill/scripts/mathproof.py verify inv
 - **Polarity is explicit.** A check proves the claim (`claim`), refutes it (`negation`), or proves one `step`. A step never settles the claim.
 - **Experiments are evidence, never proof.** A seeded Python or R program is recorded with its code, seed, parameters, environment, and results hash, and `experiment rerun` checks that it reproduces. It can flag a counterexample candidate. It can't raise a status.
 - **`verify` trusts nothing recorded.** It re-runs every Lean check with the installed checker, so a recorded PASS counts for nothing until the re-run agrees.
-- **The ceiling, stated plainly.** Today the strongest result is `kernel-passed-local` with the verdict `UNVERIFIED`. A check on your own machine can't stand in for a clean-machine check plus a person's signature, so nothing reaches `VALID` or `INVALID` through this mode yet. The ledger catches accidents and simple edits, not an agent that rewrites it whole. An authoritative tier (`lake comparator` in sandboxed Linux CI) and signed fidelity review come next.
+- **The ceiling, stated plainly.** Today the strongest result is `judged-unreviewed` with the verdict `UNVERIFIED`. It needs an authoritative judge report: `lake comparator`, run in sandboxed Linux CI from a workflow on `main`, with the report attested by GitHub. A local check alone gives `kernel-passed-local`. Nothing reaches `VALID` or `INVALID` until a person's signature can be verified, which comes next. The ledger catches accidents and simple edits, not an agent that rewrites it whole.
 
 The full guide is in [`skill/references/investigate.md`](skill/references/investigate.md).
 

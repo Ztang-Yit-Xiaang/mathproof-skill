@@ -1,0 +1,136 @@
+name: Authoritative judge
+
+# S2.1.T7. Runs `lake comparator`, in its bwrap sandbox, on every recorded check of one ledger, and
+# attests the judge report. `mathproof verify --authoritative` accepts a report only if it was
+# attested by this file, on refs/heads/main, on a GitHub-hosted runner. That is what makes the
+# report authoritative, so this file must only change through a reviewed pull request: branch
+# protection on main is part of the trust boundary.
+#
+# Three stages (see skill/scripts/mathproof_core/judge.py): plan, one fresh runner per check with no
+# tokens, and an assemble job that runs no Lean and alone can sign. Untrusted Lean never shares a
+# machine with the report or the signing token. Actions are pinned by commit, and the elan
+# installer by tag and hash.
+on:
+  workflow_dispatch:
+    inputs:
+      ledger:
+        description: Ledger directory, relative to the repository root
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      indices: ${{ steps.plan.outputs.indices }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Check the ledger path
+        env:
+          LEDGER: ${{ inputs.ledger }}
+        run: |
+          python3 - <<'EOF'
+          import os, re, sys
+          from pathlib import Path
+          raw = os.environ["LEDGER"]
+          root = Path.cwd().resolve()
+          path = (root / raw).resolve()
+          ok = re.fullmatch(r"[A-Za-z0-9._/-]+", raw) and not raw.startswith("/") and root in path.parents
+          if not ok or not (path / "events.jsonl").is_file():
+              sys.exit(f"not a ledger directory inside this repository: {raw!r}")
+          EOF
+      - name: Plan
+        id: plan
+        env:
+          LEDGER: ${{ inputs.ledger }}
+        run: |
+          set -euo pipefail
+          indices="$(python3 skill/scripts/mathproof.py judge plan "$LEDGER" --out "$RUNNER_TEMP/plan.json")"
+          echo "indices=$indices" >> "$GITHUB_OUTPUT"
+
+  case:
+    needs: plan
+    if: needs.plan.outputs.indices != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        index: ${{ fromJSON(needs.plan.outputs.indices) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install bubblewrap and Lean
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q bubblewrap
+          curl -sSfL -o "$RUNNER_TEMP/elan-init.sh" https://raw.githubusercontent.com/leanprover/elan/v4.2.4/elan-init.sh
+          echo "a620ff1641616222c8d37c54845492004bb84d6877cdbc944dd65c1aa685bf53  $RUNNER_TEMP/elan-init.sh" | sha256sum -c -
+          sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain "$(cat lean/lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Allow user namespaces if blocked
+        run: |
+          bwrap --ro-bind / / true || sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          bwrap --ro-bind / / true
+      - name: Judge one check
+        env:
+          LEDGER: ${{ inputs.ledger }}
+          INDEX: ${{ matrix.index }}
+        run: python3 skill/scripts/mathproof.py judge case "$LEDGER" --index "$INDEX" --project "$RUNNER_TEMP/judge-project" --out "case-$INDEX.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: case-${{ matrix.index }}
+          path: case-${{ matrix.index }}.json
+
+  assemble:
+    needs: [plan, case]
+    # Every case job must succeed. Artifact names are unique per run, so a runner that uploaded
+    # another case's result would make that case's own upload fail, and no report is written.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.case.result == 'success' || needs.case.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          # No merge-multiple: each artifact gets its own directory, so no upload can replace another.
+          pattern: case-*
+          path: ${{ runner.temp }}/cases
+      - name: Assemble the report (runs no Lean)
+        env:
+          LEDGER: ${{ inputs.ledger }}
+        run: python3 skill/scripts/mathproof.py judge assemble "$LEDGER" --cases "$RUNNER_TEMP/cases" --out judge-report.json
+      - name: Attest the report
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: judge-report.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: judge-report
+          path: judge-report.json
