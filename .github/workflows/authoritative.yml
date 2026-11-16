@@ -134,3 +134,5 @@ jobs:
         with:
           name: judge-report
           path: judge-report.json
+          # The report is the ledger's anchor (S1.3.T4), so keep it as long as GitHub allows.
+          retention-days: 90

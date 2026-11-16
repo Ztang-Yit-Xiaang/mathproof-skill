@@ -35,15 +35,17 @@ A local check runs on a machine an agent can change. The authoritative judge run
 python3 scripts/mathproof.py challenge-file --dir <dir> --claim inv/c1 --polarity claim Statement.lean
 ```
 
-The ledger must be committed to `main`. A person then runs the `Authoritative judge` workflow with the ledger's path, downloads its `judge-report` artifact, and runs:
+The ledger must be committed to `main`. A person then runs the `Authoritative judge` workflow with the ledger's path in the repository, and runs:
 
 ```bash
-python3 scripts/mathproof.py verify <dir> --authoritative judge-report.json --repo OWNER/NAME
+python3 scripts/mathproof.py verify <dir> --authoritative latest --repo OWNER/NAME --ledger-path <path-in-repo>
 ```
 
-`verify` uses the report only if `gh attestation verify` shows that this repository's `.github/workflows/authoritative.yml` produced it, on `refs/heads/main`, on a GitHub-hosted runner. It also checks that the report's ledger head is in this ledger, and that each result names a recorded check and the Challenge registered now. Each note says why a report or result was ignored. Never run `judge` yourself: it needs Linux `bwrap` and refuses to run without it.
+`latest` fetches the report of every successful run of the workflow on `main`. `verify` uses a report only if `gh attestation verify` shows that this repository's `.github/workflows/authoritative.yml` produced it, on `refs/heads/main`, on a GitHub-hosted runner. Each such report for this ledger's path in the repository is an **anchor**: it records the ledger head the judge saw. A report for another path that shares this ledger's first event, such as a copy or the same ledger before a rename, must also be extended; its results count too, but it does not count as an anchor. The local ledger must extend every anchor. If one anchor's head is not in it, events that anchor covered were changed or deleted, and `verify` prints `ANCHOR VIOLATED` and fails. If no attested report anchors the ledger, `verify` prints `NO ANCHOR` and fails, rather than quietly showing local statuses. Results come from every anchor, and each must name a recorded check. A pass also needs the Challenge registered now; a rejection stands even if the Challenges were changed since, so editing `challenges.json` cannot hide one. Only a newer attested result under a different Challenge withdraws an older one; a newer `error` withdraws nothing. Events after the newest anchor are not covered until the next run. You can pass one downloaded `judge-report.json` instead of `latest`, but then older anchors are not checked. Give the ledger's path in the repository yourself with `--ledger-path`, exactly as you gave it to the workflow. `verify` never works it out from the checkout, because symlinks and git settings there can be changed to point at another ledger. Each note says why a report or result was ignored. Never run `judge` yourself: it needs Linux `bwrap` and refuses to run without it.
 
-What this rests on: GitHub's attestations, and branch protection on `main`, which keeps the workflow file reviewed. Challenges are unsigned for now, so a judged result shows `missing: statement signature, fidelity signature`, plus `vacuity witness` for a proof.
+Run `verify` from a checkout and a `gh` that agents cannot write to: an agent that can change the code, or put its own `gh` first on `PATH`, can forge any result.
+
+What this rests on: GitHub's attestations, and branch protection on `main`, which keeps the workflow file and the committed ledger reviewed. An anchor lasts as long as its run's report artifact, at most 90 days on a public repository, and deleting a run removes it. Challenges are unsigned for now, so a judged result shows `missing: statement signature, fidelity signature`, plus `vacuity witness` for a proof.
 
 ## Choosing the polarity
 

@@ -131,18 +131,40 @@ def _line(text: object) -> str:
 
 def _cmd_verify(args: argparse.Namespace) -> int:
     ledger = _require_initialized_ledger(args.dir)
-    judged, judge_notes = None, None
+    judged, judge_notes, violations = None, None, []
     if args.authoritative:
         if not args.repo:
             return _fail("--authoritative needs --repo OWNER/NAME, the repository whose workflow judged it")
-        judged, judge_notes = load_authoritative(args.authoritative, args.repo, ledger)
-        judge_notes = [f"authoritative: {note}" for note in judge_notes]
-        judge_notes.append(f"authoritative: {len(judged)} judge results matched, attested by {args.repo}")
-    result = verify_investigation(args.dir, project=args.project, judged=judged, judge_notes=judge_notes)
+        # The person names the ledger. A path derived from the checkout would trust git metadata and
+        # symlinks an agent can write, and could point at another ledger's anchors.
+        if not args.ledger_path:
+            return _fail("--authoritative needs --ledger-path PATH, this ledger's path in the repository "
+                         "as the workflow was given it")
+        path = args.ledger_path
+        authority = load_authoritative(args.authoritative, args.repo, ledger, path)
+        judged, violations = authority["judged"], authority["violations"]
+        judge_notes = [f"authoritative: {note}" for note in authority["notes"]]
+        for anchor in authority["anchors"]:
+            judge_notes.append(f"authoritative: anchored head event {anchor['ledger_seq']} {anchor['ledger_head']} "
+                              f"of {anchor['ledger_path']} ({anchor['source']})")
+        if authority["anchors"]:
+            judge_notes.append(f"authoritative: {len(judged)} judge results matched from {authority['newest']}, attested by {args.repo}")
+        problems = [("anchor", v) for v in violations]
+        if not authority["anchors"]:
+            # Fail closed: asked for authority and found none, so this run cannot vouch for the ledger.
+            problems.append(("no-anchor", f"no attested judge report anchors this ledger at {path!r}; the path must "
+                                           "be repo-relative and spelled exactly as it was given to the workflow"))
+        violations = problems
+    result = verify_investigation(args.dir, project=args.project, judged=judged, judge_notes=judge_notes,
+                                  anchor_violations=violations)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         for difference in result["differences"]:
+            if difference["kind"] in ("anchor", "no-anchor"):
+                label = "ANCHOR VIOLATED" if difference["kind"] == "anchor" else "NO ANCHOR"
+                print(f"{label}: {_line(difference['detail'])}")
+                continue
             print(f"DIFFERENCE {_line(difference['claim'])} (event {difference['seq']}, {difference['kind']}): {_line(difference['detail'])}")
         for error in result["environment_errors"]:
             print(f"COULD NOT RE-RUN {_line(error['claim'])} (event {error['seq']}): {_line(error['detail'])}")
@@ -334,7 +356,11 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--project", metavar="DIR", help="Use this Lean project, not the recorded one.")
     verify.add_argument("--json", action="store_true", help="Print a JSON report.")
     verify.add_argument("--authoritative", metavar="REPORT",
-                        help="An attested judge report from the authoritative workflow.")
+                        help="An attested judge report from the authoritative workflow, or `latest` to fetch "
+                             "every attested report for this ledger; the ledger must extend each one.")
+    verify.add_argument("--ledger-path", metavar="PATH",
+                        help="This ledger's path in the repository, as the workflow was given it. "
+                             "Required with --authoritative.")
     verify.add_argument("--repo", metavar="OWNER/NAME", help="The repository whose workflow must have attested it.")
     verify.set_defaults(handler=_cmd_verify)
 

@@ -81,7 +81,8 @@ def _claim_of(event) -> str | None:
 
 def verify_investigation(directory: str | os.PathLike[str], project: str | os.PathLike[str] | None = None,
                          checker: Path = CHECKER, judged: list[dict] | None = None,
-                         judge_notes: list[str] | None = None) -> dict:
+                         judge_notes: list[str] | None = None,
+                         anchor_violations: list[tuple[str, str]] | None = None) -> dict:
     """Returns {ok, differences, environment_errors, statuses, reruns, notes}. Writes nothing.
 
     `judged` comes only from `authority.load_authoritative`, which verified the judge report.
@@ -93,6 +94,9 @@ def verify_investigation(directory: str | os.PathLike[str], project: str | os.Pa
 
     def differ(claim, seq, kind, detail):
         differences.append({"claim": claim, "seq": seq, "kind": kind, "detail": detail})
+
+    for kind, detail in anchor_violations or []:
+        differ(None, None, kind, detail)
 
     chain = ledger.verify()
     for error in chain.errors:
