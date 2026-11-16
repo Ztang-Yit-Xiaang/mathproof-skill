@@ -1,0 +1,41 @@
+{
+  "woodruff/corollary54": {
+    "claim": "d6f51c56797fd0a2ebdb576969eeadd399364ef501a4ae7e2e5f3a2653750fce"
+  },
+  "woodruff/lemma44": {
+    "claim": "e0722a9805aa497cf9af7663ea1de4b68d08111e7f1e007a5e5b9e7bc57838b1"
+  },
+  "woodruff/lemma45": {
+    "claim": "f4cf303791d916d01a8afcac0abff3cd3b408df5848e34707fc720307efb64d2"
+  },
+  "woodruff/lemma48": {
+    "claim": "c5a01ce6adf06ccfa6b5bf1ce2eb49e75817053e0a0d5b07cba6507fffd4d54f"
+  },
+  "woodruff/lemma49": {
+    "claim": "3a288f305f429165c0bf31a4854c8d89520a6d63b7f0de971849bddf56078eef"
+  },
+  "woodruff/lemma55": {
+    "claim": "1e39e21f3041eac64aa8be68a609d1fa93e5a425a235a06a0a55a9bfc0ecc61b"
+  },
+  "woodruff/theorem13": {
+    "claim": "60e27439937569ae0228273618903a148497a4e362c2fefdd319f51c660403a0"
+  },
+  "woodruff/theorem14": {
+    "claim": "dd24646c5034370d94b1b2b9b85bfe07d2c73c246fa41fca272ba647cea8a940"
+  },
+  "woodruff/theorem17-second-moment": {
+    "claim": "062073a93905ff922ef1502769db552037759d841127c5d9180c3ca178ac5c13"
+  },
+  "woodruff/theorem23": {
+    "claim": "f5871d4d3c55b7ac4108aea967d79a0e03ac9d0f930967c0310da6528a4f2e31"
+  },
+  "woodruff/theorem47": {
+    "claim": "d365d44a5cf5d524e51ba98f2219e70044addbff8e9b201a7a16557f9c51c966"
+  },
+  "woodruff/theorem50": {
+    "claim": "ad65d91b7f61c1659cc3e136f3ea5fb04ecb018f41239598ec26fec29f14d9ea"
+  },
+  "woodruff/theorem9": {
+    "claim": "63ed9d1fe14e55fb1a4f8a9b9d19f14bfa42ed78674e2af6882060ab2ad6a379"
+  }
+}

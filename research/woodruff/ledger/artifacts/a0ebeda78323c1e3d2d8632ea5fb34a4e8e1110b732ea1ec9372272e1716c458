@@ -1,0 +1,154 @@
+import Mathlib
+
+/-!
+Woodruff, "Sketching as a Tool for Numerical Linear Algebra" (arXiv 1411.4357), §4.2, Lemma 49,
+with Definition 16 (RandSampling). Definitions and statement copied verbatim from `cur/Statement49.lean`; the proof is our own.
+Chain: ‖MΩD‖_F² = Σ_j g(I j) with g(i) = ‖M e_i‖²/(p_i s) (`fs_eq`); its expectation is at most
+‖M‖_F² (`lint_le`); Markov at 10‖M‖_F².
+
+Survey text: "With probability at least .9 over the randomness in the algorithm
+RandSampling(Z, s, p), ‖ZᵀΩD‖_F² ≤ 10‖Zᵀ‖_F²."
+Definition 16: Z ∈ ℝ^{n×k} has orthonormal columns, p_i = ‖e_iᵀZ‖²/k. For each column j of Ω, D,
+pick a row index i with probability q_i, and set Ω_{ij} = 1, D_{jj} = 1/√(q_i s). Here q = p.
+
+Encoding.
+* Generalization: the bound is stated for every fixed matrix M with n columns, not only M = Zᵀ.
+  The survey applies the lemma to the residual E₁ (proof of Theorem 55, step (h)), so Zᵀ in the
+  statement is a typo for a general matrix. Literally, for M = Zᵀ and q = p, the bound holds for
+  every outcome: each column of ZᵀΩD has squared norm k/s.
+* The sampled indices are `I ω j`; each index j has the marginal law P(I j = i) = p_i, as in
+  Definition 16. Independence across j is not needed and not assumed. Each `I · j` is measurable.
+* ΩD is the n×s matrix `sampleMat`: entry (i, j) is 1/√(p_i s) if I j = i, else 0. (When p_i = 0,
+  index i is sampled with probability 0; Lean's 1/√0 = 0 makes that column zero.)
+-/
+
+open MeasureTheory
+
+/-- The product ΩD of RandSampling: column j is e_{I j} scaled by 1/√(q_{I j} s). -/
+noncomputable def sampleMat {n s : ℕ} (I : Fin s → Fin n) (q : Fin n → ℝ) :
+    Matrix (Fin n) (Fin s) ℝ :=
+  fun i j => if I j = i then 1 / Real.sqrt (q i * s) else 0
+
+
+namespace L49
+
+/-- The squared Frobenius norm of MΩD is a sum over the sampled indices. -/
+theorem fs_eq {n s r : ℕ} (M : Matrix (Fin r) (Fin n) ℝ) (I : Fin s → Fin n) (q : Fin n → ℝ) :
+    ∑ a, ∑ b, (M * sampleMat I q) a b ^ 2 =
+      ∑ b, (∑ a, M a (I b) ^ 2) * (1 / Real.sqrt (q (I b) * s)) ^ 2 := by
+  have h1 : ∀ a b, (M * sampleMat I q) a b = M a (I b) * (1 / Real.sqrt (q (I b) * s)) := by
+    intro a b
+    simp only [Matrix.mul_apply, sampleMat, mul_ite, mul_zero]
+    rw [Finset.sum_ite_eq]
+    simp
+  simp only [h1, mul_pow]
+  rw [Finset.sum_comm]
+  exact Finset.sum_congr rfl fun b _ => by rw [Finset.sum_mul]
+
+end L49
+
+open L49 in
+theorem woodruff_lemma49 {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n k s r : ℕ} (Z : Matrix (Fin n) (Fin k) ℝ) (hZ : Z.transpose * Z = 1)
+    (I : Ω → Fin s → Fin n) (hI : ∀ j, Measurable fun ω => I ω j)
+    (hlaw : ∀ j i, μ {ω | I ω j = i} = ENNReal.ofReal ((∑ a, Z i a ^ 2) / k))
+    (M : Matrix (Fin r) (Fin n) ℝ) :
+    ENNReal.ofReal 0.9 ≤ μ {ω | ∑ a, ∑ b, (M * sampleMat (I ω) (fun i => (∑ a, Z i a ^ 2) / k)) a b ^ 2
+      ≤ 10 * ∑ a, ∑ b, M a b ^ 2} := by
+  set q : Fin n → ℝ := fun i => (∑ a, Z i a ^ 2) / k with hq
+  set cn : Fin n → ℝ := fun i => ∑ a, M a i ^ 2 with hcn
+  set g : Fin n → ℝ := fun i => cn i * (1 / Real.sqrt (q i * s)) ^ 2 with hg
+  set F : ℝ := ∑ a, ∑ b, M a b ^ 2 with hF
+  have hq0 : ∀ i, 0 ≤ q i := fun i => div_nonneg (Finset.sum_nonneg fun _ _ => sq_nonneg _)
+    (Nat.cast_nonneg _)
+  have hcn0 : ∀ i, 0 ≤ cn i := fun i => Finset.sum_nonneg fun _ _ => sq_nonneg _
+  have hg0 : ∀ i, 0 ≤ g i := fun i => mul_nonneg (hcn0 i) (sq_nonneg _)
+  have hFcn : F = ∑ i, cn i := by rw [hF, hcn]; exact Finset.sum_comm
+  have hset : {ω | ∑ a, ∑ b, (M * sampleMat (I ω) (fun i => (∑ a, Z i a ^ 2) / k)) a b ^ 2
+      ≤ 10 * ∑ a, ∑ b, M a b ^ 2} = {ω | ∑ b, g (I ω b) ≤ 10 * F} := by
+    ext ω; simp only [Set.mem_setOf_eq]; rw [fs_eq]
+  rw [hset]
+  -- trivial cases: s = 0 or F = 0
+  by_cases htriv : s = 0 ∨ F = 0
+  · have huniv : {ω | ∑ b, g (I ω b) ≤ 10 * F} = Set.univ := by
+      ext ω
+      simp only [Set.mem_setOf_eq, Set.mem_univ, iff_true]
+      rcases htriv with h0 | h0
+      · subst h0; simp only [Finset.univ_eq_empty, Finset.sum_empty]
+        have : 0 ≤ F := Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => sq_nonneg _
+        linarith
+      · have hc : ∀ i, cn i = 0 := fun i => le_antisymm
+          ((Finset.single_le_sum (fun j _ => hcn0 j) (Finset.mem_univ i)).trans hFcn.symm.le |>.trans
+            h0.le) (hcn0 i)
+        simp [hg, hc, h0]
+    rw [huniv, measure_univ]
+    exact ENNReal.ofReal_le_one.mpr (by norm_num)
+  push Not at htriv
+  obtain ⟨hs, hF0⟩ := htriv
+  have hFpos : 0 < F := lt_of_le_of_ne
+    (Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => sq_nonneg _) (Ne.symm hF0)
+  have hspos : (0 : ℝ) < s := by exact_mod_cast Nat.pos_of_ne_zero hs
+  -- each sampled term has expectation at most ‖M e_i‖²/s summed over i
+  have hgq : ∀ i, g i * q i ≤ cn i / s := by
+    intro i
+    have hsq : (1 / Real.sqrt (q i * s)) ^ 2 = 1 / (q i * s) := by
+      rw [div_pow, one_pow, Real.sq_sqrt (mul_nonneg (hq0 i) hspos.le)]
+    rw [hg]; dsimp only; rw [hsq]
+    rcases (hq0 i).eq_or_lt with h | h
+    · rw [← h]; simp only [mul_zero]; exact div_nonneg (hcn0 i) hspos.le
+    · apply le_of_eq; field_simp
+  have hmeas : ∀ b i, MeasurableSet {ω | I ω b = i} := fun b i => hI b (measurableSet_singleton i)
+  set f : Ω → ENNReal := fun ω => ENNReal.ofReal (∑ b, g (I ω b)) with hf
+  have hfm : Measurable f :=
+    (Finset.measurable_sum _ fun b _ => (measurable_of_countable g).comp (hI b)).ennreal_ofReal
+  have hpt : ∀ ω, f ω = ∑ b, ∑ i, {ω' | I ω' b = i}.indicator (fun _ => ENNReal.ofReal (g i)) ω := by
+    intro ω
+    rw [hf]; dsimp only
+    rw [ENNReal.ofReal_sum_of_nonneg fun b _ => hg0 _]
+    refine Finset.sum_congr rfl fun b _ => ?_
+    simp only [Set.indicator_apply, Set.mem_setOf_eq]
+    rw [Finset.sum_ite_eq]
+    simp
+  have hlint : ∫⁻ ω, f ω ∂μ ≤ ENNReal.ofReal F := by
+    simp_rw [hpt]
+    rw [lintegral_finsetSum _ fun b _ => Finset.measurable_sum _ fun i _ =>
+      measurable_const.indicator (hmeas b i)]
+    simp_rw [lintegral_finsetSum _ fun i _ => measurable_const.indicator (hmeas _ i)]
+    simp_rw [lintegral_indicator_const (hmeas _ _), hlaw]
+    have e : ∑ i, ENNReal.ofReal (g i) * ENNReal.ofReal ((∑ a, Z i a ^ 2) / k)
+        = ENNReal.ofReal (∑ i, g i * q i) := by
+      rw [ENNReal.ofReal_sum_of_nonneg fun i _ => mul_nonneg (hg0 i) (hq0 i)]
+      exact Finset.sum_congr rfl fun i _ => (ENNReal.ofReal_mul (hg0 i)).symm
+    simp_rw [e]
+    rw [← ENNReal.ofReal_sum_of_nonneg fun b _ =>
+      Finset.sum_nonneg fun i _ => mul_nonneg (hg0 i) (hq0 i)]
+    apply ENNReal.ofReal_le_ofReal
+    calc ∑ b : Fin s, ∑ i, g i * q i ≤ ∑ b : Fin s, ∑ i, cn i / s :=
+          Finset.sum_le_sum fun b _ => Finset.sum_le_sum fun i _ => hgq i
+      _ = F := by
+          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, ← Finset.sum_div,
+            hFcn]
+          field_simp
+  -- Markov
+  set bad := {ω | ENNReal.ofReal (10 * F) ≤ f ω} with hbad
+  have hbadle : μ bad ≤ ENNReal.ofReal (1 / 10) := by
+    calc μ bad ≤ (∫⁻ ω, f ω ∂μ) / ENNReal.ofReal (10 * F) :=
+          meas_ge_le_lintegral_div hfm.aemeasurable
+            (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; positivity) ENNReal.ofReal_ne_top
+      _ ≤ ENNReal.ofReal F / ENNReal.ofReal (10 * F) := ENNReal.div_le_div_right hlint _
+      _ = ENNReal.ofReal (1 / 10) := by
+          rw [← ENNReal.ofReal_div_of_pos (by positivity)]
+          congr 1; field_simp
+  have hone : (1 : ENNReal) ≤ μ {ω | ∑ b, g (I ω b) ≤ 10 * F} + ENNReal.ofReal (1 / 10) := by
+    calc (1 : ENNReal) = μ Set.univ := measure_univ.symm
+      _ ≤ μ ({ω | ∑ b, g (I ω b) ≤ 10 * F} ∪ bad) := measure_mono fun ω _ => by
+          by_cases h : ∑ b, g (I ω b) ≤ 10 * F
+          · exact Or.inl h
+          · refine Or.inr ?_
+            rw [hbad, Set.mem_setOf_eq, hf]
+            exact ENNReal.ofReal_le_ofReal (le_of_lt (not_le.mp h))
+      _ ≤ _ := (measure_union_le _ _).trans (add_le_add le_rfl hbadle)
+  have h1 : ENNReal.ofReal 0.9 + ENNReal.ofReal (1 / 10) = 1 := by
+    rw [← ENNReal.ofReal_add (by norm_num) (by norm_num)]; norm_num
+  rw [← h1] at hone
+  exact (ENNReal.add_le_add_iff_right ENNReal.ofReal_ne_top).mp hone

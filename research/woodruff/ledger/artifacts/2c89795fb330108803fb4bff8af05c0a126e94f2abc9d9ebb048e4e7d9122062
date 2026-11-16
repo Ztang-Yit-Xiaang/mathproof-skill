@@ -1,0 +1,243 @@
+# Monte Carlo and deterministic checks of the Woodruff survey results we proved in Lean.
+# Evidence only: a check can find a counterexample candidate or show consistency; it never proves.
+#
+# Usage: Rscript woodruff_checks.R <check|all> [seed] [trials-scale]
+#   check: thm9 thm14 thm13 thm23 thm47cex lem44 lem48
+# Prints one JSON object per check on stdout.
+#
+# CountSketch is sampled with fully independent h and signs, a special case of the
+# pairwise / 4-wise independent families in the statements.
+
+suppressPackageStartupMessages(library(jsonlite))
+
+countsketch <- function(M, r) {
+  # S M for an r x n CountSketch S; M is n x d. Empty buckets are zero rows.
+  n <- nrow(M)
+  h <- sample.int(r, n, replace = TRUE)
+  s <- sample(c(-1, 1), n, replace = TRUE)
+  out <- matrix(0, r, ncol(M))
+  rs <- rowsum(s * M, h)
+  out[as.integer(rownames(rs)), ] <- rs
+  out
+}
+
+cp_interval <- function(k, n, level = 0.95) {
+  a <- (1 - level) / 2
+  c(lo = if (k == 0) 0 else qbeta(a, k, n - k + 1),
+    hi = if (k == n) 1 else qbeta(1 - a, k + 1, n - k))
+}
+
+rate_result <- function(name, statement, params, trials, failures, bound, extra = list()) {
+  ci <- cp_interval(failures, trials)
+  verdict <- if (ci[["lo"]] > bound) "refutation-candidate" else "consistent"
+  c(list(check = name, statement = statement, params = params, trials = trials,
+         failures = failures, rate = failures / trials,
+         ci95 = unname(ci), bound = bound, verdict = verdict), extra)
+}
+
+orth <- function(n, d) qr.Q(qr(matrix(rnorm(n * d), n, d)))
+
+embed_fails <- function(SU, eps) {
+  ev <- eigen(crossprod(SU), symmetric = TRUE, only.values = TRUE)$values
+  any(ev < 1 - eps) || any(ev > 1 + eps)
+}
+
+# Theorem 9: r >= 2 d^2 / (delta eps^2) gives a (1 +- eps) subspace embedding w.p. >= 1 - delta.
+check_thm9 <- function(scale) {
+  d <- 3; eps <- 0.5; delta <- 0.1; n <- 2000
+  r <- ceiling(2 * d^2 / (delta * eps^2)); trials <- 4000 * scale
+  cases <- list(
+    coherent = rbind(diag(d), matrix(0, n - d, d)),  # worst case: mass on d coordinates
+    dense = orth(n, d))
+  res <- lapply(names(cases), function(nm) {
+    U <- cases[[nm]]
+    f <- sum(replicate(trials, embed_fails(countsketch(U, r), eps)))
+    list(case = nm, failures = f)
+  })
+  # Power: with far fewer rows the coherent case must fail often.
+  r_small <- 3
+  f_small <- sum(replicate(trials, embed_fails(countsketch(cases$coherent, r_small), eps)))
+  exact_coherent <- 1 - prod(1 - (0:(d - 1)) / r)  # P(some two of the d coordinates collide)
+  worst <- max(sapply(res, `[[`, "failures"))
+  rate_result("thm9", "CountSketch, r >= 2d^2/(delta eps^2): squared (1 +- eps) embedding w.p. >= 1 - delta",
+              list(d = d, eps = eps, delta = delta, n = n, r = r), trials, worst, delta,
+              list(cases = res, exact_collision_prob_coherent = exact_coherent,
+                   power = list(r = r_small, failures = f_small, rate = f_small / trials)))
+}
+
+# Theorem 14: r >= 2/(eps^2 delta) gives E[(||Sx||^2 - 1)^2] <= eps^2 delta for unit x.
+check_thm14 <- function(scale) {
+  eps <- 0.5; delta <- 0.1; n <- 500
+  r <- ceiling(2 / (eps^2 * delta)); trials <- 20000 * scale
+  xs <- list(spread = rep(1 / sqrt(n), n), two = c(1, 1, rep(0, n - 2)) / sqrt(2))
+  res <- lapply(names(xs), function(nm) {
+    x <- matrix(xs[[nm]], ncol = 1)
+    v <- replicate(trials, (sum(countsketch(x, r)^2) - 1)^2)
+    m <- mean(v); se <- sd(v) / sqrt(trials)
+    list(case = nm, moment = m, se = se, exact = (2 / r) * (1 - sum(x^4)))
+  })
+  bound <- eps^2 * delta
+  worst <- res[[which.max(sapply(res, `[[`, "moment"))]]
+  list(check = "thm14", statement = "CountSketch, r >= 2/(eps^2 delta): E[(||Sx||^2-1)^2] <= eps^2 delta",
+       params = list(eps = eps, delta = delta, n = n, r = r), trials = trials, cases = res,
+       bound = bound,
+       verdict = if (worst$moment - 3 * worst$se > bound) "refutation-candidate" else "consistent")
+}
+
+# Theorem 13 via Theorem 14: Pr[||A'S'SB - A'B||_F > 3 eps ||A||_F ||B||_F] <= delta (ours: <= 2 delta / 9).
+check_thm13 <- function(scale) {
+  eps <- 0.25; delta <- 0.2; n <- 400; d1 <- 3; d2 <- 4
+  r <- ceiling(2 / (eps^2 * delta)); trials <- 4000 * scale
+  cases <- list(
+    gaussian = list(A = matrix(rnorm(n * d1), n, d1), B = matrix(rnorm(n * d2), n, d2)),
+    coherent = list(A = rbind(diag(d1), matrix(0, n - d1, d1)),
+                    B = rbind(diag(1, d1, d2), matrix(0, n - d1, d2))))
+  res <- lapply(names(cases), function(nm) {
+    A <- cases[[nm]]$A; B <- cases[[nm]]$B
+    thr <- 3 * eps * norm(A, "F") * norm(B, "F"); AB <- crossprod(A, B)
+    f <- sum(replicate(trials, {
+      SAB <- countsketch(cbind(A, B), r)
+      norm(crossprod(SAB[, 1:d1, drop = FALSE], SAB[, -(1:d1), drop = FALSE]) - AB, "F") > thr
+    }))
+    list(case = nm, failures = f)
+  })
+  worst <- max(sapply(res, `[[`, "failures"))
+  rate_result("thm13", "JL moment (eps, delta, 2) => AMM at 3 eps; failure <= delta (our proof: 2 delta/9)",
+              list(eps = eps, delta = delta, n = n, r = r, d1 = d1, d2 = d2), trials, worst, 2 * delta / 9,
+              list(cases = res, survey_bound = delta))
+}
+
+# Theorem 23: r >= 3200 d^2/eps; w.p. >= 0.99 the sketched minimizer is (1 + eps)-optimal.
+check_thm23 <- function(scale) {
+  d <- 2; eps <- 0.5; n <- 40000
+  r <- ceiling(3200 * d^2 / eps); trials <- 300 * scale
+  A1 <- matrix(rnorm(n * d), n, d); b1 <- A1 %*% c(1, -2) + rnorm(n)
+  A2 <- A1; A2[1:5, ] <- A2[1:5, ] * 200; b2 <- A2 %*% c(1, -2) + rnorm(n) * c(rep(300, 5), rep(1, n - 5))
+  cases <- list(gaussian = list(A = A1, b = b1), heavy_rows = list(A = A2, b = b2))
+  res <- lapply(names(cases), function(nm) {
+    A <- cases[[nm]]$A; b <- cases[[nm]]$b
+    opt <- sqrt(sum(qr.resid(qr(A), b)^2))
+    ratios <- replicate(trials, {
+      SAb <- countsketch(cbind(A, b), r)
+      x <- qr.coef(qr(SAb[, 1:d]), SAb[, d + 1])
+      sqrt(sum((A %*% x - b)^2)) / opt
+    })
+    list(case = nm, failures = sum(ratios > 1 + eps), max_ratio = max(ratios))
+  })
+  worst <- max(sapply(res, `[[`, "failures"))
+  rate_result("thm23", "CountSketch, r >= 3200 d^2/eps: ||Ax'-b|| <= (1+eps) min ||Ax-b|| w.p. >= 0.99",
+              list(d = d, eps = eps, n = n, r = r), trials, worst, 0.01, list(cases = res))
+}
+
+# Theorem 47 as the survey states it: the counterexample to "R a subspace embedding suffices".
+check_thm47cex <- function(scale) {
+  A <- diag(2); S <- matrix(c(1, 0), 1, 2)
+  res <- lapply(c(1, 10, 100), function(c) {
+    R <- matrix(c(1, c), 2, 1)
+    SA <- S %*% A; SAR <- SA %*% R; AR <- A %*% R
+    # R is isometric on the row space of SA = span(e1): ||e1' R|| = 1 = ||e1||.
+    iso <- abs(sqrt(sum((matrix(c(1, 0), 1) %*% R)^2)) - 1)
+    Xp <- AR %*% MASS_ginv(SAR)                      # minimizer of ||X SAR - AR||_F
+    err <- norm(Xp %*% SA - A, "F")
+    best_rank1 <- norm(A - diag(c(1, 0)), "F")         # = ||A - A_1||_F = 1, attained in rowspace(SA)
+    list(c = c, isometry_defect = iso, error = err, expected = sqrt(1 + c^2),
+         ratio = err / best_rank1)
+  })
+  ok <- all(sapply(res, function(z) abs(z$error - z$expected) < 1e-9 && z$isometry_defect < 1e-12))
+  list(check = "thm47cex",
+       statement = "Survey's Theorem 47 regression step with R only a subspace embedding: error ratio unbounded",
+       params = list(A = "I2", S = "[1 0]", R = "[1; c]"), cases = res,
+       verdict = if (ok) "counterexample-confirmed" else "mismatch")
+}
+
+MASS_ginv <- function(M) {
+  s <- svd(M); tol <- max(dim(M)) * max(s$d) * .Machine$double.eps
+  p <- s$d > tol
+  s$v[, p, drop = FALSE] %*% (t(s$u[, p, drop = FALSE]) / s$d[p])
+}
+
+best_rank_k <- function(M, k) {
+  s <- svd(M); s$u[, 1:k, drop = FALSE] %*% (s$d[1:k] * t(s$v[, 1:k, drop = FALSE]))
+}
+
+# Lemma 44: B U' is optimal among rank-k matrices with rows in rowspace(U'). Falsification search.
+check_lem44 <- function(scale) {
+  trials <- 300 * scale; n <- 12; d <- 9; m <- 5; k <- 2; tol <- 1e-9
+  viol <- 0; worst_gap <- Inf
+  for (t in seq_len(trials)) {
+    A <- matrix(rnorm(n * d), n, d); U <- orth(d, m)
+    base <- norm(A - best_rank_k(A %*% U, k) %*% t(U), "F")
+    B0 <- best_rank_k(A %*% U, k)
+    for (j in 1:20) {
+      Y <- if (j <= 10) matrix(rnorm(n * k), n, k) %*% matrix(rnorm(k * m), k, m)
+           else best_rank_k(B0 + 0.05 * matrix(rnorm(n * m), n, m), k)
+      gap <- norm(A - Y %*% t(U), "F") - base
+      worst_gap <- min(worst_gap, gap)
+      if (gap < -tol) viol <- viol + 1
+    }
+  }
+  list(check = "lem44", statement = "B best rank-k of AU => BU' optimal among rank-k with rows in rowspace(U')",
+       params = list(n = n, d = d, m = m, k = k, candidates_per_trial = 20), trials = trials,
+       violations = viol, min_gap = worst_gap,
+       verdict = if (viol > 0) "refutation-candidate" else "consistent")
+}
+
+# Lemma 48 (generalized to any right inverse W of Z'S).
+check_lem48 <- function(scale) {
+  trials <- 500 * scale; n <- 10; d <- 8; k <- 2; s <- 4; tol <- 1e-8
+  viol <- c(witness = 0, order = 0, upper = 0)
+  for (t in seq_len(trials)) {
+    A <- matrix(rnorm(n * d), n, d); Z <- orth(d, k); E <- A - A %*% Z %*% t(Z)
+    S <- matrix(rnorm(d * s), d, s); ZS <- t(Z) %*% S
+    P0 <- MASS_ginv(ZS)
+    W <- P0 + (diag(s) - P0 %*% ZS) %*% matrix(rnorm(s * k), s, k)   # any right inverse
+    stopifnot(max(abs(ZS %*% W - diag(k))) < 1e-8)
+    C <- A %*% S
+    ub <- norm(E, "F")^2 + norm(E %*% S %*% W, "F")^2
+    wit <- norm(A - C %*% W %*% t(Z), "F")^2                         # rank <= k witness
+    P <- MASS_ginv(C) %*% A
+    PiA <- C %*% P                                                    # projection of A onto col(C)
+    Xk <- MASS_ginv(C) %*% best_rank_k(PiA, k)                        # rank-k minimizer
+    e_un <- norm(A - C %*% P, "F")^2; e_k <- norm(A - C %*% Xk, "F")^2
+    if (wit > ub * (1 + tol)) viol["witness"] <- viol["witness"] + 1
+    if (e_un > e_k * (1 + tol)) viol["order"] <- viol["order"] + 1
+    if (e_k > ub * (1 + tol)) viol["upper"] <- viol["upper"] + 1
+  }
+  list(check = "lem48", statement = "||A-CP||^2 <= ||A-CX_k||^2 <= ||E||^2 + ||ESW||^2, any right inverse W",
+       params = list(n = n, d = d, k = k, s = s), trials = trials, violations = as.list(viol),
+       verdict = if (sum(viol) > 0) "refutation-candidate" else "consistent")
+}
+
+checks <- list(thm9 = check_thm9, thm14 = check_thm14, thm13 = check_thm13, thm23 = check_thm23,
+               thm47cex = check_thm47cex, lem44 = check_lem44, lem48 = check_lem48)
+
+run_one <- function(nm, seed, scale, timed = TRUE) {
+  set.seed(seed)
+  t0 <- proc.time()[["elapsed"]]
+  out <- checks[[nm]](scale)
+  out$seed <- seed
+  if (timed) out$seconds <- round(proc.time()[["elapsed"]] - t0, 2)
+  out$r_version <- R.version.string
+  out
+}
+
+mp_out <- Sys.getenv("MP_OUT")
+if (nzchar(mp_out)) {
+  # Experiment-runner protocol (IF-experiment-v0): seed, params and output path come from the
+  # environment. Timing is left out so a re-run with the same seed gives identical results.
+  seed <- as.integer(Sys.getenv("MP_SEED", "0"))
+  params <- fromJSON(Sys.getenv("MP_PARAMS", "{}"))
+  nm <- if (is.null(params$check)) stop("MP_PARAMS needs a check name") else params$check
+  scale <- if (is.null(params$scale)) 1 else params$scale
+  out <- run_one(nm, seed, scale, timed = FALSE)
+  out$violations <- if (identical(out$verdict, "refutation-candidate") || identical(out$verdict, "mismatch"))
+    list(list(check = nm, verdict = out$verdict)) else list()
+  writeLines(toJSON(out, auto_unbox = TRUE, digits = NA), mp_out)
+} else {
+  args <- commandArgs(trailingOnly = TRUE)
+  which <- if (length(args) >= 1) args[1] else "all"
+  seed <- if (length(args) >= 2) as.integer(args[2]) else 20261111L
+  scale <- if (length(args) >= 3) as.numeric(args[3]) else 1
+  names_run <- if (which == "all") names(checks) else which
+  for (nm in names_run) cat(toJSON(run_one(nm, seed, scale), auto_unbox = TRUE, digits = NA), "\n")
+}

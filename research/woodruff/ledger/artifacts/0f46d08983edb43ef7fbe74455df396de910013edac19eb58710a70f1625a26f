@@ -1,0 +1,73 @@
+import Mathlib
+
+open MeasureTheory
+
+/-- Frobenius norm. -/
+noncomputable def frob {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : ℝ :=
+  Real.sqrt (∑ a, ∑ b, M a b ^ 2)
+
+/-- Euclidean norm of a vector. -/
+noncomputable def vnorm {m : ℕ} (v : Fin m → ℝ) : ℝ := Real.sqrt (∑ i, v i ^ 2)
+
+/-- The sum of squared entries is `trace (M * Mᵀ)`. -/
+lemma L44_sumsq_eq_trace {n p : ℕ} (M : Matrix (Fin n) (Fin p) ℝ) :
+    ∑ a, ∑ b, M a b ^ 2 = (M * M.transpose).trace := by
+  simp [Matrix.trace, Matrix.mul_apply, sq]
+
+/-- Pythagoras in trace form: if `E * U = 0` and `Uᵀ U = 1`, the cross terms vanish. -/
+lemma L44_trace_pythag {n d m : ℕ} (E : Matrix (Fin n) (Fin d) ℝ) (Z : Matrix (Fin n) (Fin m) ℝ)
+    (U : Matrix (Fin d) (Fin m) ℝ) (hU : U.transpose * U = 1) (hEU : E * U = 0) :
+    ((E + Z * U.transpose) * (E + Z * U.transpose).transpose).trace =
+      (E * E.transpose).trace + (Z * Z.transpose).trace := by
+  have h1 : (E + Z * U.transpose) * (E + Z * U.transpose).transpose =
+      E * E.transpose + Z * Z.transpose := by
+    rw [Matrix.transpose_add, Matrix.transpose_mul, Matrix.transpose_transpose, Matrix.add_mul,
+      Matrix.mul_add, Matrix.mul_add]
+    have a1 : E * (U * Z.transpose) = 0 := by
+      rw [← Matrix.mul_assoc, hEU, Matrix.zero_mul]
+    have a2 : Z * U.transpose * E.transpose = 0 := by
+      rw [Matrix.mul_assoc, ← Matrix.transpose_mul, hEU, Matrix.transpose_zero, Matrix.mul_zero]
+    have a3 : Z * U.transpose * (U * Z.transpose) = Z * Z.transpose := by
+      rw [Matrix.mul_assoc, ← Matrix.mul_assoc U.transpose, hU, Matrix.one_mul]
+    rw [a1, a2, a3]
+    abel
+  rw [h1, Matrix.trace_add]
+
+/-- ‖A − YUᵀ‖² = ‖A − AUUᵀ‖² + ‖AU − Y‖² (squared Frobenius norms as sums). -/
+lemma L44_pythag {n d m : ℕ} (A : Matrix (Fin n) (Fin d) ℝ) (U : Matrix (Fin d) (Fin m) ℝ)
+    (hU : U.transpose * U = 1) (Y : Matrix (Fin n) (Fin m) ℝ) :
+    ∑ a, ∑ b, (A - Y * U.transpose) a b ^ 2 =
+      ∑ a, ∑ b, (A - A * U * U.transpose) a b ^ 2 + ∑ a, ∑ b, (A * U - Y) a b ^ 2 := by
+  rw [L44_sumsq_eq_trace, L44_sumsq_eq_trace, L44_sumsq_eq_trace]
+  have hEU : (A - A * U * U.transpose) * U = 0 := by
+    rw [Matrix.sub_mul, Matrix.mul_assoc (A * U), hU, Matrix.mul_one, sub_self]
+  have hs : A - Y * U.transpose = (A - A * U * U.transpose) + (A * U - Y) * U.transpose := by
+    rw [Matrix.sub_mul]
+    abel
+  rw [hs]
+  exact L44_trace_pythag _ _ U hU hEU
+
+/-- Lemma 44. -/
+theorem woodruff_lemma44 {n d m k : ℕ} (A : Matrix (Fin n) (Fin d) ℝ) (U : Matrix (Fin d) (Fin m) ℝ)
+    (hU : U.transpose * U = 1) (B : Matrix (Fin n) (Fin m) ℝ)
+    (hB : B.rank ≤ k ∧ ∀ B' : Matrix (Fin n) (Fin m) ℝ, B'.rank ≤ k →
+      frob (A * U - B) ≤ frob (A * U - B')) :
+    (B * U.transpose).rank ≤ k ∧ (∃ Y : Matrix (Fin n) (Fin m) ℝ, B * U.transpose = Y * U.transpose) ∧
+      ∀ C : Matrix (Fin n) (Fin d) ℝ, C.rank ≤ k →
+        (∃ Y : Matrix (Fin n) (Fin m) ℝ, C = Y * U.transpose) →
+        frob (A - B * U.transpose) ≤ frob (A - C) := by
+  refine ⟨(Matrix.rank_mul_le_left B U.transpose).trans hB.1, ⟨B, rfl⟩, ?_⟩
+  rintro C hC ⟨Y, hY⟩
+  have hYC : Y = C * U := by
+    rw [hY, Matrix.mul_assoc, hU, Matrix.mul_one]
+  have hYr : Y.rank ≤ k := by
+    rw [hYC]
+    exact (Matrix.rank_mul_le_left C U).trans hC
+  have h1 := hB.2 Y hYr
+  subst hY
+  unfold frob at h1 ⊢
+  apply Real.sqrt_le_sqrt
+  rw [L44_pythag A U hU B, L44_pythag A U hU Y]
+  have h2 := mul_self_le_mul_self (Real.sqrt_nonneg _) h1
+  rw [Real.mul_self_sqrt (by positivity), Real.mul_self_sqrt (by positivity)] at h2
+  linarith

@@ -1,0 +1,471 @@
+import Mathlib
+
+/-!
+Woodruff, "Sketching as a Tool for Numerical Linear Algebra" (arXiv 1411.4357), §4.1, Lemma 45.
+Definitions and statement copied verbatim from `lowrank/Statements.lean`; the proof is our own.
+`best_frame` is the shared interface from `lowrank/FRAME.lean` (proved separately).
+-/
+
+open MeasureTheory
+
+/-- Frobenius norm. -/
+noncomputable def frob {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : ℝ :=
+  Real.sqrt (∑ a, ∑ b, M a b ^ 2)
+
+/-- Euclidean norm of a vector. -/
+noncomputable def vnorm {m : ℕ} (v : Fin m → ℝ) : ℝ := Real.sqrt (∑ i, v i ^ 2)
+
+
+namespace FrameAux
+
+/-! ## Squared Frobenius norm -/
+
+/-- Squared Frobenius norm. -/
+def fs {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : ℝ := ∑ a, ∑ b, M a b ^ 2
+
+theorem fs_nonneg {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) : 0 ≤ fs M :=
+  Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => sq_nonneg _
+
+theorem fs_eq_trace {m p : ℕ} (M : Matrix (Fin m) (Fin p) ℝ) :
+    fs M = (M.transpose * M).trace := by
+  unfold fs
+  simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.transpose_apply, sq]
+  exact Finset.sum_comm
+
+theorem frob_le {m p : ℕ} (M N : Matrix (Fin m) (Fin p) ℝ) (h : fs M ≤ fs N) :
+    frob M ≤ frob N := by
+  unfold frob
+  exact Real.sqrt_le_sqrt h
+
+/-! ## Step 1: Pythagoras for orthonormal frames -/
+
+theorem L1_matrix {n d k : ℕ} (A : Matrix (Fin n) (Fin d) ℝ) (U : Matrix (Fin n) (Fin k) ℝ)
+    (hU : U.transpose * U = 1) (Y : Matrix (Fin k) (Fin d) ℝ) :
+    (A - U * Y).transpose * (A - U * Y) + (U.transpose * A).transpose * (U.transpose * A) =
+      A.transpose * A + (Y - U.transpose * A).transpose * (Y - U.transpose * A) := by
+  have h1 : Y.transpose * (U.transpose * (U * Y)) = Y.transpose * Y := by
+    rw [← Matrix.mul_assoc U.transpose U Y, hU, Matrix.one_mul]
+  simp only [Matrix.transpose_sub, Matrix.transpose_mul, Matrix.transpose_transpose,
+    Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_assoc, h1]
+  abel
+
+theorem L1 {n d k : ℕ} (A : Matrix (Fin n) (Fin d) ℝ) (U : Matrix (Fin n) (Fin k) ℝ)
+    (hU : U.transpose * U = 1) (Y : Matrix (Fin k) (Fin d) ℝ) :
+    fs (A - U * Y) + fs (U.transpose * A) = fs A + fs (Y - U.transpose * A) := by
+  rw [fs_eq_trace, fs_eq_trace, fs_eq_trace, fs_eq_trace, ← Matrix.trace_add,
+    ← Matrix.trace_add, L1_matrix A U hU Y]
+
+theorem L1a {n d k : ℕ} (A : Matrix (Fin n) (Fin d) ℝ) (U : Matrix (Fin n) (Fin k) ℝ)
+    (hU : U.transpose * U = 1) :
+    fs (A - U * U.transpose * A) = fs A - fs (U.transpose * A) := by
+  have h := L1 A U hU (U.transpose * A)
+  have h0 : fs (0 : Matrix (Fin k) (Fin d) ℝ) = 0 := by simp [fs]
+  rw [sub_self, h0] at h
+  rw [Matrix.mul_assoc]
+  linarith
+
+theorem L1b {n d k : ℕ} (A : Matrix (Fin n) (Fin d) ℝ) (U : Matrix (Fin n) (Fin k) ℝ)
+    (hU : U.transpose * U = 1) (Y : Matrix (Fin k) (Fin d) ℝ) :
+    fs A - fs (U.transpose * A) ≤ fs (A - U * Y) := by
+  have h := L1 A U hU Y
+  have := fs_nonneg (Y - U.transpose * A)
+  linarith
+
+/-! ## Step 2: a maximizing frame exists -/
+
+theorem L2_bound {n k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1)
+    (i : Fin n) (a : Fin k) : U i a ∈ Set.Icc (-1 : ℝ) 1 := by
+  have h := congrFun (congrFun hU a) a
+  rw [Matrix.mul_apply, Matrix.one_apply_eq] at h
+  have hle : U i a * U i a ≤ ∑ j, U.transpose a j * U j a := by
+    simp only [Matrix.transpose_apply]
+    exact Finset.single_le_sum (f := fun j => U j a * U j a) (fun j _ => mul_self_nonneg _)
+      (Finset.mem_univ i)
+  rw [h] at hle
+  constructor <;> nlinarith
+
+theorem L2_compact {n k : ℕ} :
+    IsCompact {U : Matrix (Fin n) (Fin k) ℝ | U.transpose * U = 1} := by
+  have hK : IsCompact (Set.pi Set.univ fun _ : Fin n =>
+      Set.pi Set.univ fun _ : Fin k => Set.Icc (-1 : ℝ) 1) :=
+    isCompact_univ_pi fun _ => isCompact_univ_pi fun _ => isCompact_Icc
+  refine hK.of_isClosed_subset ?_ ?_
+  · exact isClosed_eq (continuous_id.matrix_transpose.matrix_mul continuous_id) continuous_const
+  · intro U hU
+    simp only [Set.mem_pi, Set.mem_univ, true_implies]
+    exact fun i a => L2_bound U hU i a
+
+theorem L2_std {n k : ℕ} (hk : k ≤ n) :
+    ((1 : Matrix (Fin n) (Fin n) ℝ).submatrix id (Fin.castLE hk)).transpose *
+      (1 : Matrix (Fin n) (Fin n) ℝ).submatrix id (Fin.castLE hk) = 1 := by
+  rw [Matrix.transpose_submatrix, Matrix.transpose_one,
+    ← Matrix.submatrix_mul _ _ _ _ _ Function.bijective_id, Matrix.one_mul,
+    Matrix.submatrix_one _ (Fin.castLE_injective hk)]
+
+theorem L2 {n d k : ℕ} (hk : k ≤ n) (A : Matrix (Fin n) (Fin d) ℝ) :
+    ∃ U : Matrix (Fin n) (Fin k) ℝ, U.transpose * U = 1 ∧
+      ∀ V : Matrix (Fin n) (Fin k) ℝ, V.transpose * V = 1 →
+        fs (V.transpose * A) ≤ fs (U.transpose * A) := by
+  have hne : ({U : Matrix (Fin n) (Fin k) ℝ | U.transpose * U = 1}).Nonempty :=
+    ⟨_, L2_std hk⟩
+  have hc : Continuous fun U : Matrix (Fin n) (Fin k) ℝ => fs (U.transpose * A) := by
+    unfold fs
+    exact continuous_finsetSum _ fun a _ => continuous_finsetSum _ fun b _ =>
+      ((continuous_id.matrix_transpose.matrix_mul continuous_const).matrix_elem a b).pow 2
+  obtain ⟨U, hU, hmax⟩ := L2_compact.exists_isMaxOn hne hc.continuousOn
+  exact ⟨U, hU, fun V hV => isMaxOn_iff.mp hmax V hV⟩
+
+/-! ## Step 3: frames from orthonormal bases; containing a rank-≤k column space -/
+
+/-- The matrix whose columns are an orthonormal basis of `W`. -/
+noncomputable def frameOf {n k : ℕ} {W : Submodule ℝ (EuclideanSpace ℝ (Fin n))}
+    (b : OrthonormalBasis (Fin k) ℝ W) : Matrix (Fin n) (Fin k) ℝ :=
+  Matrix.of fun i a => WithLp.ofLp ((b a : W) : EuclideanSpace ℝ (Fin n)) i
+
+theorem L3a {n k : ℕ} {W : Submodule ℝ (EuclideanSpace ℝ (Fin n))}
+    (b : OrthonormalBasis (Fin k) ℝ W) : (frameOf b).transpose * frameOf b = 1 := by
+  ext a c
+  have h := orthonormal_iff_ite.mp b.orthonormal a c
+  rw [Submodule.coe_inner, EuclideanSpace.inner_eq_star_dotProduct] at h
+  rw [Matrix.mul_apply, Matrix.one_apply, ← h]
+  simp only [frameOf, Matrix.transpose_apply, Matrix.of_apply, dotProduct, Pi.star_apply,
+    star_trivial]
+  exact Finset.sum_congr rfl fun i _ => mul_comm _ _
+
+theorem L3b {n k : ℕ} {W : Submodule ℝ (EuclideanSpace ℝ (Fin n))}
+    (b : OrthonormalBasis (Fin k) ℝ W) (w : EuclideanSpace ℝ (Fin n)) (hw : w ∈ W) (i : Fin n) :
+    ∑ a, frameOf b i a * ∑ j, frameOf b j a * WithLp.ofLp w j = WithLp.ofLp w i := by
+  have hs := b.sum_repr' ⟨w, hw⟩
+  have hi := congrArg (fun x : W => WithLp.ofLp (x : EuclideanSpace ℝ (Fin n)) i) hs
+  simp only [Submodule.coe_sum, Submodule.coe_smul, WithLp.ofLp_sum, WithLp.ofLp_smul,
+    Finset.sum_apply, Pi.smul_apply, smul_eq_mul, Submodule.coe_inner,
+    EuclideanSpace.inner_eq_star_dotProduct, dotProduct, Pi.star_apply, star_trivial] at hi
+  conv_rhs => rw [← hi]
+  simp only [frameOf, Matrix.of_apply]
+  refine Finset.sum_congr rfl fun a _ => ?_
+  rw [mul_comm]
+  congr 1
+  exact Finset.sum_congr rfl fun j _ => mul_comm _ _
+
+theorem L4 {n k : ℕ} (hk : k ≤ n) (W0 : Submodule ℝ (EuclideanSpace ℝ (Fin n)))
+    (h0 : Module.finrank ℝ W0 ≤ k) :
+    ∃ W : Submodule ℝ (EuclideanSpace ℝ (Fin n)), W0 ≤ W ∧ Module.finrank ℝ W = k := by
+  have hc : Module.finrank ℝ W0 + Module.finrank ℝ W0ᗮ = n := by
+    rw [Submodule.finrank_add_finrank_orthogonal, finrank_euclideanSpace_fin]
+  obtain ⟨f, hf⟩ := exists_linearIndependent_of_le_finrank (R := ℝ) (M := W0ᗮ)
+    (n := k - Module.finrank ℝ W0) (by omega)
+  let g : Fin (k - Module.finrank ℝ W0) → EuclideanSpace ℝ (Fin n) :=
+    fun i => (f i : EuclideanSpace ℝ (Fin n))
+  have hg : LinearIndependent ℝ g := hf.map' W0ᗮ.subtype (Submodule.ker_subtype _)
+  let P := Submodule.span ℝ (Set.range g)
+  have hP : Module.finrank ℝ P = k - Module.finrank ℝ W0 := by
+    rw [finrank_span_eq_card hg, Fintype.card_fin]
+  have hPle : P ≤ W0ᗮ := Submodule.span_le.mpr (by rintro _ ⟨i, rfl⟩; exact (f i).2)
+  have hinf : W0 ⊓ P = ⊥ := (W0.orthogonal_disjoint.mono_right hPle).eq_bot
+  refine ⟨W0 ⊔ P, le_sup_left, ?_⟩
+  have := Submodule.finrank_sup_add_finrank_inf_eq W0 P
+  rw [hinf, finrank_bot, hP] at this
+  omega
+
+theorem L5 {n d k : ℕ} (hk : k ≤ n) (B : Matrix (Fin n) (Fin d) ℝ) (hB : B.rank ≤ k) :
+    ∃ U : Matrix (Fin n) (Fin k) ℝ, U.transpose * U = 1 ∧ U * (U.transpose * B) = B := by
+  let e := (WithLp.linearEquiv 2 ℝ (Fin n → ℝ)).symm
+  let W0 : Submodule ℝ (EuclideanSpace ℝ (Fin n)) :=
+    (Submodule.span ℝ (Set.range B.col)).map (e : (Fin n → ℝ) →ₗ[ℝ] EuclideanSpace ℝ (Fin n))
+  have h0 : Module.finrank ℝ W0 ≤ k := by
+    rw [LinearEquiv.finrank_map_eq, ← Matrix.rank_eq_finrank_span_cols]
+    exact hB
+  obtain ⟨W, hW0, hW⟩ := L4 hk W0 h0
+  let b := (stdOrthonormalBasis ℝ W).reindex (finCongr hW)
+  refine ⟨frameOf b, L3a b, ?_⟩
+  ext i j
+  have hmem : WithLp.toLp 2 (B.col j) ∈ W :=
+    hW0 (Submodule.mem_map_of_mem (Submodule.subset_span ⟨j, rfl⟩))
+  have h := L3b b _ hmem i
+  simp only [Matrix.col, Matrix.transpose_apply] at h
+  simpa only [Matrix.mul_apply, Matrix.transpose_apply] using h
+
+end FrameAux
+
+open FrameAux in
+/-- Best k-frame: for k ≤ n there are orthonormal columns U (n×k) whose projection UUᵀA is a best
+rank-k approximation of A. Interface shared by the two Lemma 45 provers; do not change it. -/
+theorem best_frame {n d k : ℕ} (hk : k ≤ n) (A : Matrix (Fin n) (Fin d) ℝ) :
+    ∃ U : Matrix (Fin n) (Fin k) ℝ, U.transpose * U = 1 ∧
+      ∀ B : Matrix (Fin n) (Fin d) ℝ, B.rank ≤ k →
+        frob (A - U * U.transpose * A) ≤ frob (A - B) := by
+  obtain ⟨U, hU, hmax⟩ := L2 hk A
+  refine ⟨U, hU, fun B hB => ?_⟩
+  obtain ⟨V, hV, hVB⟩ := L5 hk B hB
+  apply frob_le
+  have h1 := L1a A U hU
+  have h2 := L1b A V hV (V.transpose * B)
+  rw [hVB] at h2
+  have h3 := hmax V hV
+  linarith
+
+
+
+/-! ## Helpers -/
+
+/-- Orthonormal columns preserve the squared norm (copied from our T23 file). -/
+theorem H_norm {n k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1) (z : Fin k → ℝ) :
+    ∑ i, (U.mulVec z i) ^ 2 = ∑ a, z a ^ 2 := by
+  have e1 : ∑ i, (U.mulVec z i) ^ 2 = dotProduct (U.mulVec z) (U.mulVec z) := by
+    simp [dotProduct, sq]
+  rw [e1, Matrix.dotProduct_mulVec, ← Matrix.mulVec_transpose, Matrix.mulVec_mulVec, hU,
+    Matrix.one_mulVec]
+  simp [dotProduct, sq]
+
+/-- Orthonormal columns: the squared Frobenius norm is the column count (from our T23 file). -/
+theorem frob_sq_U {n k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1) :
+    ∑ i, ∑ a, U i a ^ 2 = k := by
+  have h : ∀ a b, ∑ i, U i a * U i b = (1 : Matrix (Fin k) (Fin k) ℝ) a b := by
+    intro a b
+    have := congrFun (congrFun hU a) b
+    simpa [Matrix.mul_apply] using this
+  rw [Finset.sum_comm]
+  simp_rw [sq, h, Matrix.one_apply_eq]
+  simp
+
+/-- Reorder a threefold finite sum. -/
+theorem sum3_swap {α β γ : Type*} [Fintype α] [Fintype β] [Fintype γ] (f : α → β → γ → ℝ) :
+    ∑ a, ∑ b, ∑ c, f a b c = ∑ c, ∑ b, ∑ a, f a b c :=
+  calc ∑ a, ∑ b, ∑ c, f a b c = ∑ b, ∑ a, ∑ c, f a b c := Finset.sum_comm
+    _ = ∑ b, ∑ c, ∑ a, f a b c := Finset.sum_congr rfl fun _ _ => Finset.sum_comm
+    _ = ∑ c, ∑ b, ∑ a, f a b c := Finset.sum_comm
+
+/-- Frobenius inner product moves a left factor across: ⟨X, YZ⟩ = ⟨YᵀX, Z⟩. -/
+theorem ip_mul {m p q : ℕ} (X : Matrix (Fin m) (Fin p) ℝ) (Y : Matrix (Fin m) (Fin q) ℝ)
+    (Z : Matrix (Fin q) (Fin p) ℝ) :
+    ∑ a, ∑ b, X a b * (Y * Z) a b = ∑ c, ∑ b, (Y.transpose * X) c b * Z c b := by
+  have hL : ∀ a b, X a b * (Y * Z) a b = ∑ c, X a b * Y a c * Z c b := fun a b => by
+    rw [Matrix.mul_apply, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun c _ => by ring
+  have hR : ∀ c b, (Y.transpose * X) c b * Z c b = ∑ a, X a b * Y a c * Z c b := fun c b => by
+    rw [Matrix.mul_apply, Finset.sum_mul]
+    exact Finset.sum_congr rfl fun a _ => by simp only [Matrix.transpose_apply]; ring
+  simp only [hL, hR]
+  exact sum3_swap _
+
+/-- Pythagoras: `UᵀE = 0`, `UᵀU = 1` give ‖E − UT‖² = ‖E‖² + ‖T‖². -/
+theorem pythag {n k d : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1)
+    (E : Matrix (Fin n) (Fin d) ℝ) (hUE : U.transpose * E = 0) (T : Matrix (Fin k) (Fin d) ℝ) :
+    ∑ i, ∑ j, (E - U * T) i j ^ 2 = ∑ i, ∑ j, E i j ^ 2 + ∑ a, ∑ j, T a j ^ 2 := by
+  have h1 := ip_mul E U T
+  have h2 := ip_mul (U * T) U T
+  rw [hUE] at h1
+  rw [← Matrix.mul_assoc, hU, Matrix.one_mul] at h2
+  simp only [Matrix.zero_apply, zero_mul, Finset.sum_const_zero] at h1
+  have e : ∑ i, ∑ j, (E - U * T) i j ^ 2 = ∑ i, ∑ j, E i j ^ 2
+      - 2 * ∑ i, ∑ j, E i j * (U * T) i j + ∑ i, ∑ j, (U * T) i j * (U * T) i j := by
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    rw [Matrix.sub_apply]; ring
+  rw [e, h1, h2]
+  simp only [sq]
+  ring
+
+/-- Column embedding, squared form. -/
+theorem emb_sq {n r k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1)
+    (S : Matrix (Fin r) (Fin n) ℝ)
+    (hemb : ∀ z : Fin k → ℝ, (2 / 3) * vnorm (U.mulVec z) ≤ vnorm (S.mulVec (U.mulVec z)))
+    (z : Fin k → ℝ) : (4 / 9) * ∑ a, z a ^ 2 ≤ ∑ i, ((S * U).mulVec z i) ^ 2 := by
+  have h0 : 0 ≤ (2 / 3 : ℝ) * vnorm (U.mulVec z) := by unfold vnorm; positivity
+  have h := pow_le_pow_left₀ h0 (hemb z) 2
+  unfold vnorm at h
+  rw [mul_pow, Real.sq_sqrt (Finset.sum_nonneg fun i _ => sq_nonneg _),
+    Real.sq_sqrt (Finset.sum_nonneg fun i _ => sq_nonneg _), H_norm U hU z] at h
+  rw [← Matrix.mulVec_mulVec]
+  have h49 : (2 / 3 : ℝ) ^ 2 = 4 / 9 := by norm_num
+  rw [h49] at h
+  exact h
+
+/-- Embedding applied column by column. -/
+theorem col_emb {n r k d : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1)
+    (S : Matrix (Fin r) (Fin n) ℝ)
+    (hemb : ∀ z : Fin k → ℝ, (2 / 3) * vnorm (U.mulVec z) ≤ vnorm (S.mulVec (U.mulVec z)))
+    (T : Matrix (Fin k) (Fin d) ℝ) :
+    (4 / 9) * ∑ a, ∑ j, T a j ^ 2 ≤ ∑ i, ∑ j, (S * U * T) i j ^ 2 := by
+  have hc : ∀ i j, (S * U * T) i j = (S * U).mulVec (fun a => T a j) i := fun i j => rfl
+  simp only [hc]
+  calc (4 / 9) * ∑ a, ∑ j, T a j ^ 2 = ∑ j, (4 / 9) * ∑ a, T a j ^ 2 := by
+        simp only [Finset.mul_sum]; exact Finset.sum_comm
+    _ ≤ ∑ j, ∑ i, ((S * U).mulVec (fun a => T a j) i) ^ 2 :=
+        Finset.sum_le_sum fun j _ => emb_sq U hU S hemb _
+    _ = _ := Finset.sum_comm
+
+/-- Cauchy–Schwarz for the Frobenius inner product. -/
+theorem cs2 {k d : ℕ} (X Y : Matrix (Fin k) (Fin d) ℝ) :
+    (∑ a, ∑ j, X a j * Y a j) ^ 2 ≤ (∑ a, ∑ j, X a j ^ 2) * (∑ a, ∑ j, Y a j ^ 2) := by
+  simp only [← Fintype.sum_prod_type']
+  exact Finset.sum_mul_sq_le_sq_mul_sq _ _ _
+
+/-- √(ε/k)·√k ≤ √ε (equality for k ≥ 1). -/
+theorem sqrt_div_mul_le (ε : ℝ) (hε : 0 < ε) (k : ℕ) :
+    Real.sqrt (ε / k) * Real.sqrt k ≤ Real.sqrt ε := by
+  rw [← Real.sqrt_mul (div_nonneg hε.le (Nat.cast_nonneg k))]
+  apply Real.sqrt_le_sqrt
+  rcases Nat.eq_zero_or_pos k with h | h
+  · subst h; simp [hε.le]
+  · rw [div_mul_cancel₀ _ (by exact_mod_cast h.ne')]
+
+/-- Final arithmetic: from (4/9)t ≤ s, s² ≤ g t, g ≤ 9εe, get t ≤ (729/16)εe. -/
+theorem arith_t {t g e s ε : ℝ} (ht : 0 ≤ t) (he : 0 ≤ e) (hε : 0 < ε)
+    (h1 : 4 / 9 * t ≤ s) (h2 : s ^ 2 ≤ g * t) (h3 : g ≤ 9 * ε * e) :
+    t ≤ 729 / 16 * ε * e := by
+  have h4 : (4 / 9 * t) ^ 2 ≤ s ^ 2 := pow_le_pow_left₀ (by positivity) h1 2
+  have h5 : g * t ≤ 9 * ε * e * t := mul_le_mul_of_nonneg_right h3 ht
+  rcases ht.eq_or_lt with h0 | hpos
+  · rw [← h0]; positivity
+  · have h6 : t * (16 / 81 * t) ≤ t * (9 * ε * e) := by nlinarith
+    have h7 := le_of_mul_le_mul_left h6 hpos
+    linarith
+
+/-! ## Deterministic core -/
+
+/-- On the good event, the sketched least-squares solution in the frame gives the bound. -/
+theorem det45 {n d r k : ℕ} (U : Matrix (Fin n) (Fin k) ℝ) (hU : U.transpose * U = 1)
+    (S : Matrix (Fin r) (Fin n) ℝ) (A E : Matrix (Fin n) (Fin d) ℝ)
+    (hE : E = A - U * U.transpose * A) (ε : ℝ) (hε : 0 < ε)
+    (hemb : ∀ z : Fin k → ℝ, (2 / 3) * vnorm (U.mulVec z) ≤ vnorm (S.mulVec (U.mulVec z)))
+    (hamm : frob (U.transpose * S.transpose * S * E - U.transpose * E) ≤
+      3 * Real.sqrt (ε / k) * frob U * frob E) :
+    ∃ C : Matrix (Fin n) (Fin d) ℝ, C.rank ≤ k ∧
+      (∃ X : Matrix (Fin n) (Fin r) ℝ, C = X * (S * A)) ∧
+      frob (A - C) ≤ (1 + 23 * ε) * frob E := by
+  have hUE : U.transpose * E = 0 := by
+    rw [hE, Matrix.mul_sub, ← Matrix.mul_assoc, ← Matrix.mul_assoc, hU, Matrix.one_mul, sub_self]
+  obtain ⟨M, hM⟩ : ∃ M : Matrix (Fin r) (Fin k) ℝ, M = S * U := ⟨_, rfl⟩
+  obtain ⟨N, hN⟩ : ∃ N : Matrix (Fin k) (Fin k) ℝ, N = M.transpose * M := ⟨_, rfl⟩
+  -- `N = MᵀM` is invertible on the embedding event
+  have hinj : Function.Injective N.mulVec := by
+    intro x y hxy
+    have h0 : N.mulVec (x - y) = 0 := by rw [Matrix.mulVec_sub, hxy, sub_self]
+    have h1 : ∑ i, (M.mulVec (x - y) i) ^ 2 = 0 := by
+      have h' : dotProduct (x - y) (N.mulVec (x - y)) = 0 := by rw [h0, dotProduct_zero]
+      rw [hN, ← Matrix.mulVec_mulVec, Matrix.dotProduct_mulVec, Matrix.vecMul_transpose] at h'
+      simpa [dotProduct, sq] using h'
+    have h2 := emb_sq U hU S hemb (x - y)
+    rw [← hM, h1] at h2
+    have h3 : ∑ a, (x - y) a ^ 2 = 0 :=
+      le_antisymm (by linarith) (Finset.sum_nonneg fun a _ => sq_nonneg _)
+    funext a
+    have h4 := (Finset.sum_eq_zero_iff_of_nonneg (fun a _ => sq_nonneg ((x - y) a))).mp h3 a
+      (Finset.mem_univ a)
+    have h5 := (pow_eq_zero_iff (n := 2) two_ne_zero).mp h4
+    simp only [Pi.sub_apply] at h5
+    linarith
+  have hdet : IsUnit N.det :=
+    (Matrix.isUnit_iff_isUnit_det N).mp (Matrix.mulVec_injective_iff_isUnit.mp hinj)
+  obtain ⟨W, hW⟩ : ∃ W : Matrix (Fin k) (Fin r) ℝ, W = N⁻¹ * M.transpose := ⟨_, rfl⟩
+  obtain ⟨Xt, hXt⟩ : ∃ Xt : Matrix (Fin k) (Fin d) ℝ, Xt = W * (S * A) := ⟨_, rfl⟩
+  have hNX : N * Xt = M.transpose * (S * A) := by
+    rw [hXt, hW, Matrix.mul_assoc, ← Matrix.mul_assoc N, Matrix.mul_nonsing_inv N hdet,
+      Matrix.one_mul]
+  obtain ⟨T, hT⟩ : ∃ T : Matrix (Fin k) (Fin d) ℝ, T = Xt - U.transpose * A := ⟨_, rfl⟩
+  obtain ⟨G, hG⟩ : ∃ G : Matrix (Fin k) (Fin d) ℝ,
+      G = U.transpose * S.transpose * S * E - U.transpose * E := ⟨_, rfl⟩
+  have hNT : N * T = G := by
+    rw [hT, Matrix.mul_sub, hNX, hG, hUE, sub_zero, hN, hM, hE]
+    simp only [Matrix.transpose_mul, Matrix.mul_sub, Matrix.mul_assoc]
+  refine ⟨U * Xt, ?_, ⟨U * W, by rw [hXt, Matrix.mul_assoc]⟩, ?_⟩
+  · exact (Matrix.rank_mul_le_left U Xt).trans (Matrix.rank_le_width U)
+  -- the quantities
+  have hAC : A - U * Xt = E - U * T := by
+    rw [hT, hE, Matrix.mul_sub, Matrix.mul_assoc]; abel
+  have hpy := pythag U hU E hUE T
+  rw [← hAC] at hpy
+  have hemb2 := col_emb U hU S hemb T
+  rw [← hM] at hemb2
+  have hip := ip_mul (M * T) M T
+  rw [← Matrix.mul_assoc, ← hN, hNT] at hip
+  have hcs := cs2 G T
+  have hab : ∑ i, ∑ j, (M * T) i j ^ 2 = ∑ c, ∑ b, G c b * T c b := by
+    rw [← hip]; simp only [sq]
+  rw [← hG] at hamm
+  have hU2 : frob U = Real.sqrt k := by unfold frob; rw [frob_sq_U U hU]
+  have hgE : frob G ≤ 3 * Real.sqrt ε * frob E := by
+    rw [hU2] at hamm
+    have hFE : 0 ≤ frob E := by unfold frob; positivity
+    calc frob G ≤ 3 * Real.sqrt (ε / k) * Real.sqrt k * frob E := hamm
+      _ = 3 * (Real.sqrt (ε / k) * Real.sqrt k) * frob E := by ring
+      _ ≤ 3 * Real.sqrt ε * frob E := by
+        gcongr
+        exact sqrt_div_mul_le ε hε k
+  have he0 : 0 ≤ ∑ i, ∑ j, E i j ^ 2 :=
+    Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _
+  have ht0 : 0 ≤ ∑ a, ∑ j, T a j ^ 2 :=
+    Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _
+  have hg0 : 0 ≤ ∑ a, ∑ j, G a j ^ 2 :=
+    Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _
+  have hg : ∑ a, ∑ j, G a j ^ 2 ≤ 9 * ε * ∑ i, ∑ j, E i j ^ 2 := by
+    have h0 : 0 ≤ frob G := by unfold frob; positivity
+    have h := pow_le_pow_left₀ h0 hgE 2
+    unfold frob at h
+    rw [mul_pow, mul_pow, Real.sq_sqrt hg0, Real.sq_sqrt he0, Real.sq_sqrt hε.le] at h
+    linarith
+  have ht := arith_t ht0 he0 hε (hemb2.trans_eq hab) hcs hg
+  -- conclude
+  have hkey : ∑ i, ∑ j, (A - U * Xt) i j ^ 2 ≤
+      ((1 + 23 * ε) * Real.sqrt (∑ i, ∑ j, E i j ^ 2)) ^ 2 := by
+    rw [hpy, mul_pow, Real.sq_sqrt he0]
+    nlinarith [mul_nonneg (mul_nonneg hε.le hε.le) he0, mul_nonneg hε.le he0]
+  unfold frob
+  calc Real.sqrt (∑ i, ∑ j, (A - U * Xt) i j ^ 2)
+      ≤ Real.sqrt (((1 + 23 * ε) * Real.sqrt (∑ i, ∑ j, E i j ^ 2)) ^ 2) :=
+        Real.sqrt_le_sqrt hkey
+    _ = _ := Real.sqrt_sq (mul_nonneg (by linarith) (Real.sqrt_nonneg _))
+
+/-! ## Lemma 45 -/
+
+/-- Lemma 45. -/
+theorem woodruff_lemma45 {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω) [IsProbabilityMeasure μ]
+    {n d r k : ℕ} (hk : k ≤ n) (S : Ω → Matrix (Fin r) (Fin n) ℝ) (ε : ℝ) (hε : 0 < ε)
+    (hSE : ∀ U : Matrix (Fin n) (Fin k) ℝ, U.transpose * U = 1 →
+      ENNReal.ofReal (9 / 10) ≤ μ {ω | ∀ z : Fin k → ℝ,
+        (2 / 3) * vnorm (U.mulVec z) ≤ vnorm ((S ω).mulVec (U.mulVec z)) ∧
+        vnorm ((S ω).mulVec (U.mulVec z)) ≤ (4 / 3) * vnorm (U.mulVec z)})
+    (hAMM : ∀ {p q : ℕ} (P : Matrix (Fin n) (Fin p) ℝ) (Q : Matrix (Fin n) (Fin q) ℝ),
+      μ {ω | 3 * Real.sqrt (ε / k) * frob P * frob Q <
+        frob (P.transpose * (S ω).transpose * S ω * Q - P.transpose * Q)} ≤ ENNReal.ofReal (1 / 10))
+    (A : Matrix (Fin n) (Fin d) ℝ) :
+    ENNReal.ofReal (4 / 5) ≤ μ {ω | ∃ C : Matrix (Fin n) (Fin d) ℝ, C.rank ≤ k ∧
+      (∃ X : Matrix (Fin n) (Fin r) ℝ, C = X * (S ω * A)) ∧
+      ∀ B : Matrix (Fin n) (Fin d) ℝ, B.rank ≤ k → frob (A - C) ≤ (1 + 23 * ε) * frob (A - B)} := by
+  obtain ⟨U, hU, hbest⟩ := best_frame hk A
+  obtain ⟨E, hE⟩ : ∃ E : Matrix (Fin n) (Fin d) ℝ, E = A - U * U.transpose * A := ⟨_, rfl⟩
+  rw [← hE] at hbest
+  set Emb := {ω | ∀ z : Fin k → ℝ,
+        (2 / 3) * vnorm (U.mulVec z) ≤ vnorm ((S ω).mulVec (U.mulVec z)) ∧
+        vnorm ((S ω).mulVec (U.mulVec z)) ≤ (4 / 3) * vnorm (U.mulVec z)} with hEmb
+  set Bad := {ω | 3 * Real.sqrt (ε / k) * frob U * frob E <
+        frob (U.transpose * (S ω).transpose * S ω * E - U.transpose * E)} with hBad
+  have h1 : ENNReal.ofReal (9 / 10) ≤ μ Emb := hSE U hU
+  have h2 : μ Bad ≤ ENNReal.ofReal (1 / 10) := hAMM U E
+  have hsub : Emb ∩ Badᶜ ⊆ {ω | ∃ C : Matrix (Fin n) (Fin d) ℝ, C.rank ≤ k ∧
+      (∃ X : Matrix (Fin n) (Fin r) ℝ, C = X * (S ω * A)) ∧
+      ∀ B : Matrix (Fin n) (Fin d) ℝ, B.rank ≤ k →
+        frob (A - C) ≤ (1 + 23 * ε) * frob (A - B)} := by
+    intro ω hω
+    obtain ⟨hω1, hω2⟩ := hω
+    have hemb : ∀ z : Fin k → ℝ, (2 / 3) * vnorm (U.mulVec z) ≤ vnorm ((S ω).mulVec (U.mulVec z)) :=
+      fun z => (hω1 z).1
+    have hamm : frob (U.transpose * (S ω).transpose * S ω * E - U.transpose * E) ≤
+        3 * Real.sqrt (ε / k) * frob U * frob E := not_lt.mp hω2
+    obtain ⟨C, hC, hX, hCE⟩ := det45 U hU (S ω) A E hE ε hε hemb hamm
+    refine ⟨C, hC, hX, fun B hB => hCE.trans ?_⟩
+    exact mul_le_mul_of_nonneg_left (hbest B hB) (by linarith)
+  calc ENNReal.ofReal (4 / 5) = ENNReal.ofReal (9 / 10) - ENNReal.ofReal (1 / 10) := by
+        rw [← ENNReal.ofReal_sub _ (by norm_num : (0 : ℝ) ≤ 1 / 10)]; norm_num
+    _ ≤ μ Emb - μ Bad := tsub_le_tsub h1 h2
+    _ ≤ μ (Emb ∩ Badᶜ) := by
+        rw [tsub_le_iff_right]
+        calc μ Emb ≤ μ ((Emb ∩ Badᶜ) ∪ Bad) := measure_mono fun ω hω => by
+              by_cases hb : ω ∈ Bad
+              · exact Or.inr hb
+              · exact Or.inl ⟨hω, hb⟩
+          _ ≤ _ := measure_union_le _ _
+    _ ≤ _ := measure_mono hsub

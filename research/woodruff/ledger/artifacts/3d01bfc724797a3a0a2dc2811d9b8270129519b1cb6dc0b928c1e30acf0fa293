@@ -1,0 +1,518 @@
+import Mathlib
+
+/-!
+Woodruff, "Sketching as a Tool for Numerical Linear Algebra" (arXiv 1411.4357), §4.2.1,
+Theorem 50 (Dual Set Spectral-Frobenius Sparsification). Statement copied verbatim from
+`bss/Statement.lean`; the proof is our own.
+
+Proof chain (a lower-barrier potential, analysed through eigenvalues):
+1. Linear algebra: spectral theorem for real symmetric matrices (`spectral`), conjugation facts
+   (`conj_*`), positive definiteness ↔ positive eigenvalues, Sherman–Morrison in trace form.
+2. Scalar inequality (`key_ineq`): with a = 1/μ, b = 1/(μ+1) and Σ b < 1, Cauchy–Schwarz gives
+   (Σ ab)² ≤ (Σ a²b)(Σ b) < Σ a²b. This is the averaging inequality.
+3. One step (`step`): if A − L·I ≻ 0 with Φ = tr((A − L·I)⁻¹) ≤ φ₀ < 1, then some vᵢ and t > 0
+   keep A + t·vᵢvᵢᵀ − (L+1)·I ≻ 0 with potential ≤ φ₀, at cost t‖aᵢ‖² ≤ W/(1 − φ₀).
+4. Iterate r times from A = 0, L = −√(rk) (`iterate`), where Φ = √(k/r) = φ₀.
+5. Rescale by (1 − φ₀)/r: L_r = r(1 − φ₀) gives λ_min ≥ (1 − φ₀)², cost ≤ W.
+-/
+
+open Matrix
+
+namespace BSS
+
+/-- Positive definiteness, as a quadratic-form condition. -/
+def pd {k : ℕ} (M : Matrix (Fin k) (Fin k) ℝ) : Prop :=
+  ∀ x : Fin k → ℝ, x ≠ 0 → 0 < x ⬝ᵥ (M *ᵥ x)
+
+/-- Spectral theorem for real symmetric matrices. -/
+theorem spectral {k : ℕ} (A : Matrix (Fin k) (Fin k) ℝ) (hA : A.transpose = A) :
+    ∃ U : Matrix (Fin k) (Fin k) ℝ, ∃ μ : Fin k → ℝ, U.transpose * U = 1 ∧ U * U.transpose = 1 ∧
+      A = U * diagonal μ * U.transpose := by
+  have hH : A.IsHermitian := by
+    unfold Matrix.IsHermitian; rw [conjTranspose_eq_transpose_of_trivial]; exact hA
+  have hstar : ∀ M : Matrix (Fin k) (Fin k) ℝ, star M = M.transpose := fun M => by
+    rw [star_eq_conjTranspose, conjTranspose_eq_transpose_of_trivial]
+  have hmem := hH.eigenvectorUnitary.2
+  refine ⟨(hH.eigenvectorUnitary : Matrix (Fin k) (Fin k) ℝ), hH.eigenvalues, ?_, ?_, ?_⟩
+  · rw [← hstar]; exact Unitary.star_mul_self_of_mem hmem
+  · rw [← hstar]; exact Unitary.mul_star_self_of_mem hmem
+  · conv_lhs => rw [hH.spectral_theorem]
+    rw [Unitary.conjStarAlgAut_apply, hstar]
+    congr 2
+
+section conj
+
+variable {k : ℕ} (U : Matrix (Fin k) (Fin k) ℝ) (hU1 : U.transpose * U = 1)
+  (hU2 : U * U.transpose = 1)
+include hU1
+
+theorem conj_mul (d e : Fin k → ℝ) :
+    U * diagonal d * U.transpose * (U * diagonal e * U.transpose) =
+      U * diagonal (fun j => d j * e j) * U.transpose := by
+  have : U * diagonal d * U.transpose * (U * diagonal e * U.transpose)
+      = U * diagonal d * (U.transpose * U) * diagonal e * U.transpose := by
+    simp only [Matrix.mul_assoc]
+  rw [this, hU1, Matrix.mul_one, Matrix.mul_assoc U, diagonal_mul_diagonal]
+
+theorem conj_inv (hU2 : U * U.transpose = 1) (μ : Fin k → ℝ) (hμ : ∀ j, μ j ≠ 0) :
+    (U * diagonal μ * U.transpose)⁻¹ = U * diagonal (fun j => (μ j)⁻¹) * U.transpose := by
+  apply inv_eq_right_inv
+  rw [conj_mul U hU1]
+  have : (fun j => μ j * (μ j)⁻¹) = fun _ => (1 : ℝ) := funext fun j => mul_inv_cancel₀ (hμ j)
+  rw [this, diagonal_one, Matrix.mul_one]
+  exact hU2
+omit hU1 in
+theorem conj_trace (hU1 : U.transpose * U = 1) (d : Fin k → ℝ) :
+    trace (U * diagonal d * U.transpose) = ∑ j, d j := by
+  rw [trace_mul_comm, ← Matrix.mul_assoc, hU1, Matrix.one_mul, trace_diagonal]
+
+omit hU1 in
+theorem conj_quad (d : Fin k → ℝ) (x : Fin k → ℝ) :
+    x ⬝ᵥ ((U * diagonal d * U.transpose) *ᵥ x) = ∑ j, d j * (U.transpose *ᵥ x) j ^ 2 := by
+  rw [← mulVec_mulVec, ← mulVec_mulVec, dotProduct_mulVec, ← mulVec_transpose]
+  simp only [dotProduct, mulVec_diagonal]
+  exact Finset.sum_congr rfl fun j _ => by ring
+
+omit hU1 in
+theorem conj_sub (hU2 : U * U.transpose = 1) (μ : Fin k → ℝ) (c : ℝ) :
+    U * diagonal μ * U.transpose - c • (1 : Matrix (Fin k) (Fin k) ℝ) =
+      U * diagonal (fun j => μ j - c) * U.transpose := by
+  have h1 : c • (1 : Matrix (Fin k) (Fin k) ℝ) = U * diagonal (fun _ => c) * U.transpose := by
+    rw [show diagonal (fun _ => c) = c • (1 : Matrix (Fin k) (Fin k) ℝ) by
+      ext i j; simp [diagonal_apply, one_apply]]
+    rw [Matrix.mul_smul, Matrix.mul_one, Matrix.smul_mul, hU2]
+  rw [h1, ← Matrix.sub_mul, ← Matrix.mul_sub, ← diagonal_sub]
+
+omit hU1 in
+theorem pd_of_pos (hU2 : U * U.transpose = 1) (μ : Fin k → ℝ) (hμ : ∀ j, 0 < μ j) :
+    pd (U * diagonal μ * U.transpose) := by
+  intro x hx
+  rw [conj_quad]
+  have hy : U.transpose *ᵥ x ≠ 0 := by
+    intro h0
+    apply hx
+    have : U *ᵥ (U.transpose *ᵥ x) = x := by rw [mulVec_mulVec, hU2, one_mulVec]
+    rw [← this, h0, mulVec_zero]
+  obtain ⟨j, hj⟩ := Function.ne_iff.mp hy
+  apply Finset.sum_pos' (fun i _ => mul_nonneg (hμ i).le (sq_nonneg _))
+  exact ⟨j, Finset.mem_univ _, mul_pos (hμ j) (lt_of_le_of_ne (sq_nonneg _) (Ne.symm (pow_ne_zero 2 hj)))⟩
+
+theorem pos_of_pd (μ : Fin k → ℝ) (h : pd (U * diagonal μ * U.transpose)) (j : Fin k) :
+    0 < μ j := by
+  have he : U.transpose *ᵥ (U *ᵥ Pi.single j 1) = Pi.single j 1 := by
+    rw [mulVec_mulVec, hU1, one_mulVec]
+  have hx : U *ᵥ Pi.single j 1 ≠ 0 := by
+    intro h0
+    rw [h0, mulVec_zero] at he
+    have := congrFun he j
+    simp at this
+  have := h _ hx
+  rw [conj_quad, he] at this
+  simpa [Pi.single_apply] using this
+
+end conj
+
+/-! ## Sherman–Morrison, trace form -/
+
+theorem sherman_morrison {k : ℕ} (M P : Matrix (Fin k) (Fin k) ℝ) (hMP : M * P = 1)
+    (hP : P.transpose = P) (v : Fin k → ℝ) (t : ℝ) (hden : 1 + t * (v ⬝ᵥ (P *ᵥ v)) ≠ 0) :
+    (M + t • vecMulVec v v)⁻¹ =
+      P - (t / (1 + t * (v ⬝ᵥ (P *ᵥ v)))) • vecMulVec (P *ᵥ v) (P *ᵥ v) := by
+  apply inv_eq_right_inv
+  set q := v ⬝ᵥ (P *ᵥ v) with hq
+  set c := t / (1 + t * q) with hc
+  have hvP : v ᵥ* P = P *ᵥ v := by rw [← mulVec_transpose, hP]
+  have e1 : M * vecMulVec (P *ᵥ v) (P *ᵥ v) = vecMulVec v (P *ᵥ v) := by
+    rw [mul_vecMulVec, mulVec_mulVec, hMP, one_mulVec]
+  have e2 : vecMulVec v v * P = vecMulVec v (P *ᵥ v) := by rw [vecMulVec_mul, hvP]
+  have e3 : vecMulVec v v * vecMulVec (P *ᵥ v) (P *ᵥ v) = q • vecMulVec v (P *ᵥ v) := by
+    rw [vecMulVec_mul_vecMulVec, vecMulVec_smul]
+  have hcq : t - c - c * t * q = 0 := by
+    rw [hc]; field_simp; ring
+  rw [Matrix.add_mul, Matrix.mul_sub, Matrix.mul_sub, hMP, Matrix.mul_smul, e1, Matrix.smul_mul,
+    e2, Matrix.smul_mul, Matrix.mul_smul, e3, smul_smul, smul_smul]
+  have : (1 : Matrix (Fin k) (Fin k) ℝ) - c • vecMulVec v (P *ᵥ v) +
+      (t • vecMulVec v (P *ᵥ v) - (t * c * q) • vecMulVec v (P *ᵥ v))
+      = 1 + (t - c - c * t * q) • vecMulVec v (P *ᵥ v) := by
+    module
+  rw [this, hcq, zero_smul, add_zero]
+
+theorem sm_trace {k : ℕ} (M P : Matrix (Fin k) (Fin k) ℝ) (hMP : M * P = 1)
+    (hP : P.transpose = P) (v : Fin k → ℝ) (t : ℝ) (hden : 1 + t * (v ⬝ᵥ (P *ᵥ v)) ≠ 0) :
+    trace (M + t • vecMulVec v v)⁻¹ =
+      trace P - t / (1 + t * (v ⬝ᵥ (P *ᵥ v))) * ((P *ᵥ v) ⬝ᵥ (P *ᵥ v)) := by
+  rw [sherman_morrison M P hMP hP v t hden, trace_sub, trace_smul, trace_vecMulVec, smul_eq_mul]
+
+
+/-! ## Quadratic forms -/
+
+theorem quad_rank1 {k : ℕ} (u x : Fin k → ℝ) : x ⬝ᵥ (vecMulVec u u *ᵥ x) = (u ⬝ᵥ x) ^ 2 := by
+  simp only [dotProduct, mulVec, vecMulVec_apply, sq, Finset.sum_mul, Finset.mul_sum]
+  exact Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => by ring
+
+theorem quad_add {k : ℕ} (M N : Matrix (Fin k) (Fin k) ℝ) (x : Fin k → ℝ) :
+    x ⬝ᵥ ((M + N) *ᵥ x) = x ⬝ᵥ (M *ᵥ x) + x ⬝ᵥ (N *ᵥ x) := by
+  rw [add_mulVec, dotProduct_add]
+
+theorem quad_smul {k : ℕ} (c : ℝ) (M : Matrix (Fin k) (Fin k) ℝ) (x : Fin k → ℝ) :
+    x ⬝ᵥ ((c • M) *ᵥ x) = c * x ⬝ᵥ (M *ᵥ x) := by
+  rw [smul_mulVec, dotProduct_smul, smul_eq_mul]
+
+theorem quad_one {k : ℕ} (x : Fin k → ℝ) : x ⬝ᵥ ((1 : Matrix (Fin k) (Fin k) ℝ) *ᵥ x) = ∑ b, x b ^ 2 := by
+  rw [one_mulVec]; simp [dotProduct, sq]
+
+theorem quad_sum {n k : ℕ} (S : Finset (Fin n)) (f : Fin n → Matrix (Fin k) (Fin k) ℝ)
+    (x : Fin k → ℝ) : x ⬝ᵥ ((∑ i ∈ S, f i) *ᵥ x) = ∑ i ∈ S, x ⬝ᵥ (f i *ᵥ x) := by
+  induction S using Finset.induction_on with
+  | empty => simp
+  | insert i S hi ih => rw [Finset.sum_insert hi, Finset.sum_insert hi, quad_add, ih]
+
+/-- The sparsifier Σᵢ sᵢ vᵢvᵢᵀ. -/
+noncomputable def Aof {n k : ℕ} (v : Fin n → Fin k → ℝ) (s : Fin n → ℝ) : Matrix (Fin k) (Fin k) ℝ :=
+  ∑ i, s i • vecMulVec (v i) (v i)
+
+theorem Aof_quad {n k : ℕ} (v : Fin n → Fin k → ℝ) (s : Fin n → ℝ) (x : Fin k → ℝ) :
+    x ⬝ᵥ (Aof v s *ᵥ x) = ∑ i, s i * (v i ⬝ᵥ x) ^ 2 := by
+  unfold Aof
+  rw [quad_sum]
+  exact Finset.sum_congr rfl fun i _ => by rw [quad_smul, quad_rank1]
+
+theorem Aof_symm {n k : ℕ} (v : Fin n → Fin k → ℝ) (s : Fin n → ℝ) :
+    (Aof v s).transpose = Aof v s := by
+  unfold Aof
+  rw [transpose_sum]
+  exact Finset.sum_congr rfl fun i _ => by rw [transpose_smul, transpose_vecMulVec]
+
+/-! ## The scalar inequality behind the averaging step -/
+
+theorem key_ineq {k : ℕ} (hk : 0 < k) (μ : Fin k → ℝ) (hμ : ∀ j, 0 < μ j)
+    (hΦ : ∑ j, (μ j + 1)⁻¹ < 1) :
+    (∑ j, ((μ j)⁻¹ - (μ j + 1)⁻¹)) * (1 - ∑ j, (μ j + 1)⁻¹) <
+      ∑ j, ((μ j)⁻¹) ^ 2 - (∑ j, ((μ j)⁻¹ - (μ j + 1)⁻¹)) * ∑ j, (μ j)⁻¹ := by
+  set a : Fin k → ℝ := fun j => (μ j)⁻¹ with ha
+  set b : Fin k → ℝ := fun j => (μ j + 1)⁻¹ with hb
+  have hab : ∀ j, a j - b j = a j * b j := fun j => by
+    simp only [ha, hb]; field_simp [(hμ j).ne', (by linarith [hμ j] : μ j + 1 ≠ 0)]; ring
+  have ha0 : ∀ j, 0 < a j := fun j => inv_pos.mpr (hμ j)
+  have hb0 : ∀ j, 0 < b j := fun j => inv_pos.mpr (by linarith [hμ j])
+  have hD : ∑ j, (a j - b j) = ∑ j, a j * b j := Finset.sum_congr rfl fun j _ => hab j
+  have hA : ∑ j, a j = ∑ j, a j * b j + ∑ j, b j := by
+    rw [← Finset.sum_add_distrib]; exact Finset.sum_congr rfl fun j _ => by linarith [hab j]
+  have hA2 : ∑ j, a j ^ 2 = ∑ j, a j * b j + ∑ j, a j ^ 2 * b j := by
+    rw [← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    have h := hab j
+    calc a j ^ 2 = a j * (a j - b j) + a j * b j := by ring
+      _ = a j * (a j * b j) + a j * b j := by rw [h]
+      _ = a j * b j + a j ^ 2 * b j := by ring
+  -- Cauchy–Schwarz: (Σ ab)² ≤ (Σ a²b)(Σ b)
+  have hcs : (∑ j, a j * b j) ^ 2 ≤ (∑ j, a j ^ 2 * b j) * ∑ j, b j := by
+    have := Finset.sum_mul_sq_le_sq_mul_sq Finset.univ (fun j => a j * Real.sqrt (b j))
+      (fun j => Real.sqrt (b j))
+    have e1 : ∀ j, a j * Real.sqrt (b j) * Real.sqrt (b j) = a j * b j := fun j => by
+      rw [mul_assoc, Real.mul_self_sqrt (hb0 j).le]
+    have e2 : ∀ j, (a j * Real.sqrt (b j)) ^ 2 = a j ^ 2 * b j := fun j => by
+      rw [mul_pow, Real.sq_sqrt (hb0 j).le]
+    have e3 : ∀ j, Real.sqrt (b j) ^ 2 = b j := fun j => Real.sq_sqrt (hb0 j).le
+    simp only [e1, e2, e3] at this
+    exact this
+  have hpos : 0 < ∑ j, a j ^ 2 * b j := by
+    haveI : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+    exact Finset.sum_pos (fun j _ => mul_pos (pow_pos (ha0 j) 2) (hb0 j)) Finset.univ_nonempty
+  have hlt : (∑ j, a j * b j) ^ 2 < ∑ j, a j ^ 2 * b j := by
+    calc (∑ j, a j * b j) ^ 2 ≤ (∑ j, a j ^ 2 * b j) * ∑ j, b j := hcs
+      _ < (∑ j, a j ^ 2 * b j) * 1 := mul_lt_mul_of_pos_left hΦ hpos
+      _ = _ := mul_one _
+  show (∑ j, (a j - b j)) * (1 - ∑ j, b j) < ∑ j, a j ^ 2 - (∑ j, (a j - b j)) * ∑ j, a j
+  rw [hD, hA2, hA]
+  nlinarith [hlt]
+
+
+/-! ## One barrier step -/
+
+theorem sum_rank1_conj {n k : ℕ} (v : Fin n → Fin k → ℝ)
+    (hv : ∀ a b : Fin k, ∑ i, v i a * v i b = if a = b then 1 else 0)
+    (U : Matrix (Fin k) (Fin k) ℝ) (hU1 : U.transpose * U = 1) (j : Fin k) :
+    ∑ i, ((U.transpose *ᵥ v i) j) ^ 2 = 1 := by
+  have hV : ∑ i, vecMulVec (v i) (v i) = (1 : Matrix (Fin k) (Fin k) ℝ) := by
+    ext a b
+    rw [Matrix.sum_apply]
+    simp only [vecMulVec_apply, one_apply]
+    exact hv a b
+  have hconj : ∀ x : Fin k → ℝ,
+      vecMulVec (U.transpose *ᵥ x) (U.transpose *ᵥ x) = U.transpose * vecMulVec x x * U := by
+    intro x
+    rw [mul_vecMulVec, vecMulVec_mul, ← mulVec_transpose]
+  have hsum : ∑ i, vecMulVec (U.transpose *ᵥ v i) (U.transpose *ᵥ v i) = 1 := by
+    simp only [hconj]
+    rw [← Finset.sum_mul, ← Finset.mul_sum, hV, Matrix.mul_one, hU1]
+  have := congrFun (congrFun hsum j) j
+  rw [Matrix.sum_apply] at this
+  simpa [vecMulVec_apply, sq] using this
+
+theorem step {n k : ℕ} (hk : 0 < k) (v : Fin n → Fin k → ℝ)
+    (hv : ∀ a b : Fin k, ∑ i, v i a * v i b = if a = b then 1 else 0)
+    (w : Fin n → ℝ) (hw : ∀ i, 0 ≤ w i) (φ0 : ℝ) (hφ0 : φ0 < 1)
+    (A : Matrix (Fin k) (Fin k) ℝ) (hA : A.transpose = A) (L : ℝ)
+    (hpd : pd (A - L • 1)) (hΦ : trace (A - L • 1)⁻¹ ≤ φ0) :
+    ∃ i : Fin n, ∃ t : ℝ, 0 < t ∧ t * w i ≤ (∑ j, w j) / (1 - φ0) ∧
+      pd (A + t • vecMulVec (v i) (v i) - (L + 1) • 1) ∧
+      trace (A + t • vecMulVec (v i) (v i) - (L + 1) • 1)⁻¹ ≤ φ0 := by
+  have hsym : (A - L • (1 : Matrix (Fin k) (Fin k) ℝ)).transpose = A - L • 1 := by
+    rw [transpose_sub, transpose_smul, transpose_one, hA]
+  obtain ⟨U, β, hU1, hU2, hB⟩ := spectral _ hsym
+  have hβ : ∀ j, 0 < β j := pos_of_pd U hU1 β (hB ▸ hpd)
+  have hΦeq : trace (A - L • 1)⁻¹ = ∑ j, (β j)⁻¹ := by
+    rw [hB, conj_inv U hU1 hU2 β (fun j => (hβ j).ne'), conj_trace U hU1]
+  have hβ1 : ∀ j, 1 < β j := by
+    intro j
+    have h1 : (β j)⁻¹ ≤ ∑ j, (β j)⁻¹ :=
+      Finset.single_le_sum (fun i _ => (inv_pos.mpr (hβ i)).le) (Finset.mem_univ j)
+    have h2 : (β j)⁻¹ < 1 := by linarith
+    by_contra h3
+    have h4 : 1 ≤ (β j)⁻¹ := (one_le_inv₀ (hβ j)).mpr (not_lt.mp h3)
+    linarith
+  obtain ⟨μ, hμdef⟩ : ∃ μ : Fin k → ℝ, ∀ j, μ j = β j - 1 := ⟨fun j => β j - 1, fun j => rfl⟩
+  have hμ : ∀ j, 0 < μ j := fun j => by rw [hμdef]; linarith [hβ1 j]
+  have hβμ : ∀ j, β j = μ j + 1 := fun j => by rw [hμdef]; ring
+  have hM : A - (L + 1) • (1 : Matrix (Fin k) (Fin k) ℝ) = U * diagonal μ * U.transpose := by
+    have h := conj_sub U hU2 β 1
+    rw [one_smul, ← hB] at h
+    have hd : (fun j => β j - 1) = μ := funext fun j => (hμdef j).symm
+    rw [hd] at h
+    rw [← h, add_smul, one_smul, sub_sub]
+  have hMpd : pd (A - (L + 1) • (1 : Matrix (Fin k) (Fin k) ℝ)) := by
+    rw [hM]; exact pd_of_pos U hU2 μ hμ
+  set P : Matrix (Fin k) (Fin k) ℝ := U * diagonal (fun j => (μ j)⁻¹) * U.transpose with hPdef
+  have hMP : (A - (L + 1) • (1 : Matrix (Fin k) (Fin k) ℝ)) * P = 1 := by
+    rw [hM, hPdef, conj_mul U hU1]
+    have : (fun j => μ j * (μ j)⁻¹) = fun _ => (1 : ℝ) := funext fun j => mul_inv_cancel₀ (hμ j).ne'
+    rw [this, diagonal_one, Matrix.mul_one, hU2]
+  have hPsym : P.transpose = P := by
+    rw [hPdef, transpose_mul, transpose_mul, transpose_transpose, diagonal_transpose,
+      Matrix.mul_assoc]
+  clear_value P
+  have hq1 : ∀ i, v i ⬝ᵥ (P *ᵥ v i) = ∑ j, (μ j)⁻¹ * ((U.transpose *ᵥ v i) j) ^ 2 := fun i => by
+    rw [hPdef, conj_quad]
+  have hq2 : ∀ i, (P *ᵥ v i) ⬝ᵥ (P *ᵥ v i) =
+      ∑ j, ((μ j)⁻¹ * (μ j)⁻¹) * ((U.transpose *ᵥ v i) j) ^ 2 := fun i => by
+    have e : (P *ᵥ v i) ⬝ᵥ (P *ᵥ v i) = v i ⬝ᵥ ((P * P) *ᵥ v i) := by
+      rw [← mulVec_mulVec, dotProduct_mulVec, ← mulVec_transpose, hPsym, dotProduct_comm]
+    rw [e, hPdef, conj_mul U hU1, conj_quad]
+  have hvt := sum_rank1_conj v hv U hU1
+  have hsum1 : ∑ i, v i ⬝ᵥ (P *ᵥ v i) = ∑ j, (μ j)⁻¹ := by
+    simp only [hq1]
+    rw [Finset.sum_comm]
+    exact Finset.sum_congr rfl fun j _ => by rw [← Finset.mul_sum, hvt j, mul_one]
+  have hsum2 : ∑ i, (P *ᵥ v i) ⬝ᵥ (P *ᵥ v i) = ∑ j, ((μ j)⁻¹) ^ 2 := by
+    simp only [hq2]
+    rw [Finset.sum_comm]
+    exact Finset.sum_congr rfl fun j _ => by rw [← Finset.mul_sum, hvt j, mul_one, sq]
+  have hΦμ : trace (A - L • 1)⁻¹ = ∑ j, (μ j + 1)⁻¹ := by
+    rw [hΦeq]; exact Finset.sum_congr rfl fun j _ => by rw [hβμ]
+  have htrP : trace P = ∑ j, (μ j)⁻¹ := by rw [hPdef, conj_trace U hU1]
+  set D := ∑ j, ((μ j)⁻¹ - (μ j + 1)⁻¹) with hD
+  have hDpos : 0 < D := by
+    haveI : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+    refine Finset.sum_pos (fun j _ => ?_) Finset.univ_nonempty
+    have := (inv_lt_inv₀ (by linarith [hμ j]) (hμ j)).mpr (by linarith : μ j < μ j + 1)
+    linarith
+  have hΦlt : ∑ j, (μ j + 1)⁻¹ < 1 := by rw [← hΦμ]; linarith
+  have key := key_ineq hk μ hμ hΦlt
+  rw [← hD] at key
+  set W := ∑ j, w j with hW
+  set c : Fin n → ℝ := fun i => (P *ᵥ v i) ⬝ᵥ (P *ᵥ v i) - D * (v i ⬝ᵥ (P *ᵥ v i)) with hc
+  set e : Fin n → ℝ := fun i => D * w i * (1 - φ0) / W with he
+  have hW0 : 0 ≤ W := Finset.sum_nonneg fun i _ => hw i
+  have he0 : ∀ i, 0 ≤ e i := fun i => by
+    simp only [he]; exact div_nonneg (mul_nonneg (mul_nonneg hDpos.le (hw i)) (by linarith)) hW0
+  have hsume : ∑ i, e i ≤ D * (1 - φ0) := by
+    have : ∑ i, e i = D * (1 - φ0) / W * W := by
+      calc ∑ i, e i = ∑ i, D * (1 - φ0) / W * w i :=
+            Finset.sum_congr rfl fun i _ => by simp only [he]; ring
+        _ = D * (1 - φ0) / W * ∑ i, w i := (Finset.mul_sum _ _ _).symm
+        _ = D * (1 - φ0) / W * W := by rw [hW]
+    rw [this]
+    by_cases h0 : W = 0
+    · rw [h0, mul_zero]; exact mul_nonneg hDpos.le (by linarith)
+    · rw [div_mul_cancel₀ _ h0]
+  have hsumc : ∑ i, c i = ∑ j, ((μ j)⁻¹) ^ 2 - D * ∑ j, (μ j)⁻¹ := by
+    simp only [hc]; rw [Finset.sum_sub_distrib, ← Finset.mul_sum, hsum1, hsum2]
+  have hpos : 0 < ∑ i, (c i - e i) := by
+    rw [Finset.sum_sub_distrib, hsumc]
+    have h1 : D * (1 - φ0) ≤ D * (1 - ∑ j, (μ j + 1)⁻¹) :=
+      mul_le_mul_of_nonneg_left (by rw [← hΦμ]; linarith) hDpos.le
+    linarith
+  obtain ⟨i, hi⟩ : ∃ i, 0 < c i - e i := by
+    by_contra h
+    push Not at h
+    have : ∑ i, (c i - e i) ≤ 0 := Finset.sum_nonpos fun i _ => h i
+    linarith
+  have hci : 0 < c i := by linarith [he0 i]
+  refine ⟨i, D / c i, div_pos hDpos hci, ?_, ?_, ?_⟩
+  · -- the trace (upper) budget
+    by_cases h0 : W = 0
+    · have hwi : w i = 0 := le_antisymm
+        ((Finset.single_le_sum (fun j _ => hw j) (Finset.mem_univ i)).trans h0.le) (hw i)
+      rw [hwi, mul_zero, h0, zero_div]
+    · have hWpos : 0 < W := lt_of_le_of_ne hW0 (Ne.symm h0)
+      have h1 : D * w i * (1 - φ0) < c i * W := by
+        have : e i < c i := by linarith
+        simp only [he] at this
+        exact (div_lt_iff₀ hWpos).mp this
+      rw [div_mul_eq_mul_div, div_le_div_iff₀ hci (by linarith)]
+      linarith
+  · intro x hx
+    rw [show A + (D / c i) • vecMulVec (v i) (v i) - (L + 1) • (1 : Matrix (Fin k) (Fin k) ℝ)
+        = (A - (L + 1) • 1) + (D / c i) • vecMulVec (v i) (v i) by abel,
+      quad_add, quad_smul, quad_rank1]
+    have := hMpd x hx
+    have : 0 ≤ D / c i * (v i ⬝ᵥ x) ^ 2 := mul_nonneg (div_pos hDpos hci).le (sq_nonneg _)
+    linarith
+  · have hq1n : 0 ≤ v i ⬝ᵥ (P *ᵥ v i) := by
+      rw [hq1]; exact Finset.sum_nonneg fun j _ => mul_nonneg (inv_pos.mpr (hμ j)).le (sq_nonneg _)
+    have hden : 1 + D / c i * (v i ⬝ᵥ (P *ᵥ v i)) ≠ 0 := by
+      have := mul_nonneg (div_pos hDpos hci).le hq1n
+      linarith
+    rw [show A + (D / c i) • vecMulVec (v i) (v i) - (L + 1) • (1 : Matrix (Fin k) (Fin k) ℝ)
+        = (A - (L + 1) • 1) + (D / c i) • vecMulVec (v i) (v i) by abel,
+      sm_trace _ P hMP hPsym (v i) _ hden, htrP]
+    have hcdef : c i = (P *ᵥ v i) ⬝ᵥ (P *ᵥ v i) - D * (v i ⬝ᵥ (P *ᵥ v i)) := rfl
+    have hdrop : D / c i / (1 + D / c i * (v i ⬝ᵥ (P *ᵥ v i))) * ((P *ᵥ v i) ⬝ᵥ (P *ᵥ v i)) = D := by
+      field_simp
+      rw [hcdef]
+      ring
+    rw [hdrop]
+    have : ∑ j, (μ j)⁻¹ - D = ∑ j, (μ j + 1)⁻¹ := by
+      rw [hD, Finset.sum_sub_distrib]; ring
+    rw [this, ← hΦμ]
+    exact hΦ
+
+/-! ## Iterating the step -/
+
+theorem iterate {n k : ℕ} (hk : 0 < k) (v : Fin n → Fin k → ℝ)
+    (hv : ∀ a b : Fin k, ∑ i, v i a * v i b = if a = b then 1 else 0)
+    (w : Fin n → ℝ) (hw : ∀ i, 0 ≤ w i) (φ0 : ℝ) (hφ0 : φ0 < 1) (L0 : ℝ)
+    (hbpd : pd ((0 : Matrix (Fin k) (Fin k) ℝ) - L0 • 1))
+    (hbtr : trace ((0 : Matrix (Fin k) (Fin k) ℝ) - L0 • 1)⁻¹ ≤ φ0) :
+    ∀ τ : ℕ, ∃ s : Fin n → ℝ, (∀ i, 0 ≤ s i) ∧
+      (Finset.univ.filter fun i => s i ≠ 0).card ≤ τ ∧
+      ∑ i, s i * w i ≤ τ * ((∑ j, w j) / (1 - φ0)) ∧
+      pd (Aof v s - (L0 + τ) • 1) ∧ trace (Aof v s - (L0 + τ) • 1)⁻¹ ≤ φ0
+  | 0 => by
+    have h0 : Aof v (0 : Fin n → ℝ) = 0 := by simp [Aof]
+    refine ⟨0, fun i => le_refl _, by simp, by simp, ?_, ?_⟩
+    · rw [h0]; simpa using hbpd
+    · rw [h0]; simpa using hbtr
+  | τ + 1 => by
+    obtain ⟨s, hs0, hcard, hwt, hpd, htr⟩ := iterate hk v hv w hw φ0 hφ0 L0 hbpd hbtr τ
+    obtain ⟨i, t, ht, htw, hpd', htr'⟩ :=
+      step hk v hv w hw φ0 hφ0 (Aof v s) (Aof_symm v s) (L0 + τ) hpd htr
+    set s' : Fin n → ℝ := fun j => s j + if j = i then t else 0 with hs'
+    have hA' : Aof v s' = Aof v s + t • vecMulVec (v i) (v i) := by
+      unfold Aof
+      simp only [hs', add_smul, Finset.sum_add_distrib, ite_smul, zero_smul, Finset.sum_ite_eq',
+        Finset.mem_univ, if_true]
+    have hL : L0 + ((τ + 1 : ℕ) : ℝ) = L0 + τ + 1 := by push_cast; ring
+    refine ⟨s', fun j => ?_, ?_, ?_, ?_, ?_⟩
+    · simp only [hs']; split_ifs <;> linarith [hs0 j]
+    · have hsub : (Finset.univ.filter fun j => s' j ≠ 0) ⊆
+          insert i (Finset.univ.filter fun j => s j ≠ 0) := by
+        intro j hj
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_insert] at hj ⊢
+        by_cases hji : j = i
+        · exact Or.inl hji
+        · right; simpa [hs', hji] using hj
+      calc (Finset.univ.filter fun j => s' j ≠ 0).card
+          ≤ (insert i (Finset.univ.filter fun j => s j ≠ 0)).card := Finset.card_le_card hsub
+        _ ≤ (Finset.univ.filter fun j => s j ≠ 0).card + 1 := Finset.card_insert_le _ _
+        _ ≤ τ + 1 := by omega
+    · have : ∑ j, s' j * w j = ∑ j, s j * w j + t * w i := by
+        simp only [hs', add_mul, Finset.sum_add_distrib, ite_mul, zero_mul, Finset.sum_ite_eq',
+          Finset.mem_univ, if_true]
+      rw [this]; push_cast; linarith
+    · rw [hA', hL]; exact hpd'
+    · rw [hA', hL]; exact htr'
+
+end BSS
+
+open BSS in
+theorem woodruff_theorem50 {n k ℓ : ℕ} (v : Fin n → Fin k → ℝ)
+    (hv : ∀ a b : Fin k, ∑ i, v i a * v i b = if a = b then 1 else 0)
+    (a : Fin n → Fin ℓ → ℝ) (r : ℕ) (hkn : k < n) (hkr : k < r) (hrn : r ≤ n) :
+    ∃ s : Fin n → ℝ, (∀ i, 0 ≤ s i) ∧ (Finset.univ.filter fun i => s i ≠ 0).card ≤ r ∧
+      (∀ x : Fin k → ℝ, (1 - Real.sqrt (k / r)) ^ 2 * ∑ b, x b ^ 2 ≤
+        ∑ i, s i * (∑ b, v i b * x b) ^ 2) ∧
+      ∑ i, s i * ∑ j, a i j ^ 2 ≤ ∑ i, ∑ j, a i j ^ 2 := by
+  rcases Nat.eq_zero_or_pos k with hk | hk
+  · subst hk
+    refine ⟨0, fun i => le_refl _, by simp, fun x => by simp, ?_⟩
+    simp only [Pi.zero_apply, zero_mul, Finset.sum_const_zero]
+    exact Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _
+  have hk0 : (0 : ℝ) < k := by exact_mod_cast hk
+  have hr0 : (0 : ℝ) < r := by exact_mod_cast (lt_trans hk hkr)
+  set φ0 := Real.sqrt (k / r) with hφ0def
+  have hφ0 : φ0 < 1 := by
+    rw [hφ0def, Real.sqrt_lt' one_pos, one_pow]
+    exact (div_lt_one hr0).mpr (by exact_mod_cast hkr)
+  have hφ0nn : 0 ≤ φ0 := Real.sqrt_nonneg _
+  set c := Real.sqrt (r * k) with hcdef
+  have hc0 : 0 < c := Real.sqrt_pos.mpr (by positivity)
+  have hrc : c = r * φ0 := by
+    rw [hcdef, hφ0def, show (r : ℝ) * k = r ^ 2 * (k / r) by field_simp,
+      Real.sqrt_mul (sq_nonneg _), Real.sqrt_sq hr0.le]
+  -- base of the barrier: A = 0, L0 = -c
+  have hbase : (0 : Matrix (Fin k) (Fin k) ℝ) - (-c) • 1 = c • 1 := by
+    rw [zero_sub, neg_smul, neg_neg]
+  have hbpd : pd ((0 : Matrix (Fin k) (Fin k) ℝ) - (-c) • 1) := by
+    rw [hbase]
+    intro x hx
+    rw [quad_smul, quad_one]
+    obtain ⟨j, hj⟩ := Function.ne_iff.mp hx
+    have : 0 < ∑ b, x b ^ 2 := Finset.sum_pos' (fun b _ => sq_nonneg _)
+      ⟨j, Finset.mem_univ _, lt_of_le_of_ne (sq_nonneg _) (Ne.symm (pow_ne_zero 2 hj))⟩
+    positivity
+  have hbtr : trace ((0 : Matrix (Fin k) (Fin k) ℝ) - (-c) • 1)⁻¹ ≤ φ0 := by
+    rw [hbase]
+    have hinv : (c • (1 : Matrix (Fin k) (Fin k) ℝ))⁻¹ = c⁻¹ • 1 := by
+      apply inv_eq_right_inv
+      rw [smul_mul_smul_comm, Matrix.one_mul, mul_inv_cancel₀ hc0.ne', one_smul]
+    rw [hinv, trace_smul, trace_one, Fintype.card_fin, smul_eq_mul]
+    have e : φ0 * c = k := by
+      rw [hφ0def, hcdef, ← Real.sqrt_mul (by positivity),
+        show (k : ℝ) / r * (r * k) = k ^ 2 by field_simp, Real.sqrt_sq hk0.le]
+    apply le_of_eq
+    rw [← e]; field_simp
+  set w : Fin n → ℝ := fun i => ∑ j, a i j ^ 2 with hwdef
+  have hw : ∀ i, 0 ≤ w i := fun i => Finset.sum_nonneg fun j _ => sq_nonneg _
+  obtain ⟨s, hs0, hcard, hwt, hpd, -⟩ := iterate hk v hv w hw φ0 hφ0 (-c) hbpd hbtr r
+  have hLr : -c + (r : ℝ) = r * (1 - φ0) := by rw [hrc]; ring
+  rw [hLr] at hpd
+  have hquad : ∀ x : Fin k → ℝ, r * (1 - φ0) * ∑ b, x b ^ 2 ≤ ∑ i, s i * (v i ⬝ᵥ x) ^ 2 := by
+    intro x
+    by_cases hx : x = 0
+    · subst hx; simp
+    · have := hpd x hx
+      rw [sub_mulVec, dotProduct_sub, quad_smul, quad_one, Aof_quad] at this
+      linarith
+  have hf0 : 0 < (1 - φ0) / r := div_pos (by linarith) hr0
+  refine ⟨fun i => (1 - φ0) / r * s i, fun i => mul_nonneg hf0.le (hs0 i), ?_, ?_, ?_⟩
+  · have : (Finset.univ.filter fun i => (1 - φ0) / r * s i ≠ 0) =
+        Finset.univ.filter fun i => s i ≠ 0 := by
+      ext i; simp [hf0.ne']
+    rw [this]; exact hcard
+  · intro x
+    have h := hquad x
+    have e : ∑ i, (1 - φ0) / r * s i * (∑ b, v i b * x b) ^ 2 =
+        (1 - φ0) / r * ∑ i, s i * (v i ⬝ᵥ x) ^ 2 := by
+      rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun i _ => by simp only [dotProduct]; ring
+    rw [e]
+    calc (1 - φ0) ^ 2 * ∑ b, x b ^ 2 = (1 - φ0) / r * (r * (1 - φ0) * ∑ b, x b ^ 2) := by
+          field_simp [show (1 : ℝ) - φ0 ≠ 0 by linarith, hr0.ne']
+      _ ≤ _ := mul_le_mul_of_nonneg_left h hf0.le
+  · have e : ∑ i, (1 - φ0) / r * s i * ∑ j, a i j ^ 2 = (1 - φ0) / r * ∑ i, s i * w i := by
+      rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun i _ => by simp only [hwdef]; ring
+    rw [e]
+    calc (1 - φ0) / r * ∑ i, s i * w i ≤ (1 - φ0) / r * (r * ((∑ j, w j) / (1 - φ0))) :=
+          mul_le_mul_of_nonneg_left hwt hf0.le
+      _ = ∑ j, w j := by field_simp [show (1 : ℝ) - φ0 ≠ 0 by linarith, hr0.ne']
