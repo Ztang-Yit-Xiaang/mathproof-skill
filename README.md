@@ -97,6 +97,27 @@ theorem claim_false : ¬ Claim := by
 The GIFs are rendered by [`docs/demo/render_gifs.py`](docs/demo/render_gifs.py) from the recorded output in [`docs/demo/session.json`](docs/demo/session.json).
 <!-- END demo-gifs -->
 
+## Three nested loops
+
+A single proof attempt is the inner loop. When it fails, the cause may be a missing assumption or a wrong conjecture rather than a missing tactic, so the work moves outward. Every loop reads and writes the same hash-chained ledger. Each loop is labeled with what works today.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/loops/loops-dark.gif">
+    <img src="docs/assets/loops/loops-light.gif" width="880" alt="Animated: a pulse of energy runs through three nested loops and their arrows, ending in the shared ledger. Loop 1, proof and falsification (working today): proof construction, then Lean 4 checking and R or Python experiments, with failure, repair, retest, reprove. Loop 2, hypotheses and knowledge (partly today): literature search and conjecture revision with feedback between them. Loop 3, research frontier (planned): generalization that weakens assumptions, strengthens conclusions and restarts the cycle. All loops share one theorem and evidence ledger.">
+  </picture>
+</p>
+
+| Loop | The question it answers | When it fails, it… | Status |
+|---|---|---|---|
+| 🟢 **1 · Verification** | Can we prove or disprove this exact claim? | Repairs a lemma, searches for counterexamples, reruns Lean. | Working today |
+| 🔵 **2 · Discovery** | Are we pursuing the right theorem, under the right assumptions? | Returns to the literature and the conjecture with what it found. | Partly: literature via `RESEARCH` mode; conjecture revision planned (M2) |
+| 🟣 **3 · Generalization** | What deeper or more general result is there? | Poses a new problem and restarts the whole process. | Planned (M3) |
+
+> **Why the middle loop matters.** When Lean can't close a goal, another tactic is often the wrong fix. The goal may need an assumption the statement left out, a lemma under it may be false, or the conjecture itself may need to change. So a failure is recorded, not hidden, and the work can step out to Loop 2 instead of retrying forever.
+
+The energy follows one pass of the work, lighting each box and arrow as it reaches them: proof construction splits into the Lean and R/Python checks, which feed the repair cycle; a lap of Loop 1; new evidence flows up to Literature and Conjectures, which exchange; a lap of Loop 2; Generalization and its three directions; the restart arrow and a lap of Loop 3; and finally the ledger, whose records light up one by one. The diagram is drawn by [`make_loops_svg.py`](docs/assets/loops/make_loops_svg.py) and animated by [`animate_loops.py`](docs/assets/loops/animate_loops.py); the website draws the same structure in HTML, with the same flow animated in CSS.
+
 ## Why not just ask an LLM?
 
 A chatbot gives a fluent answer you must still check yourself, and rarely says it is unsure. MathProof Skill adds:

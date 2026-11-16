@@ -70,7 +70,8 @@ nav.top .wrap{display:flex;align-items:center;gap:20px;height:56px}
 nav.top .links{margin-left:auto;display:flex;gap:18px;align-items:center}
 nav.top .links a{color:var(--ink-2);text-decoration:none;font-size:.92rem}
 nav.top .links a:hover{color:var(--ink)}
-@media (max-width:640px){nav.top .links a.opt{display:none}}
+nav.top .links a{white-space:nowrap}
+@media (max-width:900px){nav.top .links a.opt{display:none}}
 
 /* buttons */
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:9px;font:600 .95rem var(--sans);text-decoration:none;border:1px solid transparent;cursor:pointer}
@@ -176,6 +177,174 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
 .demo figcaption{margin-top:10px;color:var(--ink-2);font-size:.95rem}
 .demo figcaption b{color:var(--ink)}
 .katex-display{overflow-x:auto;overflow-y:hidden}
+/* three loops */
+:root{--l1-hot:#22c55e;--l2-hot:#3b82f6;--l3-hot:#8b5cf6;--l1:#1f7a4d;--l1-soft:#eef7f1;--l2:#1d3b6a;--l2-soft:#eef2f9;--l3:#5b3fa0;--l3-soft:#f4f0fb}
+@media (prefers-color-scheme: dark){:root{--l1:#6cc79a;--l1-soft:#132119;--l2:#8fb3ec;--l2-soft:#141c29;--l3:#b9a0f0;--l3-soft:#1c1729}}
+.loops{margin-top:30px;display:grid;gap:14px}
+.loop{position:relative;border-radius:18px;padding:22px 22px 18px;border:1.5px solid color-mix(in srgb,var(--c) 40%,var(--line));background:linear-gradient(180deg,var(--c-soft),color-mix(in srgb,var(--c-soft) 35%,var(--surface)) 140px)}
+.loop.l3{--c:var(--l3);--hot:var(--l3-hot);--c-soft:var(--l3-soft);box-shadow:var(--shadow)}
+.loop.l2{--c:var(--l2);--hot:var(--l2-hot);--c-soft:var(--l2-soft);margin-top:18px}
+.loop.l1{--c:var(--l1);--hot:var(--l1-hot);--c-soft:var(--l1-soft);margin-top:16px;background:var(--surface)}
+.lh{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:start}
+.lh .num{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 .95rem var(--serif);color:var(--c);border:1.5px solid var(--c);background:var(--surface);position:relative}
+.lh .num svg.ring{position:absolute;inset:-7.5px;width:calc(100% + 15px);height:calc(100% + 15px);color:var(--c);opacity:.55}
+.loop:hover>.lh .num svg.ring{animation:spin 2.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.loop:hover>.lh .num svg.ring{animation:none}}
+.lh h3{font-size:1.18rem;color:var(--ink)}
+.lh p{margin:.15em 0 0;color:var(--ink-2);font-size:.93rem;line-height:1.5}
+.lh .pill{justify-self:end}
+.pill{font:600 .7rem var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.pill.now{background:var(--ok-soft);color:var(--ok)}
+.pill.part{background:var(--warn-soft);color:var(--warn)}
+.pill.plan{background:var(--sunk);color:var(--ink-3);border:1px dashed var(--line)}
+.agents2{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin-top:16px}
+.node{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:3px}
+.node b{font:600 .95rem var(--sans);display:flex;align-items:center;gap:8px}
+.node b svg{flex:none;color:var(--c)}
+.node span{font-size:.86rem;color:var(--ink-2);line-height:1.45}
+.node .pill{align-self:flex-start;margin-top:6px;font-size:.68rem;line-height:1.3}
+.node.ghost{border-style:dashed;background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.bidir{display:grid;place-items:center;color:var(--c);font:500 .72rem var(--sans);text-align:center;gap:2px;padding-inline:2px}
+.bidir small{color:var(--ink-3);font-size:.7rem;letter-spacing:.04em}
+.flow{display:grid;gap:10px;margin-top:16px}
+.flow .node.top{text-align:center;align-items:center}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fork .node{align-items:center;text-align:center}
+.down{display:grid;place-items:center;color:var(--ink-3);height:14px}
+.cycle{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin-top:12px;font:500 .82rem var(--sans);color:var(--ink-2)}
+.cycle i{font-style:normal;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid color-mix(in srgb,var(--c) 30%,var(--line))}
+.cycle .ar{color:var(--c);padding:0;border:0;background:none}
+.fb{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0 2px;font-size:.86rem;color:var(--ink-2);text-align:center}
+.fb svg{flex:none;color:var(--c)}
+.gen{margin-top:16px;text-align:center}
+.gen .node{align-items:center;border-color:color-mix(in srgb,var(--l3) 35%,var(--line))}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px}
+.chips em{font:500 .78rem var(--sans);font-style:normal;padding:3px 9px;border-radius:6px;background:var(--sunk);color:var(--ink-2)}
+.registry{position:relative;margin-top:22px;padding:18px 22px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.registry::before{content:"";position:absolute;left:50%;top:-23px;height:22px;border-left:2px dotted var(--ink-3)}
+.registry .lh .num{--c:var(--ink-2);border-radius:10px}
+.registry .chips{justify-content:flex-start;margin-top:12px}
+.loops-table td:first-child{white-space:nowrap}
+.loops-table td:last-child{white-space:nowrap}
+.loops-table .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.insight{margin-top:22px;padding:18px 22px;border-left:3px solid var(--l2);background:var(--l2-soft);border-radius:0 12px 12px 0}
+.insight p{margin:.3em 0;font-family:var(--serif);font-size:1.08rem}
+@media (max-width:760px){
+  .agents2{grid-template-columns:1fr}.bidir{grid-auto-flow:column;gap:8px;justify-content:center}
+  .fork{grid-template-columns:1fr}
+  .lh{grid-template-columns:auto 1fr}.lh .pill{grid-column:2;justify-self:start;margin-top:4px}
+  .loop{padding:16px 14px 14px}.loop.l2,.loop.l1{margin-top:12px}
+}
+
+/* energy flow, one 10s pass: proof → Lean + R/Python → repair cycle → Loop 1 → feedback →
+   Literature ⇄ Conjectures → Loop 2 → Generalization → restart → Loop 3 → ledger.
+   Each element sets --d, the moment the energy reaches it. */
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+.loop::after{content:"";position:absolute;inset:-2.5px;border-radius:inherit;padding:3.5px;pointer-events:none;opacity:0;
+  background:conic-gradient(from var(--a),transparent 0 66%,color-mix(in srgb,var(--hot) 30%,transparent) 80%,var(--hot) 94%,#fff 98.5%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  filter:drop-shadow(0 0 7px var(--hot)) drop-shadow(0 0 2px var(--hot));animation:comet 10s linear infinite;animation-delay:var(--d)}
+.loop.l1{--d:1.5s}.loop.l2{--d:4.3s}.loop.l3{--d:6.9s}
+@keyframes comet{0%{--a:0deg;opacity:0}1%{opacity:1}18%{opacity:1}20%{--a:360deg;opacity:0}100%{--a:360deg;opacity:0}}
+.loop>.lh .num{animation:numglow 10s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes numglow{0%,100%{box-shadow:0 0 0 0 transparent}4%,15%{box-shadow:0 0 0 5px color-mix(in srgb,var(--hot) 22%,transparent),0 0 14px var(--hot)}20%{box-shadow:0 0 0 0 transparent}}
+/* boxes light up when the energy arrives */
+.e{animation:hit 10s ease-out infinite;animation-delay:var(--d,0s)}
+@keyframes hit{0%,100%{box-shadow:none;border-color:var(--line)}
+  1%{border-color:var(--hot);box-shadow:0 0 0 2px color-mix(in srgb,var(--hot) 45%,transparent),0 0 22px color-mix(in srgb,var(--hot) 40%,transparent)}
+  9%{border-color:var(--line);box-shadow:none}}
+.cycle i.e{animation-name:hitchip}
+@keyframes hitchip{0%,100%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}1%{border-color:var(--hot);box-shadow:0 0 12px color-mix(in srgb,var(--hot) 55%,transparent)}6%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}}
+.chips em.e{animation-name:hitem}
+@keyframes hitem{0%,100%{background:var(--sunk);box-shadow:none}1%{background:color-mix(in srgb,var(--hot) 22%,var(--sunk));box-shadow:0 0 10px color-mix(in srgb,var(--hot) 45%,transparent)}7%{background:var(--sunk);box-shadow:none}}
+/* arrows flash as the energy passes */
+.zap{display:inline-grid;color:var(--hot,var(--c));animation:zap 10s ease-out infinite;animation-delay:var(--d,0s)}
+@keyframes zap{0%,100%{transform:scale(1);filter:none}2%{transform:scale(1.5);filter:drop-shadow(0 0 7px currentColor)}7%{transform:scale(1);filter:none}}
+.bidir svg{animation:swap 1.4s ease-in-out infinite alternate}
+@keyframes swap{from{transform:translateX(-3px)}to{transform:translateX(3px)}}
+.registry{--hot:var(--l1-hot)}
+.registry::before{animation:wire 10s linear infinite}
+@keyframes wire{0%,88%,100%{border-left-color:var(--ink-3);filter:none}89%,94%{border-left-color:var(--l1-hot);filter:drop-shadow(0 0 4px var(--l1-hot))}}
+.registry.e{animation-name:hitledger}
+@keyframes hitledger{0%,100%{box-shadow:var(--shadow)}1%,5%{box-shadow:0 0 0 2px color-mix(in srgb,var(--hot) 55%,transparent),0 0 26px color-mix(in srgb,var(--hot) 35%,transparent)}10%{box-shadow:var(--shadow)}}
+@media (prefers-reduced-motion: reduce){.loop::after,.loop>.lh .num,.e,.zap,.down.flow::before,.registry::before,.bidir svg{animation:none}.loop::after{opacity:0}}
+
+/* ---- arrows as energy conduits ---- */
+.conduit{position:relative;height:30px;display:grid;place-items:center;--hot:var(--l1-hot)}
+.conduit .stream{position:absolute;left:50%;top:0;bottom:7px;width:2px;margin-left:-1px;border-radius:2px;
+  background:color-mix(in srgb,var(--hot) 18%,transparent)}
+.conduit .stream::before{content:"";position:absolute;inset:0;border-radius:2px;
+  background:repeating-linear-gradient(to bottom,transparent 0 5px,var(--hot) 5px 9px);background-size:100% 14px;
+  -webkit-mask:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(transparent,#000 30%,#000 70%,transparent);
+  filter:drop-shadow(0 0 3px var(--hot));animation:flowy .7s linear infinite}
+.conduit .stream::after{content:"";position:absolute;left:-3px;width:8px;height:14px;top:-14px;border-radius:6px;opacity:0;
+  background:radial-gradient(closest-side,#fff,var(--hot) 55%,transparent);filter:drop-shadow(0 0 6px var(--hot));
+  animation:burst-y 10s linear infinite;animation-delay:var(--d,0s)}
+.conduit .head{position:absolute;bottom:0;left:50%;width:9px;height:9px;margin-left:-4.5px;border-right:2px solid var(--hot);border-bottom:2px solid var(--hot);
+  transform:translateY(-3px) rotate(45deg);filter:drop-shadow(0 0 3px var(--hot));animation:headpulse 1.4s ease-in-out infinite}
+@keyframes flowy{to{background-position:0 14px}}
+@keyframes burst-y{0%{top:-14px;opacity:0}.5%{opacity:1}3%{top:100%;opacity:0}100%{opacity:0}}
+@keyframes headpulse{50%{transform:translateY(0) rotate(45deg);opacity:.55}}
+.hstream{position:relative;display:inline-block;width:24px;height:2px;border-radius:2px;margin-inline:2px;
+  background:repeating-linear-gradient(to right,transparent 0 3px,var(--hot) 3px 7px);background-size:10px 100%;
+  filter:drop-shadow(0 0 2px var(--hot));animation:flowx .6s linear infinite}
+.hstream::after{content:"";position:absolute;right:-2px;top:-3px;width:6px;height:6px;border-right:2px solid var(--hot);border-top:2px solid var(--hot);transform:rotate(45deg)}
+@keyframes flowx{to{background-position:10px 0}}
+.xfer{position:relative;display:grid;gap:7px;width:56px;padding:4px 0}
+.xfer i{position:relative;display:block;height:2px;border-radius:2px;background-size:12px 100%;filter:drop-shadow(0 0 3px var(--hot))}
+.xfer i.r{background-image:repeating-linear-gradient(to right,transparent 0 4px,var(--hot) 4px 8px);animation:flowx2 .7s linear infinite}
+.xfer i.l{background-image:repeating-linear-gradient(to right,transparent 0 4px,var(--hot) 4px 8px);animation:flowx2 .7s linear infinite reverse}
+.xfer i.r::after,.xfer i.l::after{content:"";position:absolute;top:-3px;width:6px;height:6px;border-top:2px solid var(--hot)}
+.xfer i.r::after{right:0;border-right:2px solid var(--hot);transform:rotate(45deg)}
+.xfer i.l::after{left:0;border-left:2px solid var(--hot);transform:rotate(-45deg)}
+.xfer::before{content:"";position:absolute;inset:-6px -4px;border-radius:10px;opacity:0;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--hot) 35%,transparent),transparent);animation:xglow 10s ease-out infinite;animation-delay:var(--d,0s)}
+@keyframes flowx2{to{background-position:12px 0}}
+@keyframes xglow{0%,100%{opacity:0}2%{opacity:1}9%{opacity:0}}
+.fb .zap svg{animation:spin 4s linear infinite}
+.beamtext{background:linear-gradient(90deg,var(--ink-2) 0 40%,var(--hot) 50%,var(--ink-2) 60% 100%);background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 3.2s linear infinite}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-150% 0}}
+.loop.l2>.fb{--hot:var(--l2-hot)}
+.registry::before{border-left:0;width:2px;margin-left:-1px;background:repeating-linear-gradient(to bottom,transparent 0 3px,var(--ink-3) 3px 6px);background-size:100% 9px;animation:flowy .8s linear infinite,wire 10s linear infinite}
+@keyframes wire{0%,88%,100%{filter:none}89%,94%{filter:drop-shadow(0 0 5px var(--l1-hot)) brightness(1.6)}}
+
+/* ---- hover: the innermost section under the pointer lights its border ---- */
+.loop,.node,.registry{transition:box-shadow .25s,border-color .25s,transform .25s}
+.loop:hover:not(:has(.loop:hover)){border-color:var(--hot);
+  box-shadow:0 0 0 1px var(--hot),0 0 26px color-mix(in srgb,var(--hot) 38%,transparent),inset 0 0 36px color-mix(in srgb,var(--hot) 7%,transparent)}
+.loop:hover:not(:has(.loop:hover))::after{animation:orbit 2.6s linear infinite;opacity:1}
+@keyframes orbit{to{--a:360deg}}
+.node{position:relative;--rest-shadow:none;--rest-border:var(--line)}
+.node.ghost{--rest-border:var(--line)}
+.node:hover{--rest-shadow:0 0 0 1px var(--hot),0 0 22px color-mix(in srgb,var(--hot) 35%,transparent);--rest-border:var(--hot);transform:translateY(-2px)}
+.node{box-shadow:var(--rest-shadow);border-color:var(--rest-border)}
+.registry:hover{border-color:var(--hot)}
+.registry{--rest-shadow:var(--shadow)}
+.registry:hover{--rest-shadow:0 0 0 1px var(--hot),0 0 28px color-mix(in srgb,var(--hot) 35%,transparent)}
+.registry{box-shadow:var(--rest-shadow)}
+/* hit keyframes end on the resting values, so hover still shows between flashes */
+@keyframes hit{0%,100%{box-shadow:var(--rest-shadow);border-color:var(--rest-border)}
+  1%{border-color:var(--hot);box-shadow:0 0 0 2px color-mix(in srgb,var(--hot) 45%,transparent),0 0 22px color-mix(in srgb,var(--hot) 40%,transparent)}
+  9%{box-shadow:var(--rest-shadow);border-color:var(--rest-border)}}
+@keyframes hitledger{0%,100%{box-shadow:var(--rest-shadow)}1%,5%{box-shadow:0 0 0 2px color-mix(in srgb,var(--hot) 55%,transparent),0 0 26px color-mix(in srgb,var(--hot) 35%,transparent)}10%{box-shadow:var(--rest-shadow)}}
+
+/* ---- extras: cursor glow, ripple on arrival, reveal on scroll ---- */
+.loop::before,.node::before,.registry>.glowpt{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--hot) 13%,transparent),transparent 70%)}
+.loop:hover:not(:has(.loop:hover))::before,.node:hover::before{opacity:1}
+.node.e::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:2px solid var(--hot);pointer-events:none;opacity:0;
+  animation:ripple 10s ease-out infinite;animation-delay:var(--d,0s)}
+@keyframes ripple{0%{opacity:.8;transform:scale(1)}5%{opacity:0;transform:scale(1.06,1.25)}100%{opacity:0}}
+.js-reveal .loops>.loop.l3,.js-reveal .loops>.registry,.js-reveal #loops .loops-table,.js-reveal #loops .insight{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+.js-reveal .loops.in>.loop.l3,.js-reveal .loops.in>.registry,.js-reveal #loops .in-after .loops-table,.js-reveal #loops .in-after .insight{opacity:1;transform:none}
+.js-reveal .loops.in>.registry{transition-delay:.25s}
+@media (prefers-reduced-motion: reduce){
+  .conduit .stream::before,.conduit .stream::after,.conduit .head,.hstream,.xfer i,.xfer::before,.fb .zap svg,.beamtext,.registry::before,.node.e::after{animation:none}
+  .beamtext{color:var(--ink-2);background:none}
+  .loop:hover:not(:has(.loop:hover))::after{animation:none;opacity:0}
+  .js-reveal #loops *{transition:none!important;opacity:1!important;transform:none!important}}
 </style>
 </head>
 <body>
@@ -189,6 +358,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
     <div class="links">
       <a class="opt" href="#demo">Demo</a>
       <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#loops">Loops</a>
       <a class="opt" href="#investigate">Investigate</a>
       <a class="opt" href="#examples">Examples</a>
       <a class="opt" href="#showcase">Showcase</a>
@@ -341,6 +511,68 @@ smallest gap f(y) - f(x0):   2.2e-09</code></pre>
       <span class="tag ok">VALID</span><span class="tag bad">INVALID</span><span class="tag warn">CONDITIONALLY VALID</span><span class="tag warn">INCOMPLETE</span><span class="tag neutral">UNVERIFIED</span>
       <span style="width:12px"></span>
       <span class="tag ok">LEAN-CHECKED</span><span class="tag warn">LEAN-CHECKED (partial)</span><span class="tag bad">LEAN-FAILED</span><span class="tag neutral">NOT FORMALIZED</span>
+    </div>
+  </div>
+</section>
+
+<section id="loops">
+  <div class="wrap">
+    <div class="eyebrow">Architecture · where the project is going</div>
+    <h2>Three nested loops, one shared ledger.</h2>
+    <p class="lede">A single proof attempt is the inner loop. When it fails, the cause may be a missing assumption or a wrong conjecture, not a missing tactic, so the work moves outward. Every loop reads and writes the same hash-chained ledger. Each loop is labeled with what works today.</p>
+
+    <div class="loops">
+      <div class="loop l3">
+        <div class="lh"><span class="num"><svg class="ring" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 3a20 20 0 0 1 19.4 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M43 12.5l-.6 5.6-5.2-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 43A20 20 0 0 1 3.6 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 33.5l.6-5.6 5.2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>3</span><div><h3>Research frontier</h3><p>Turn proved results into broader theorems and new questions.</p></div><span class="pill plan">Planned · M3</span></div>
+
+        <div class="loop l2">
+          <div class="lh"><span class="num"><svg class="ring" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 3a20 20 0 0 1 19.4 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M43 12.5l-.6 5.6-5.2-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 43A20 20 0 0 1 3.6 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 33.5l.6-5.6 5.2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>2</span><div><h3>Hypotheses and knowledge</h3><p>Are we proving the right theorem, under the right assumptions?</p></div><span class="pill part">Partly today</span></div>
+          <div class="agents2">
+            <div class="node e" style="--d:3.8s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.2c2-.9 4-.9 6 .4 2-1.3 4-1.3 6-.4v9.6c-2-.9-4-.9-6 .4-2-1.3-4-1.3-6-.4z M8 3.6v9.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Literature</b><span>Find, retrieve, compare and reconcile published theorems, with the exact statement and its hypotheses.</span><span class="pill now">Today · RESEARCH mode</span></div>
+            <div class="bidir"><span class="xfer" style="--d:4s" aria-hidden="true"><i class="r"></i><i class="l"></i></span><small>FEEDBACK</small></div>
+            <div class="node ghost e" style="--d:3.8s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a4.4 4.4 0 0 0-2.6 8c.5.4.8 1 .8 1.6v.4h3.6v-.4c0-.6.3-1.2.8-1.6A4.4 4.4 0 0 0 8 1.8zM6.4 14.2h3.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Conjectures</b><span>Propose and revise assumptions and claims. A revised statement is recorded as a new, linked claim.</span><span class="pill plan">Planned · M2</span></div>
+          </div>
+
+          <div class="loop l1">
+            <div class="lh"><span class="num"><svg class="ring" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 3a20 20 0 0 1 19.4 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M43 12.5l-.6 5.6-5.2-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 43A20 20 0 0 1 3.6 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 33.5l.6-5.6 5.2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>1</span><div><h3>Proof and falsification</h3><p>Can we prove or disprove this exact claim?</p></div><span class="pill now">Working today</span></div>
+            <div class="flow">
+              <div class="node top e" style="--d:0s"><b>Proof construction</b><span>Split the claim into lemmas and implications, then attack each step.</span></div>
+              <div class="conduit" style="--d:.3s" aria-hidden="true"><span class="stream"></span><span class="head"></span></div>
+              <div class="fork">
+                <div class="node e" style="--d:.55s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l5.5 2.2v4c0 3.3-2.3 5.7-5.5 6.8-3.2-1.1-5.5-3.5-5.5-6.8v-4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.6 8.2l1.7 1.7 3.2-3.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Lean 4 + Mathlib</b><span>Proof or refutation, checked by the kernel; <code>sorry</code> and custom axioms rejected.</span></div>
+                <div class="node e" style="--d:.55s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.8h4M6.6 1.8v4.4L2.9 12.6c-.6 1 .1 2 1.2 2h7.8c1.1 0 1.8-1 1.2-2L9.4 6.2V1.8M4.6 10h6.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>R / Python experiments</b><span>Seeded falsification tests, hashed and re-runnable. Evidence, never proof.</span></div>
+              </div>
+            </div>
+            <div class="cycle"><span class="ar"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><i class="e" style="--d:0.9s">failure</i><span class="hstream" aria-hidden="true"></span><i class="e" style="--d:1.05s">repair</i><span class="hstream" aria-hidden="true"></span><i class="e" style="--d:1.2s">retest</i><span class="hstream" aria-hidden="true"></span><i class="e" style="--d:1.35s">reprove</i></div>
+          </div>
+
+          <div class="fb"><span class="zap" style="--d:3.6s"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="beamtext">New evidence → revise the conjecture and search the literature again</span></div>
+        </div>
+
+        <div class="gen">
+          <div class="conduit" style="color:var(--l3);--hot:var(--l3-hot);--d:6.2s" aria-hidden="true"><span class="stream"></span><span class="head"></span></div>
+          <div class="node ghost e" style="--c:var(--l3);--hot:var(--l3-hot);--d:6.4s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M3.4 12.6l2.1-2.1M10.5 5.5l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Generalization</b><span>Probe which hypotheses are really needed, then propose stronger results.</span>
+            <div class="chips"><em class="e" style="--hot:var(--l3-hot);--d:6.5s">weaken assumptions</em><em class="e" style="--hot:var(--l3-hot);--d:6.6s">strengthen conclusions</em><em class="e" style="--hot:var(--l3-hot);--d:6.7s">explore extensions</em></div>
+          </div>
+          <div class="fb" style="--c:var(--l3)"><span class="zap" style="--hot:var(--l3-hot);--d:6.8s"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="beamtext">A new theorem family or question → restart the whole cycle</span></div>
+        </div>
+      </div>
+
+      <div class="registry e" style="--d:8.95s">
+        <div class="lh"><span class="num" style="color:var(--ink-2);border-color:var(--ink-3)"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="3.6" rx="5.3" ry="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.7 3.6v8.8c0 1.1 2.4 2 5.3 2s5.3-.9 5.3-2V3.6M2.7 8c0 1.1 2.4 2 5.3 2s5.3-.9 5.3-2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span><div><h3>Theorem and evidence ledger</h3><p>Shared by all three loops. Append-only and hash-chained; the status of every claim is derived from it, never typed in.</p></div><span class="pill now">Working today</span></div>
+        <div class="chips"><em class="e" style="--d:9.05s">claims</em><em class="e" style="--d:9.13s">proofs</em><em class="e" style="--d:9.21s">counterexamples</em><em class="e" style="--d:9.29s">failed attempts</em><em class="e" style="--d:9.37s">assumptions</em><em class="e" style="--d:9.45s">citations</em><em class="e" style="--d:9.53s">experiment records</em><em class="e" style="--d:9.61s">fidelity reviews</em></div>
+      </div>
+    </div>
+
+    <div class="tablebox"><table class="lemmas loops-table">
+      <tr><th>Loop</th><th>The question it answers</th><th>When it fails, it…</th><th>Status</th></tr>
+      <tr><td><span class="dot" style="background:var(--l1)"></span>1 · Verification</td><td>Can we prove or disprove this exact claim?</td><td>Repairs a lemma, searches for counterexamples, reruns Lean.</td><td><span class="pill now">Today</span></td></tr>
+      <tr><td><span class="dot" style="background:var(--l2)"></span>2 · Discovery</td><td>Are we pursuing the right theorem, under the right assumptions?</td><td>Returns to the literature and the conjecture with what it found.</td><td><span class="pill part">Partly</span></td></tr>
+      <tr><td><span class="dot" style="background:var(--l3)"></span>3 · Generalization</td><td>What deeper or more general result is there?</td><td>Poses a new problem and restarts the whole process.</td><td><span class="pill plan">Planned</span></td></tr>
+    </table></div>
+
+    <div class="insight">
+      <p><strong>Why the middle loop matters.</strong> When Lean can't close a goal, another tactic is often the wrong fix. The goal may need an assumption the statement left out, a lemma under it may be false, or the conjecture itself may need to change. So a failure is recorded, not hidden, and the work can step out to Loop 2 instead of retrying forever.</p>
     </div>
   </div>
 </section>
@@ -619,6 +851,16 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+</script>
+<script>
+(()=>{const box=document.querySelector('#loops .loops');if(!box)return;
+ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ document.querySelectorAll('#loops .loop,#loops .node').forEach(el=>el.addEventListener('pointermove',e=>{
+   const r=el.getBoundingClientRect();el.style.setProperty('--mx',(e.clientX-r.left)+'px');el.style.setProperty('--my',(e.clientY-r.top)+'px');}));
+ if(reduce||!('IntersectionObserver' in window))return;
+ const wrap=box.parentElement;document.documentElement.classList.add('js-reveal');
+ const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){box.classList.add('in');wrap.classList.add('in-after');io.disconnect();}}),{threshold:.08});
+ io.observe(box);})();
 </script>
 </body>
 </html>
