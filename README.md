@@ -116,7 +116,7 @@ A single proof attempt is the inner loop. When it fails, the cause may be a miss
 
 > **Why the middle loop matters.** When Lean can't close a goal, another tactic is often the wrong fix. The goal may need an assumption the statement left out, a lemma under it may be false, or the conjecture itself may need to change. So a failure is recorded, not hidden, and the work can step out to Loop 2 instead of retrying forever.
 
-The pulse follows one pass of the work: proof construction, the Lean and R/Python checks, the repair cycle, a lap of each loop in turn, and finally the ledger. The diagram is drawn by [`make_loops_svg.py`](docs/assets/loops/make_loops_svg.py) and animated by [`animate_loops.py`](docs/assets/loops/animate_loops.py); the website draws the same structure in HTML, with the same flow animated in CSS.
+The energy follows one pass of the work, lighting each box and arrow as it reaches them: proof construction splits into the Lean and R/Python checks, which feed the repair cycle; a lap of Loop 1; new evidence flows up to Literature and Conjectures, which exchange; a lap of Loop 2; Generalization and its three directions; the restart arrow and a lap of Loop 3; and finally the ledger, whose records light up one by one. The diagram is drawn by [`make_loops_svg.py`](docs/assets/loops/make_loops_svg.py) and animated by [`animate_loops.py`](docs/assets/loops/animate_loops.py); the website draws the same structure in HTML, with the same flow animated in CSS.
 
 ## Why not just ask an LLM?
 

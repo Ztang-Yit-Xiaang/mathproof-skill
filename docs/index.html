@@ -236,32 +236,42 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
   .loop{padding:16px 14px 14px}.loop.l2,.loop.l1{margin-top:12px}
 }
 
-/* energy flow: a pulse runs Loop 1 → Loop 2 → Loop 3 → ledger, 7s per cycle */
+/* energy flow, one 10s pass: proof → Lean + R/Python → repair cycle → Loop 1 → feedback →
+   Literature ⇄ Conjectures → Loop 2 → Generalization → restart → Loop 3 → ledger.
+   Each element sets --d, the moment the energy reaches it. */
 @property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
 .loop::after{content:"";position:absolute;inset:-2.5px;border-radius:inherit;padding:3.5px;pointer-events:none;opacity:0;
   background:conic-gradient(from var(--a),transparent 0 66%,color-mix(in srgb,var(--hot) 30%,transparent) 80%,var(--hot) 94%,#fff 98.5%,transparent 100%);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
-  filter:drop-shadow(0 0 7px var(--hot)) drop-shadow(0 0 2px var(--hot));animation:comet 7s linear infinite}
-.loop.l1::after{animation-delay:0s}
-.loop.l2::after{animation-delay:1.9s}
-.loop.l3::after{animation-delay:3.9s}
-@keyframes comet{0%{--a:0deg;opacity:0}2%{opacity:1}24%{opacity:1}26%{--a:360deg;opacity:0}100%{--a:360deg;opacity:0}}
-.loop>.lh .num{animation:numglow 7s ease-in-out infinite}
-.loop.l2>.lh .num{animation-delay:1.9s}.loop.l3>.lh .num{animation-delay:3.9s}
-@keyframes numglow{0%,100%{box-shadow:0 0 0 0 transparent}6%,18%{box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 22%,transparent),0 0 14px var(--c)}26%{box-shadow:0 0 0 0 transparent}}
-.zap{animation:zap 7s ease-out infinite;display:inline-grid;color:var(--c)}
-.zap.z12{animation-delay:1.65s}.zap.zgen{animation-delay:3.45s}.zap.z3{animation-delay:3.7s}
-@keyframes zap{0%,100%{transform:scale(1);filter:none}3%{transform:scale(1.45);filter:drop-shadow(0 0 6px currentColor)}9%{transform:scale(1);filter:none}}
-.cycle i{animation:chip 7s ease-out infinite}
-.cycle i:nth-of-type(2){animation-delay:.25s}.cycle i:nth-of-type(3){animation-delay:.5s}.cycle i:nth-of-type(4){animation-delay:.75s}
-@keyframes chip{0%,100%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}3%{border-color:var(--c);box-shadow:0 0 10px color-mix(in srgb,var(--c) 45%,transparent)}10%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}}
-.registry::before{animation:wire 7s linear infinite}
-@keyframes wire{0%,80%,100%{border-left-color:var(--ink-3);filter:none}84%,90%{border-left-color:var(--l1);filter:drop-shadow(0 0 4px var(--l1))}}
-.registry{animation:ledger 7s ease-out infinite}
-@keyframes ledger{0%,84%,100%{box-shadow:var(--shadow)}89%{box-shadow:0 0 0 2px color-mix(in srgb,var(--l1) 55%,transparent),0 0 26px color-mix(in srgb,var(--l1) 35%,transparent)}}
+  filter:drop-shadow(0 0 7px var(--hot)) drop-shadow(0 0 2px var(--hot));animation:comet 10s linear infinite;animation-delay:var(--d)}
+.loop.l1{--d:1.5s}.loop.l2{--d:4.3s}.loop.l3{--d:6.9s}
+@keyframes comet{0%{--a:0deg;opacity:0}1%{opacity:1}18%{opacity:1}20%{--a:360deg;opacity:0}100%{--a:360deg;opacity:0}}
+.loop>.lh .num{animation:numglow 10s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes numglow{0%,100%{box-shadow:0 0 0 0 transparent}4%,15%{box-shadow:0 0 0 5px color-mix(in srgb,var(--hot) 22%,transparent),0 0 14px var(--hot)}20%{box-shadow:0 0 0 0 transparent}}
+/* boxes light up when the energy arrives */
+.e{animation:hit 10s ease-out infinite;animation-delay:var(--d,0s)}
+@keyframes hit{0%,100%{box-shadow:none;border-color:var(--line)}
+  1%{border-color:var(--hot);box-shadow:0 0 0 2px color-mix(in srgb,var(--hot) 45%,transparent),0 0 22px color-mix(in srgb,var(--hot) 40%,transparent)}
+  9%{border-color:var(--line);box-shadow:none}}
+.cycle i.e{animation-name:hitchip}
+@keyframes hitchip{0%,100%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}1%{border-color:var(--hot);box-shadow:0 0 12px color-mix(in srgb,var(--hot) 55%,transparent)}6%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}}
+.chips em.e{animation-name:hitem}
+@keyframes hitem{0%,100%{background:var(--sunk);box-shadow:none}1%{background:color-mix(in srgb,var(--hot) 22%,var(--sunk));box-shadow:0 0 10px color-mix(in srgb,var(--hot) 45%,transparent)}7%{background:var(--sunk);box-shadow:none}}
+/* arrows flash as the energy passes */
+.zap{display:inline-grid;color:var(--hot,var(--c));animation:zap 10s ease-out infinite;animation-delay:var(--d,0s)}
+@keyframes zap{0%,100%{transform:scale(1);filter:none}2%{transform:scale(1.5);filter:drop-shadow(0 0 7px currentColor)}7%{transform:scale(1);filter:none}}
+.down{position:relative}
+.down.flow::before{content:"";position:absolute;left:50%;top:-10px;width:3px;height:16px;margin-left:-1.5px;border-radius:3px;opacity:0;
+  background:linear-gradient(transparent,var(--hot));filter:drop-shadow(0 0 4px var(--hot));animation:drop 10s linear infinite;animation-delay:var(--d,0s)}
+@keyframes drop{0%{transform:translateY(-8px);opacity:0}1%{opacity:1}4%{transform:translateY(22px);opacity:0}100%{opacity:0}}
 .bidir svg{animation:swap 1.4s ease-in-out infinite alternate}
 @keyframes swap{from{transform:translateX(-3px)}to{transform:translateX(3px)}}
-@media (prefers-reduced-motion: reduce){.loop::after,.loop>.lh .num,.zap,.cycle i,.registry,.registry::before,.bidir svg{animation:none}.loop::after{opacity:0}}
+.registry{--hot:var(--l1-hot)}
+.registry::before{animation:wire 10s linear infinite}
+@keyframes wire{0%,88%,100%{border-left-color:var(--ink-3);filter:none}89%,94%{border-left-color:var(--l1-hot);filter:drop-shadow(0 0 4px var(--l1-hot))}}
+.registry.e{animation-name:hitledger}
+@keyframes hitledger{0%,100%{box-shadow:var(--shadow)}1%,5%{box-shadow:0 0 0 2px color-mix(in srgb,var(--hot) 55%,transparent),0 0 26px color-mix(in srgb,var(--hot) 35%,transparent)}10%{box-shadow:var(--shadow)}}
+@media (prefers-reduced-motion: reduce){.loop::after,.loop>.lh .num,.e,.zap,.down.flow::before,.registry::before,.bidir svg{animation:none}.loop::after{opacity:0}}
 </style>
 </head>
 <body>
@@ -445,39 +455,39 @@ smallest gap f(y) - f(x0):   2.2e-09</code></pre>
         <div class="loop l2">
           <div class="lh"><span class="num"><svg class="ring" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 3a20 20 0 0 1 19.4 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M43 12.5l-.6 5.6-5.2-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 43A20 20 0 0 1 3.6 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 33.5l.6-5.6 5.2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>2</span><div><h3>Hypotheses and knowledge</h3><p>Are we proving the right theorem, under the right assumptions?</p></div><span class="pill part">Partly today</span></div>
           <div class="agents2">
-            <div class="node"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.2c2-.9 4-.9 6 .4 2-1.3 4-1.3 6-.4v9.6c-2-.9-4-.9-6 .4-2-1.3-4-1.3-6-.4z M8 3.6v9.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Literature</b><span>Find, retrieve, compare and reconcile published theorems, with the exact statement and its hypotheses.</span><span class="pill now">Today · RESEARCH mode</span></div>
-            <div class="bidir"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 8h15l-3.5-3.5M19 14H4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><small>FEEDBACK</small></div>
-            <div class="node ghost"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a4.4 4.4 0 0 0-2.6 8c.5.4.8 1 .8 1.6v.4h3.6v-.4c0-.6.3-1.2.8-1.6A4.4 4.4 0 0 0 8 1.8zM6.4 14.2h3.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Conjectures</b><span>Propose and revise assumptions and claims. A revised statement is recorded as a new, linked claim.</span><span class="pill plan">Planned · M2</span></div>
+            <div class="node e" style="--d:3.8s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.2c2-.9 4-.9 6 .4 2-1.3 4-1.3 6-.4v9.6c-2-.9-4-.9-6 .4-2-1.3-4-1.3-6-.4z M8 3.6v9.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Literature</b><span>Find, retrieve, compare and reconcile published theorems, with the exact statement and its hypotheses.</span><span class="pill now">Today · RESEARCH mode</span></div>
+            <div class="bidir"><span class="zap" style="--d:4s"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 8h15l-3.5-3.5M19 14H4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><small>FEEDBACK</small></div>
+            <div class="node ghost e" style="--d:3.8s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a4.4 4.4 0 0 0-2.6 8c.5.4.8 1 .8 1.6v.4h3.6v-.4c0-.6.3-1.2.8-1.6A4.4 4.4 0 0 0 8 1.8zM6.4 14.2h3.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Conjectures</b><span>Propose and revise assumptions and claims. A revised statement is recorded as a new, linked claim.</span><span class="pill plan">Planned · M2</span></div>
           </div>
 
           <div class="loop l1">
             <div class="lh"><span class="num"><svg class="ring" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 3a20 20 0 0 1 19.4 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M43 12.5l-.6 5.6-5.2-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 43A20 20 0 0 1 3.6 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 33.5l.6-5.6 5.2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>1</span><div><h3>Proof and falsification</h3><p>Can we prove or disprove this exact claim?</p></div><span class="pill now">Working today</span></div>
             <div class="flow">
-              <div class="node top"><b>Proof construction</b><span>Split the claim into lemmas and implications, then attack each step.</span></div>
-              <div class="down"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v11M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <div class="node top e" style="--d:0s"><b>Proof construction</b><span>Split the claim into lemmas and implications, then attack each step.</span></div>
+              <div class="down flow" style="--d:.3s"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v11M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               <div class="fork">
-                <div class="node"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l5.5 2.2v4c0 3.3-2.3 5.7-5.5 6.8-3.2-1.1-5.5-3.5-5.5-6.8v-4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.6 8.2l1.7 1.7 3.2-3.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Lean 4 + Mathlib</b><span>Proof or refutation, checked by the kernel; <code>sorry</code> and custom axioms rejected.</span></div>
-                <div class="node"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.8h4M6.6 1.8v4.4L2.9 12.6c-.6 1 .1 2 1.2 2h7.8c1.1 0 1.8-1 1.2-2L9.4 6.2V1.8M4.6 10h6.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>R / Python experiments</b><span>Seeded falsification tests, hashed and re-runnable. Evidence, never proof.</span></div>
+                <div class="node e" style="--d:.55s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l5.5 2.2v4c0 3.3-2.3 5.7-5.5 6.8-3.2-1.1-5.5-3.5-5.5-6.8v-4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.6 8.2l1.7 1.7 3.2-3.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Lean 4 + Mathlib</b><span>Proof or refutation, checked by the kernel; <code>sorry</code> and custom axioms rejected.</span></div>
+                <div class="node e" style="--d:.55s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.8h4M6.6 1.8v4.4L2.9 12.6c-.6 1 .1 2 1.2 2h7.8c1.1 0 1.8-1 1.2-2L9.4 6.2V1.8M4.6 10h6.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>R / Python experiments</b><span>Seeded falsification tests, hashed and re-runnable. Evidence, never proof.</span></div>
               </div>
             </div>
-            <div class="cycle"><span class="ar"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><i>failure</i><span class="ar">→</span><i>repair</i><span class="ar">→</span><i>retest</i><span class="ar">→</span><i>reprove</i></div>
+            <div class="cycle"><span class="ar"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><i class="e" style="--d:0.9s">failure</i><span class="ar">→</span><i class="e" style="--d:1.05s">repair</i><span class="ar">→</span><i class="e" style="--d:1.2s">retest</i><span class="ar">→</span><i class="e" style="--d:1.35s">reprove</i></div>
           </div>
 
-          <div class="fb"><span class="zap z12"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>New evidence → revise the conjecture and search the literature again</span></div>
+          <div class="fb"><span class="zap" style="--d:3.6s"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>New evidence → revise the conjecture and search the literature again</span></div>
         </div>
 
         <div class="gen">
-          <div class="down" style="color:var(--l3)"><span class="zap zgen"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v11M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-          <div class="node ghost" style="--c:var(--l3)"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M3.4 12.6l2.1-2.1M10.5 5.5l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Generalization</b><span>Probe which hypotheses are really needed, then propose stronger results.</span>
-            <div class="chips"><em>weaken assumptions</em><em>strengthen conclusions</em><em>explore extensions</em></div>
+          <div class="down flow" style="color:var(--l3);--hot:var(--l3-hot);--d:6.2s"><span class="zap" style="--d:6.25s"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v11M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="node ghost e" style="--c:var(--l3);--hot:var(--l3-hot);--d:6.4s"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M3.4 12.6l2.1-2.1M10.5 5.5l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Generalization</b><span>Probe which hypotheses are really needed, then propose stronger results.</span>
+            <div class="chips"><em class="e" style="--hot:var(--l3-hot);--d:6.5s">weaken assumptions</em><em class="e" style="--hot:var(--l3-hot);--d:6.6s">strengthen conclusions</em><em class="e" style="--hot:var(--l3-hot);--d:6.7s">explore extensions</em></div>
           </div>
-          <div class="fb" style="--c:var(--l3)"><span class="zap z3"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>A new theorem family or question → restart the whole cycle</span></div>
+          <div class="fb" style="--c:var(--l3)"><span class="zap" style="--hot:var(--l3-hot);--d:6.8s"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>A new theorem family or question → restart the whole cycle</span></div>
         </div>
       </div>
 
-      <div class="registry">
+      <div class="registry e" style="--d:8.95s">
         <div class="lh"><span class="num" style="color:var(--ink-2);border-color:var(--ink-3)"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="3.6" rx="5.3" ry="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.7 3.6v8.8c0 1.1 2.4 2 5.3 2s5.3-.9 5.3-2V3.6M2.7 8c0 1.1 2.4 2 5.3 2s5.3-.9 5.3-2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span><div><h3>Theorem and evidence ledger</h3><p>Shared by all three loops. Append-only and hash-chained; the status of every claim is derived from it, never typed in.</p></div><span class="pill now">Working today</span></div>
-        <div class="chips"><em>claims</em><em>proofs</em><em>counterexamples</em><em>failed attempts</em><em>assumptions</em><em>citations</em><em>experiment records</em><em>fidelity reviews</em></div>
+        <div class="chips"><em class="e" style="--d:9.05s">claims</em><em class="e" style="--d:9.13s">proofs</em><em class="e" style="--d:9.21s">counterexamples</em><em class="e" style="--d:9.29s">failed attempts</em><em class="e" style="--d:9.37s">assumptions</em><em class="e" style="--d:9.45s">citations</em><em class="e" style="--d:9.53s">experiment records</em><em class="e" style="--d:9.61s">fidelity reviews</em></div>
       </div>
     </div>
 

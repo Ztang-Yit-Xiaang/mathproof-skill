@@ -112,20 +112,24 @@ class SVG:
     def feedback(self, cx, y, s, color):
         tw = len(s) * 6.05
         self.icon("cycle", cx - tw / 2 - 12, y - 12, color)
+        GEO.setdefault("fb_icons", []).append((cx - tw / 2 - 4, y - 4))
         self.text(cx + 10, y, s, 12.5, self.t["ink2"], 400, "middle")
 
-    def chips(self, cx, y, labels):
+    def chips(self, cx, y, labels, key=None):
         t = self.t
+        boxes = GEO.setdefault(key, []) if key else []
         widths = [len(s) * 6.6 + 18 for s in labels]
         x = cx - (sum(widths) + 8 * (len(labels) - 1)) / 2
         for s, w in zip(labels, widths):
             self.rect(x, y, w, 22, 6, t["sunk"])
+            boxes.append((x, y, w, 22, 6))
             self.text(x + w / 2, y + 15, s, 11.5, t["ink2"], 500, "middle")
             x += w + 8
 
 
 def draw(theme: str) -> str:
     t = THEMES[theme]
+    GEO.clear()
     g = SVG(t)
 
     # Loop 3, the outer box.
@@ -175,6 +179,7 @@ def draw(theme: str) -> str:
     x += 26
     for i, (s, w) in enumerate(zip(steps, widths)):
         g.rect(x, cy, w, 24, 12, t["surface"], t["l1"], 1)
+        GEO.setdefault("cycle_chips", []).append((x, cy, w, 24, 12))
         g.text(x + w / 2, cy + 16, s, 12, t["ink2"], 500, "middle")
         x += w
         if i < 3:
@@ -189,7 +194,7 @@ def draw(theme: str) -> str:
     g.node(X2, gy + 22, W2, 104, "Generalization",
            ["Probe which hypotheses are really needed, then propose stronger results."], t["l3"], "spark",
            center=True, ghost=True)
-    g.chips(X2 + W2 / 2, gy + 84, ["weaken assumptions", "strengthen conclusions", "explore extensions"])
+    g.chips(X2 + W2 / 2, gy + 84, ["weaken assumptions", "strengthen conclusions", "explore extensions"], key="gen_chips")
     g.feedback(X3 + W3 / 2, gy + 152, "A new theorem family or question → restart the whole cycle", t["l3"])
 
     # The ledger, shared by all loops.
@@ -205,7 +210,7 @@ def draw(theme: str) -> str:
            13, t["ink2"])
     g.pill(X3 + W3 - 22, RY + 24, "Working today", "now")
     g.chips(W / 2, RY + 74, ["claims", "proofs", "counterexamples", "failed attempts", "assumptions",
-                             "citations", "experiment records", "fidelity reviews"])
+                             "citations", "experiment records", "fidelity reviews"], key="ledger_chips")
 
     H = RY + 112 + 16
     GEO.update(W=W, H=H, L3=(X3, Y3, W3, H3, 20), L2=(X2, Y2, W2, H2, 18), L1=(X1, Y1, W1, H1, 16),
