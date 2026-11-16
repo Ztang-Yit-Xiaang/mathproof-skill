@@ -38,6 +38,9 @@ ICONS = {
 }
 
 
+GEO: dict = {}  # layout of the last drawing, used by animate_loops.py
+
+
 class SVG:
     def __init__(self, t: dict):
         self.t = t
@@ -205,6 +208,11 @@ def draw(theme: str) -> str:
                              "citations", "experiment records", "fidelity reviews"])
 
     H = RY + 112 + 16
+    GEO.update(W=W, H=H, L3=(X3, Y3, W3, H3, 20), L2=(X2, Y2, W2, H2, 18), L1=(X1, Y1, W1, H1, 16),
+               ledger=(X3, RY, W3, 112, 16), proof=(px, Y1 + 78, pw, 62), lean=(px, Y1 + 164, fw, 80),
+               exp=(px + fw + 12, Y1 + 164, fw, 80), lit=(nx, ny, nw, nh), conj=(nx + nw + 90, ny, nw, nh),
+               gen=(X2, gy + 22, W2, 104), cycle_y=cy + 12, cycle_x=(px + pw / 2 - total / 2 + 26, x),
+               fb2_y=Y1 + H1 + 30, fb3_y=gy + 152)
     body = "\n  ".join(g.parts)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
             f'aria-label="Three nested loops: proof and falsification inside hypotheses and knowledge inside the '

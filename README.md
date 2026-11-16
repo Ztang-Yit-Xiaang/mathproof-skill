@@ -103,8 +103,8 @@ A single proof attempt is the inner loop. When it fails, the cause may be a miss
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/loops/loops-dark.svg">
-    <img src="docs/assets/loops/loops-light.svg" width="880" alt="Three nested loops. Loop 1, proof and falsification (working today): proof construction, then Lean 4 checking and R or Python experiments, with failure, repair, retest, reprove. Loop 2, hypotheses and knowledge (partly today): literature search and conjecture revision with feedback between them. Loop 3, research frontier (planned): generalization that weakens assumptions, strengthens conclusions and restarts the cycle. All loops share one theorem and evidence ledger.">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/loops/loops-dark.gif">
+    <img src="docs/assets/loops/loops-light.gif" width="880" alt="Animated: a pulse of energy runs through three nested loops and their arrows, ending in the shared ledger. Loop 1, proof and falsification (working today): proof construction, then Lean 4 checking and R or Python experiments, with failure, repair, retest, reprove. Loop 2, hypotheses and knowledge (partly today): literature search and conjecture revision with feedback between them. Loop 3, research frontier (planned): generalization that weakens assumptions, strengthens conclusions and restarts the cycle. All loops share one theorem and evidence ledger.">
   </picture>
 </p>
 
@@ -116,7 +116,7 @@ A single proof attempt is the inner loop. When it fails, the cause may be a miss
 
 > **Why the middle loop matters.** When Lean can't close a goal, another tactic is often the wrong fix. The goal may need an assumption the statement left out, a lemma under it may be false, or the conjecture itself may need to change. So a failure is recorded, not hidden, and the work can step out to Loop 2 instead of retrying forever.
 
-The diagram is drawn by [`docs/assets/loops/make_loops_svg.py`](docs/assets/loops/make_loops_svg.py), and the website draws the same structure in HTML.
+The pulse follows one pass of the work: proof construction, the Lean and R/Python checks, the repair cycle, a lap of each loop in turn, and finally the ledger. The diagram is drawn by [`make_loops_svg.py`](docs/assets/loops/make_loops_svg.py) and animated by [`animate_loops.py`](docs/assets/loops/animate_loops.py); the website draws the same structure in HTML, with the same flow animated in CSS.
 
 ## Why not just ask an LLM?
 

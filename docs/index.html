@@ -177,13 +177,13 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
 .demo figcaption b{color:var(--ink)}
 .katex-display{overflow-x:auto;overflow-y:hidden}
 /* three loops */
-:root{--l1:#1f7a4d;--l1-soft:#eef7f1;--l2:#1d3b6a;--l2-soft:#eef2f9;--l3:#5b3fa0;--l3-soft:#f4f0fb}
+:root{--l1-hot:#22c55e;--l2-hot:#3b82f6;--l3-hot:#8b5cf6;--l1:#1f7a4d;--l1-soft:#eef7f1;--l2:#1d3b6a;--l2-soft:#eef2f9;--l3:#5b3fa0;--l3-soft:#f4f0fb}
 @media (prefers-color-scheme: dark){:root{--l1:#6cc79a;--l1-soft:#132119;--l2:#8fb3ec;--l2-soft:#141c29;--l3:#b9a0f0;--l3-soft:#1c1729}}
 .loops{margin-top:30px;display:grid;gap:14px}
 .loop{position:relative;border-radius:18px;padding:22px 22px 18px;border:1.5px solid color-mix(in srgb,var(--c) 40%,var(--line));background:linear-gradient(180deg,var(--c-soft),color-mix(in srgb,var(--c-soft) 35%,var(--surface)) 140px)}
-.loop.l3{--c:var(--l3);--c-soft:var(--l3-soft);box-shadow:var(--shadow)}
-.loop.l2{--c:var(--l2);--c-soft:var(--l2-soft);margin-top:18px}
-.loop.l1{--c:var(--l1);--c-soft:var(--l1-soft);margin-top:16px;background:var(--surface)}
+.loop.l3{--c:var(--l3);--hot:var(--l3-hot);--c-soft:var(--l3-soft);box-shadow:var(--shadow)}
+.loop.l2{--c:var(--l2);--hot:var(--l2-hot);--c-soft:var(--l2-soft);margin-top:18px}
+.loop.l1{--c:var(--l1);--hot:var(--l1-hot);--c-soft:var(--l1-soft);margin-top:16px;background:var(--surface)}
 .lh{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:start}
 .lh .num{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 .95rem var(--serif);color:var(--c);border:1.5px solid var(--c);background:var(--surface);position:relative}
 .lh .num svg.ring{position:absolute;inset:-7.5px;width:calc(100% + 15px);height:calc(100% + 15px);color:var(--c);opacity:.55}
@@ -235,6 +235,33 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-bet
   .lh{grid-template-columns:auto 1fr}.lh .pill{grid-column:2;justify-self:start;margin-top:4px}
   .loop{padding:16px 14px 14px}.loop.l2,.loop.l1{margin-top:12px}
 }
+
+/* energy flow: a pulse runs Loop 1 → Loop 2 → Loop 3 → ledger, 7s per cycle */
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+.loop::after{content:"";position:absolute;inset:-2.5px;border-radius:inherit;padding:3.5px;pointer-events:none;opacity:0;
+  background:conic-gradient(from var(--a),transparent 0 66%,color-mix(in srgb,var(--hot) 30%,transparent) 80%,var(--hot) 94%,#fff 98.5%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  filter:drop-shadow(0 0 7px var(--hot)) drop-shadow(0 0 2px var(--hot));animation:comet 7s linear infinite}
+.loop.l1::after{animation-delay:0s}
+.loop.l2::after{animation-delay:1.9s}
+.loop.l3::after{animation-delay:3.9s}
+@keyframes comet{0%{--a:0deg;opacity:0}2%{opacity:1}24%{opacity:1}26%{--a:360deg;opacity:0}100%{--a:360deg;opacity:0}}
+.loop>.lh .num{animation:numglow 7s ease-in-out infinite}
+.loop.l2>.lh .num{animation-delay:1.9s}.loop.l3>.lh .num{animation-delay:3.9s}
+@keyframes numglow{0%,100%{box-shadow:0 0 0 0 transparent}6%,18%{box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 22%,transparent),0 0 14px var(--c)}26%{box-shadow:0 0 0 0 transparent}}
+.zap{animation:zap 7s ease-out infinite;display:inline-grid;color:var(--c)}
+.zap.z12{animation-delay:1.65s}.zap.zgen{animation-delay:3.45s}.zap.z3{animation-delay:3.7s}
+@keyframes zap{0%,100%{transform:scale(1);filter:none}3%{transform:scale(1.45);filter:drop-shadow(0 0 6px currentColor)}9%{transform:scale(1);filter:none}}
+.cycle i{animation:chip 7s ease-out infinite}
+.cycle i:nth-of-type(2){animation-delay:.25s}.cycle i:nth-of-type(3){animation-delay:.5s}.cycle i:nth-of-type(4){animation-delay:.75s}
+@keyframes chip{0%,100%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}3%{border-color:var(--c);box-shadow:0 0 10px color-mix(in srgb,var(--c) 45%,transparent)}10%{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:none}}
+.registry::before{animation:wire 7s linear infinite}
+@keyframes wire{0%,80%,100%{border-left-color:var(--ink-3);filter:none}84%,90%{border-left-color:var(--l1);filter:drop-shadow(0 0 4px var(--l1))}}
+.registry{animation:ledger 7s ease-out infinite}
+@keyframes ledger{0%,84%,100%{box-shadow:var(--shadow)}89%{box-shadow:0 0 0 2px color-mix(in srgb,var(--l1) 55%,transparent),0 0 26px color-mix(in srgb,var(--l1) 35%,transparent)}}
+.bidir svg{animation:swap 1.4s ease-in-out infinite alternate}
+@keyframes swap{from{transform:translateX(-3px)}to{transform:translateX(3px)}}
+@media (prefers-reduced-motion: reduce){.loop::after,.loop>.lh .num,.zap,.cycle i,.registry,.registry::before,.bidir svg{animation:none}.loop::after{opacity:0}}
 </style>
 </head>
 <body>
@@ -436,15 +463,15 @@ smallest gap f(y) - f(x0):   2.2e-09</code></pre>
             <div class="cycle"><span class="ar"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><i>failure</i><span class="ar">→</span><i>repair</i><span class="ar">→</span><i>retest</i><span class="ar">→</span><i>reprove</i></div>
           </div>
 
-          <div class="fb"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>New evidence → revise the conjecture and search the literature again</span></div>
+          <div class="fb"><span class="zap z12"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>New evidence → revise the conjecture and search the literature again</span></div>
         </div>
 
         <div class="gen">
-          <div class="down" style="color:var(--l3)"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v11M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="down" style="color:var(--l3)"><span class="zap zgen"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v11M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
           <div class="node ghost" style="--c:var(--l3)"><b><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M3.4 12.6l2.1-2.1M10.5 5.5l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Generalization</b><span>Probe which hypotheses are really needed, then propose stronger results.</span>
             <div class="chips"><em>weaken assumptions</em><em>strengthen conclusions</em><em>explore extensions</em></div>
           </div>
-          <div class="fb" style="--c:var(--l3)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A new theorem family or question → restart the whole cycle</span></div>
+          <div class="fb" style="--c:var(--l3)"><span class="zap z3"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5A5.5 5.5 0 0 0 3.2 4.6M2.5 9.5a5.5 5.5 0 0 0 10.3 1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.6 2.2v2.8h2.8M13.4 13.8V11h-2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>A new theorem family or question → restart the whole cycle</span></div>
         </div>
       </div>
 
