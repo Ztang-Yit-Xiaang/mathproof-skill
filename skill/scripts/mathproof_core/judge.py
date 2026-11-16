@@ -27,6 +27,7 @@ register, which is why no result here can reach above `judged-unreviewed`.
 from __future__ import annotations
 
 import json
+import posixpath
 import os
 import re
 import signal
@@ -41,7 +42,7 @@ from .ledger import ArtifactCorrupt, Ledger
 
 FORMAT = "IF-judge-report-v0"
 # Bump on any change to how the judge or its workflow decides, so older reports stop counting.
-JUDGE_VERSION = 1
+JUDGE_VERSION = 2
 CASE_FORMAT = "IF-judge-case-v0"
 CHALLENGES_FILE = "challenges.json"
 PERMITTED_AXIOMS = ["propext", "Quot.sound", "Classical.choice"]
@@ -150,7 +151,8 @@ def plan(ledger_dir: str | Path) -> dict:
     ledger = Ledger(ledger_dir)
     seq, digest = head(ledger)
     jobs, notes = plan_jobs(ledger)
-    return {"ledger_seq": seq, "ledger_head": digest, "jobs": jobs, "notes": notes}
+    genesis = Ledger.event_hash(ledger.read()[0])
+    return {"ledger_seq": seq, "ledger_head": digest, "ledger_genesis": genesis, "jobs": jobs, "notes": notes}
 
 
 def lakefile(mathlib_rev: str) -> str:
@@ -250,8 +252,16 @@ def _read_case(cases_dir: Path, index: int) -> object:
         return None
 
 
+def ledger_path(raw: str | Path) -> str:
+    """The repo-relative form of a ledger path, as reports record it and verify compares it."""
+    return posixpath.normpath(str(raw).replace("\\", "/"))
+
+
 def assemble(ledger_dir: str | Path, cases_dir: str | Path) -> dict:
-    """Stage 3 (no Lean): the report. A case counts only as the job its index was assigned."""
+    """Stage 3 (no Lean): the report. A case counts only as the job its index was assigned.
+
+    In the workflow `ledger_dir` is the repo-relative input, so the report names the ledger it judged.
+    """
     planned = plan(ledger_dir)
     notes = list(planned["notes"])
     results = []
@@ -269,7 +279,9 @@ def assemble(ledger_dir: str | Path, cases_dir: str | Path) -> dict:
             result = case["result"]
             seconds = case.get("seconds") if isinstance(case.get("seconds"), (int, float)) else 0
         results.append({**job, "result": result, "seconds": seconds})
-    return {"format": FORMAT, "judge_version": JUDGE_VERSION, "ledger_seq": planned["ledger_seq"], "ledger_head": planned["ledger_head"],
+    return {"format": FORMAT, "judge_version": JUDGE_VERSION, "ledger_path": ledger_path(ledger_dir),
+            "ledger_genesis": planned["ledger_genesis"],
+            "ledger_seq": planned["ledger_seq"], "ledger_head": planned["ledger_head"],
             **pins(), "sandboxed": True, "permitted_axioms": PERMITTED_AXIOMS, "definition_names": [],
             "results": results, "notes": notes}
 

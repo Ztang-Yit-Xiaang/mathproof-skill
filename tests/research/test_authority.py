@@ -5,6 +5,7 @@ tested is everything around them: which jobs are planned, what files the compara
 report is matched to the ledger, and that nothing reaches above judged-unreviewed.
 """
 
+import io
 import json
 import random
 import subprocess
@@ -46,7 +47,7 @@ class LedgerCase(unittest.TestCase):
 
     def report(self, results=None, **overrides):
         events = self.ledger.read()
-        base = {"format": judge.FORMAT, "judge_version": judge.JUDGE_VERSION, "ledger_seq": events[-1]["seq"], "ledger_head": Ledger.event_hash(events[-1]),
+        base = {"format": judge.FORMAT, "judge_version": judge.JUDGE_VERSION, "ledger_path": "ledger", "ledger_genesis": Ledger.event_hash(events[0]), "ledger_seq": events[-1]["seq"], "ledger_head": Ledger.event_hash(events[-1]),
                 **judge.pins(), "sandboxed": True, "permitted_axioms": judge.PERMITTED_AXIOMS,
                 "definition_names": [], "notes": [],
                 "results": results if results is not None else [self.result()]}
@@ -426,7 +427,7 @@ class MatchTests(LedgerCase):
                         self.report(sandboxed="true"), self.report(toolchain="leanprover/lean4:v4.32.0"),
                         self.report(mathlib_rev="v4.32.0"), self.report(ledger_seq=True), self.report(ledger_seq=-1),
                         self.report(ledger_head="x"), self.report(results={}), self.report(judge_version=0),
-                        self.report(judge_version=True), self.report(judge_version=1.0), self.report(judge_version="1"), self.report(permitted_axioms=judge.PERMITTED_AXIOMS + ["sorryAx"]),
+                        self.report(judge_version=True), self.report(judge_version=float(judge.JUDGE_VERSION)), self.report(judge_version=str(judge.JUDGE_VERSION)), self.report(permitted_axioms=judge.PERMITTED_AXIOMS + ["sorryAx"]),
                         self.report(definition_names=["frob"])):
             judged, notes = self.match(content)
             self.assertEqual(judged, [], content)
@@ -474,6 +475,13 @@ class MatchTests(LedgerCase):
         self.assertEqual(judged, [])
         self.assertIn("Challenge is not the one registered", notes[0])
 
+    def test_report_must_name_its_ledger(self):
+        report = json.loads(self.report())
+        del report["ledger_path"]
+        self.assertEqual(self.match(json.dumps(report).encode()), ([], ["report does not name its ledger"]))
+        self.assertEqual(self.match(self.report(ledger_path=7)), ([], ["report does not name its ledger"]))
+        self.assertEqual(self.match(self.report(ledger_genesis="x")), ([], ["report ledger_genesis is not a hash"]))
+
     def test_undecided_and_malformed_results(self):
         judged, notes = self.match(self.report(results=[self.result(result="error"), {"seq": 1}, "x"]))
         self.assertEqual(judged, [])
@@ -488,19 +496,318 @@ class MatchTests(LedgerCase):
             self.assertIn("cannot be read", notes[0], raw)
 
     def test_a2b_missing_report_is_a_note(self):
-        judged, notes = authority.load_authoritative(Path(self.tmp.name) / "none.json", "own/repo", self.ledger)
-        self.assertEqual(judged, [])
-        self.assertIn("cannot read it", notes[0])
+        out = authority.load_authoritative(Path(self.tmp.name) / "none.json", "own/repo", self.ledger, "ledger")
+        self.assertEqual(out["judged"], [])
+        self.assertIn("cannot read it", out["notes"][0])
 
     def test_unattested_report_gives_nothing(self):
         path = Path(self.tmp.name) / "r.json"
         path.write_bytes(self.report())
         fail = lambda cmd, **k: subprocess.CompletedProcess(cmd, 1, "", "bad\n")  # noqa: E731
-        judged, notes = authority.load_authoritative(path, "own/repo", self.ledger, run=fail)
-        self.assertEqual(judged, [])
-        self.assertIn("judge report ignored", notes[0])
+        out = authority.load_authoritative(path, "own/repo", self.ledger, "ledger", run=fail)
+        self.assertEqual(out["judged"], [])
+        self.assertIn("judge report ignored", out["notes"][1])
+        self.assertEqual(out["violations"], [])
         ok = lambda cmd, **k: subprocess.CompletedProcess(cmd, 0, "", "")  # noqa: E731
-        self.assertEqual(len(authority.load_authoritative(path, "own/repo", self.ledger, run=ok)[0]), 1)
+        self.assertEqual(len(authority.load_authoritative(path, "own/repo", self.ledger, "ledger", run=ok)["judged"]), 1)
+
+
+def rechain(ledger, drop):
+    """Rewrite the ledger without event `drop`, renumbered and re-hashed so the chain verifies."""
+    kept = [e for e in ledger.read() if e["seq"] != drop]
+    prev = "0" * 64
+    lines = []
+    for seq, event in enumerate(kept):
+        event = {**event, "seq": seq, "prev": prev}
+        event["hash"] = Ledger.event_hash(event)
+        prev = event["hash"]
+        lines.append(json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+    ledger.events_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+class FakeGitHub:
+    """`gh run list`, `gh run download` and `gh attestation verify`, over a dict of run id -> report bytes."""
+
+    def __init__(self, runs, attested=None, list_rc=0):
+        self.runs, self.attested, self.list_rc, self.calls = runs, attested, list_rc, []
+
+    def __call__(self, cmd, **kwargs):
+        self.calls.append(cmd)
+        if cmd[:3] == ["gh", "run", "list"]:
+            body = json.dumps([{"databaseId": int(i)} for i in self.runs])
+            return subprocess.CompletedProcess(cmd, self.list_rc, body, "boom" if self.list_rc else "")
+        if cmd[:3] == ["gh", "run", "download"]:
+            content = self.runs[cmd[3]]
+            if content is None:
+                return subprocess.CompletedProcess(cmd, 1, "", "no artifact")
+            Path(cmd[cmd.index("-D") + 1], "judge-report.json").write_bytes(content)
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        if cmd[:3] == ["gh", "attestation", "verify"]:
+            content = Path(cmd[3]).read_bytes()
+            ok = self.attested is None or content in self.attested
+            return subprocess.CompletedProcess(cmd, 0 if ok else 1, "", "" if ok else "no attestations found")
+        raise AssertionError(cmd)
+
+
+class AnchorTests(LedgerCase):
+    """S1.3.T4: every attested report for this ledger is an anchor the ledger must extend."""
+
+    def add_failed_check(self):
+        self.ledger.append("check", CLAIM, check_data(self.proof, result="fail"), ACTOR)
+
+    def latest(self, gh):
+        return authority.load_authoritative("latest", "own/repo", self.ledger, "ledger", run=gh)
+
+    def test_deleting_a_failed_check_after_an_anchor_is_detected(self):
+        self.add_failed_check()
+        anchored = self.report()
+        rechain(self.ledger, 2)
+        self.assertEqual(self.ledger.verify().errors, [])
+        out = self.latest(FakeGitHub({"1": anchored}))
+        self.assertEqual(out["judged"], [])
+        self.assertEqual(len(out["violations"]), 1)
+        self.assertIn("does not extend the anchored head, event 2", out["violations"][0])
+
+    def test_deleting_a_middle_event_and_refilling_the_length_is_detected(self):
+        self.add_failed_check()
+        self.ledger.append("check", CLAIM, check_data(self.proof), ACTOR)
+        anchored = self.report()
+        rechain(self.ledger, 2)
+        self.ledger.append("check", CLAIM, check_data(self.proof), ACTOR)
+        self.assertEqual(len(self.ledger.read()), 4)
+        out = self.latest(FakeGitHub({"1": anchored}))
+        self.assertEqual(len(out["violations"]), 1)
+
+    def test_editing_an_early_event_without_rechaining_is_a_violation(self):
+        anchored = self.report()
+        lines = self.ledger.events_path.read_text(encoding="utf-8").splitlines()
+        first = json.loads(lines[0])
+        first["data"]["text"] = "A different claim."
+        lines[0] = json.dumps(first, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        self.ledger.events_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.assertNotEqual(self.ledger.verify().errors, [])
+        out = self.latest(FakeGitHub({"1": anchored}))
+        self.assertEqual(len(out["violations"]), 1)
+
+    def test_a_later_anchor_on_the_rewritten_ledger_does_not_hide_the_old_one(self):
+        self.add_failed_check()
+        old = self.report()
+        rechain(self.ledger, 2)
+        new = self.report()
+        out = self.latest(FakeGitHub({"2": new, "1": old}))
+        self.assertEqual(len(out["violations"]), 1)
+        self.assertIn("1:", out["violations"][0])
+        self.assertEqual([a["source"] for a in out["anchors"]], ["2"])
+
+    def test_a_given_report_file_is_checked_as_an_anchor_too(self):
+        self.add_failed_check()
+        path = Path(self.tmp.name) / "r.json"
+        path.write_bytes(self.report())
+        rechain(self.ledger, 2)
+        out = authority.load_authoritative(path, "own/repo", self.ledger, "ledger", run=FakeGitHub({}))
+        self.assertEqual(len(out["violations"]), 1)
+
+    def test_events_after_the_newest_anchor_are_allowed(self):
+        anchored = self.report()
+        self.add_failed_check()
+        out = self.latest(FakeGitHub({"1": anchored}))
+        self.assertEqual(out["violations"], [])
+        self.assertEqual(len(out["judged"]), 1)
+        self.assertEqual(out["anchors"], [{"source": "1", "ledger_path": "ledger", "ledger_seq": 1, "ledger_head": json.loads(anchored)["ledger_head"]}])
+
+    def test_an_older_rejection_is_not_hidden_by_a_newer_run(self):
+        first = self.report(results=[self.result(result="fail")])
+        self.ledger.append("check", CLAIM, check_data(self.ledger.put_artifact(b"other proof")), ACTOR)
+        second = self.report()
+        for runs in ({"1": first, "2": second}, {"2": second, "1": first}):
+            out = self.latest(FakeGitHub(runs))
+            self.assertEqual(out["violations"], [])
+            self.assertEqual(out["newest"], "2")
+            self.assertEqual(sorted(j["result"] for j in out["judged"]), ["fail", "pass"])
+            self.assertEqual(status(self.ledger, {"judged": out["judged"]})["headline"],
+                             "judge-rejected")
+
+    def test_newer_error_does_not_hide_older_fail(self):
+        first = self.report(results=[self.result(result="fail")])
+        self.add_failed_check()
+        second = self.report(results=[self.result(result="error")])
+        out = self.latest(FakeGitHub({"2": second, "1": first}))
+        self.assertEqual([j["result"] for j in out["judged"]], ["fail"])
+
+    def test_the_same_result_in_two_anchors_counts_once(self):
+        first = self.report()
+        self.add_failed_check()
+        out = self.latest(FakeGitHub({"2": self.report(), "1": first}))
+        self.assertEqual(len(out["judged"]), 1)
+
+    def test_a_moved_or_steered_path_still_finds_anchors_by_first_event(self):
+        self.add_failed_check()
+        anchored = self.report(ledger_path="research/real/ledger")
+        rechain(self.ledger, 2)
+        for path in (".", "INV/A", "inv/.a-real"):
+            out = authority.load_authoritative("latest", "own/repo", self.ledger, path, run=FakeGitHub({"1": anchored}))
+            self.assertEqual(len(out["violations"]), 1, path)
+
+    def test_graft_onto_another_anchored_ledger_fails_closed(self):
+        # Round 2 finding 1: only a report for this path anchors it; a genesis match covers nothing.
+        foreign = self.report(ledger_path="inv/b")
+        for path in ("ledger", "."):
+            out = authority.load_authoritative("latest", "own/repo", self.ledger, path,
+                                               run=FakeGitHub({"2": foreign}))
+            self.assertEqual((out["anchors"], out["judged"]), ([], []), path)
+
+    def test_genesis_only_report_still_adds_an_obligation(self):
+        self.add_failed_check()
+        copy = self.report(ledger_path="inv/a2")
+        rechain(self.ledger, 2)
+        out = self.latest(FakeGitHub({"1": copy, "2": self.report()}))
+        self.assertEqual(len(out["violations"]), 1)
+        self.assertIn("shares this ledger's first event", out["violations"][0])
+        self.assertEqual([a["source"] for a in out["anchors"]], ["2"])
+
+    def test_a_pass_under_a_corrected_challenge_supersedes_an_older_fail(self):
+        old = self.report(results=[self.result(result="fail")])
+        self.ledger.append("check", CLAIM, check_data(self.ledger.put_artifact(b"other proof")), ACTOR)
+        fixed = judge.register_challenge(self.ledger, CLAIM, "claim", b"theorem main_theorem : True := by sorry\n")
+        new = self.report(results=[self.result(challenge_hash=fixed)])
+        out = self.latest(FakeGitHub({"2": new, "1": old}))
+        self.assertEqual([j["result"] for j in out["judged"]], ["pass"])
+        self.assertEqual(status(self.ledger, {"judged": out["judged"]})["headline"], "judged-unreviewed")
+
+    def test_results_judged_at_an_old_path_still_count(self):
+        # Round 3 finding 2: after a rename, a fail judged at the old path is not dropped.
+        old = self.report(ledger_path="inv/old", results=[self.result(result="fail")])
+        self.ledger.append("check", CLAIM, check_data(self.ledger.put_artifact(b"other proof")), ACTOR)
+        out = self.latest(FakeGitHub({"2": self.report(), "1": old}))
+        self.assertEqual(sorted(j["result"] for j in out["judged"]), ["fail", "pass"])
+        self.assertEqual(status(self.ledger, {"judged": out["judged"]})["headline"], "judge-rejected")
+
+    def test_a_graft_gets_no_results_from_the_other_ledger(self):
+        other = self.report(ledger_path="inv/b", ledger_genesis="e" * 64)
+        out = self.latest(FakeGitHub({"2": self.report(results=[]), "1": other}))
+        self.assertEqual(out["judged"], [])
+
+    def test_a_tie_is_broken_by_run_order(self):
+        # Round 3 finding 3: a corrected Challenge rerun at the same head supersedes the earlier fail.
+        old = self.report(results=[self.result(result="fail")])
+        fixed = judge.register_challenge(self.ledger, CLAIM, "claim", b"theorem main_theorem : True := by sorry\n")
+        new = self.report(results=[self.result(challenge_hash=fixed)])
+        out = self.latest(FakeGitHub({"2": new, "1": old}))
+        self.assertEqual([j["result"] for j in out["judged"]], ["pass"])
+
+    def test_editing_challenges_keeps_a_rejection(self):
+        content = self.report(results=[self.result(result="fail")])
+        for raw in (b"{}", b"not json"):
+            (self.dir / judge.CHALLENGES_FILE).write_bytes(raw)
+            judged, notes = authority.tier_results(content, self.ledger)
+            self.assertEqual([j["result"] for j in judged], ["fail"], raw)
+            self.assertEqual(status(self.ledger, {"judged": judged})["headline"], "judge-rejected")
+
+    def test_file_mode_says_older_anchors_were_not_checked(self):
+        path = Path(self.tmp.name) / "r.json"
+        path.write_bytes(self.report())
+        out = authority.load_authoritative(path, "own/repo", self.ledger, "ledger", run=FakeGitHub({}))
+        self.assertIn("earlier anchors were not checked", out["notes"][0])
+
+    def test_other_ledgers_reports_are_skipped(self):
+        other = self.report(ledger_path="research/other/ledger", ledger_genesis="e" * 64, ledger_head="d" * 64)
+        out = self.latest(FakeGitHub({"1": other}))
+        self.assertEqual(out["violations"], [])
+        self.assertEqual(out["judged"], [])
+        self.assertIn("no attested judge report for ledger 'ledger' anchors it", out["notes"][-1])
+
+    def test_path_forms_compare_equal(self):
+        out = authority.load_authoritative("latest", "own/repo", self.ledger, "./ledger/",
+                                           run=FakeGitHub({"1": self.report(ledger_path="ledger")}))
+        self.assertEqual(len(out["anchors"]), 1)
+
+    def test_unattested_reports_are_neither_anchors_nor_violations(self):
+        self.add_failed_check()
+        forged = self.report()
+        rechain(self.ledger, 2)
+        out = self.latest(FakeGitHub({"1": forged}, attested=set()))
+        self.assertEqual((out["anchors"], out["violations"]), ([], []))
+        self.assertIn("judge report ignored", out["notes"][0])
+
+    def test_expired_artifact_and_failed_listing_are_notes(self):
+        out = self.latest(FakeGitHub({"1": None, "2": self.report()}))
+        self.assertIn("run 1: no judge report", out["notes"][0])
+        self.assertEqual(len(out["anchors"]), 1)
+        out = self.latest(FakeGitHub({"1": self.report()}, list_rc=1))
+        self.assertEqual(out["anchors"], [])
+        self.assertIn("could not list", out["notes"][0])
+
+    def test_listing_asks_for_successful_main_runs_of_this_workflow(self):
+        gh = FakeGitHub({"1": self.report()})
+        self.latest(gh)
+        listing = gh.calls[0]
+        for flag, value in (("--workflow", "authoritative.yml"), ("--branch", "main"), ("--status", "success"),
+                            ("--repo", "own/repo")):
+            self.assertEqual(listing[listing.index(flag) + 1], value)
+
+    def test_truncated_listing_is_noted(self):
+        old = authority.RUN_LIMIT
+        authority.RUN_LIMIT = 2
+        try:
+            out = self.latest(FakeGitHub({"1": self.report(), "2": self.report()}))
+        finally:
+            authority.RUN_LIMIT = old
+        self.assertIn("older anchors were not checked", out["notes"][0])
+
+    def test_bad_repo_name_fetches_nothing(self):
+        gh = FakeGitHub({"1": self.report()})
+        out = authority.load_authoritative("latest", "../x", self.ledger, "ledger", run=gh)
+        self.assertEqual(gh.calls, [])
+        self.assertEqual(out["anchors"], [])
+
+    def test_assembled_report_names_the_ledger(self):
+        report = judge.assemble(self.dir, Path(self.tmp.name) / "no-cases")
+        self.assertEqual(report["ledger_path"], judge.ledger_path(self.dir))
+        self.assertEqual(report["ledger_genesis"], Ledger.event_hash(self.ledger.read()[0]))
+        self.assertEqual(judge.ledger_path("./research/w/ledger/"), "research/w/ledger")
+
+
+class VerifyCommandTests(LedgerCase):
+    def run_verify(self, authority_result):
+        from unittest import mock
+        from mathproof_core import cli
+        out = io.StringIO()
+        with mock.patch.object(cli, "load_authoritative", return_value=authority_result), \
+                mock.patch("sys.stdout", out):
+            rc = cli.main(["verify", str(self.dir), "--authoritative", "latest", "--repo", "own/repo",
+                           "--ledger-path", "ledger"])
+        return rc, out.getvalue()
+
+    def test_no_anchor_fails_closed(self):
+        rc, text = self.run_verify({"judged": [], "notes": [], "anchors": [], "violations": []})
+        self.assertEqual(rc, 1)
+        self.assertIn("NO ANCHOR: no attested judge report anchors this ledger", text)
+        self.assertIn("NOT OK", text)
+
+    def test_anchor_violation_fails_verify(self):
+        rc, text = self.run_verify({"judged": [], "notes": [], "anchors": [], "violations": ["1: bad head"]})
+        self.assertEqual(rc, 1)
+        self.assertIn("ANCHOR VIOLATED: 1: bad head", text)
+        self.assertIn("NOT OK", text)
+
+    def test_verified_head_is_printed(self):
+        rc, text = self.run_verify({"judged": [], "notes": [], "violations": [], "newest": "9",
+                                    "anchors": [{"source": "9", "ledger_path": "ledger", "ledger_seq": 2, "ledger_head": H}]})
+        self.assertIn(f"anchored head event 2 {H} of ledger (9)", text)
+
+
+class LedgerPathTests(LedgerCase):
+    """Round 4: the ledger path is never derived from the checkout, which an agent can steer."""
+
+    def test_authoritative_needs_an_explicit_ledger_path(self):
+        from mathproof_core import cli
+        from unittest import mock
+        err = io.StringIO()
+        with mock.patch.object(cli, "load_authoritative") as load, mock.patch("sys.stderr", err):
+            rc = cli.main(["verify", str(self.dir), "--authoritative", "latest", "--repo", "own/repo"])
+        self.assertNotEqual(rc, 0)
+        load.assert_not_called()
+        self.assertIn("--ledger-path", err.getvalue())
 
 
 if __name__ == "__main__":
