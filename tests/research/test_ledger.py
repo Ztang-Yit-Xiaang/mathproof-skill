@@ -1,7 +1,9 @@
 """S1.1.T2: append-only hash-chained ledger and artifact store."""
 
+import fcntl
 import json
 import multiprocessing
+import threading
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -223,6 +225,29 @@ class LedgerTests(unittest.TestCase):
         for bad in ("../events.jsonl", "a" * 63, "A" * 64):
             with self.assertRaises(ValueError):
                 self.ledger.get_artifact(bad)
+
+    def test_append_waits_for_the_lock(self):
+        # Deterministic check that append takes the lock: hold it here, and the append must not land
+        # until it is released. The race-based tests below can miss a missing lock by luck.
+        self.fill(1)
+        started, done = threading.Event(), threading.Event()
+
+        def append():
+            started.set()
+            self.ledger.append("note", None, {"i": "late"}, ACTOR)
+            done.set()
+
+        with self.ledger.lock_path.open("a+b") as held:
+            fcntl.flock(held.fileno(), fcntl.LOCK_EX)
+            worker = threading.Thread(target=append)
+            worker.start()
+            self.assertTrue(started.wait(10))
+            self.assertFalse(done.wait(1.0), "append wrote while another holder had the lock")
+            self.assertEqual(len(self.lines()), 1)
+            fcntl.flock(held.fileno(), fcntl.LOCK_UN)
+        worker.join(10)
+        self.assertTrue(done.is_set())
+        self.assertEqual(len(self.lines()), 2)
 
     def test_concurrent_appends_do_not_fork_the_chain(self):
         context = multiprocessing.get_context("spawn")
