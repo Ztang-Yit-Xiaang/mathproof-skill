@@ -16,6 +16,7 @@ from .ledger import Ledger
 from .judge import JudgeError, assemble, judge_case, plan, register_challenge, sandbox_works
 from .replay import verify_investigation
 from .report import _clean, render_report
+from .statement import NEGATION_SUFFIX, StatementError, record_statement
 from .status import derive_status
 
 GATED_KINDS = frozenset({
@@ -182,8 +183,34 @@ def _cmd_challenge_file(args: argparse.Namespace) -> int:
     ledger = _require_initialized_ledger(args.dir)
     if not any(e.get("kind") == "claim_created" and e.get("claim") == args.claim for e in ledger.read()):
         return _fail(f"no claim {args.claim} in this ledger")
+    if any(e.get("kind") == "statement_frozen" and e.get("claim") == args.claim for e in ledger.read()):
+        return _fail(f"{args.claim} has a frozen statement; its Challenge is generated from it")
     digest = register_challenge(ledger, args.claim, args.polarity, Path(args.file).read_bytes())
     print(digest)
+    return 0
+
+
+def _cmd_statement(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    try:
+        prop = Path(args.prop_file).read_text(encoding="utf-8")
+        preamble = Path(args.preamble_file).read_text(encoding="utf-8") if args.preamble_file else ""
+    except (OSError, UnicodeDecodeError) as error:
+        return _fail(f"cannot read the statement: {error}")
+    try:
+        event, binding = record_statement(ledger, args.claim, args.name, prop, preamble, args.revises,
+                                        args.project, _actor())
+    except StatementError as error:
+        return _fail(str(error))
+    data = event["data"]
+    print(json.dumps({"claim": args.claim, "seq": event["seq"], "statement": data["artifact"],
+                      "challenge": data["challenge_hash"], "claim_theorem": args.name,
+                      "negation_theorem": args.name + NEGATION_SUFFIX,
+                      "elaborated_type": binding["type"],
+                      "defined_in_statement": binding["defined_in_statement"]}, ensure_ascii=False, indent=2))
+    if binding["defined_in_statement"]:
+        print("Check these: the statement uses them, and they are defined in it, not taken from Mathlib.",
+              file=sys.stderr)
     return 0
 
 
@@ -364,9 +391,25 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--repo", metavar="OWNER/NAME", help="The repository whose workflow must have attested it.")
     verify.set_defaults(handler=_cmd_verify)
 
+    # statement
+    statement = subparsers.add_parser(
+        "statement", help="Freeze a claim's formal statement; its comparator Challenge is generated from it.",
+        description="Freeze a claim's formal statement, once. The Challenge holds `NAME : (PROP)` and "
+                    "`NAME_negation : ¬ (PROP)`, and Lean checks that the second is exactly the negation of "
+                    "the first. A revision is a new claim with --revises OLD; the old claim keeps its record.")
+    statement.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    statement.add_argument("--claim", required=True, metavar="ID", help="Claim identifier.")
+    statement.add_argument("--name", required=True, metavar="NAME", help="Theorem name, a plain identifier.")
+    statement.add_argument("--prop-file", required=True, metavar="FILE", help="The proposition, as Lean text.")
+    statement.add_argument("--preamble-file", metavar="FILE", help="Local definitions and `open`s, as Lean text.")
+    statement.add_argument("--revises", metavar="ID", help="The claim whose statement this one revises.")
+    statement.add_argument("--project", required=True, metavar="DIR",
+                           help="Lean project the Challenge must compile in before it is recorded.")
+    statement.set_defaults(handler=_cmd_statement)
+
     # challenge-file
     challenge_file = subparsers.add_parser(
-        "challenge-file", help="Register the comparator Challenge for a claim (unsigned until S2.2.T1).")
+        "challenge-file", help="Register a hand-written comparator Challenge for a claim with no frozen statement.")
     challenge_file.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
     challenge_file.add_argument("--claim", required=True, metavar="ID", help="Claim identifier.")
     challenge_file.add_argument("--polarity", required=True, choices=("claim", "negation"),

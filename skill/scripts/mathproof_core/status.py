@@ -231,6 +231,20 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
     created = of_kind("claim_created")
     if len(created) > 1:
         warnings.append("this claim has more than one statement event; the first one stands")
+    frozen = of_kind("statement_frozen")
+    if len(frozen) > 1:
+        warnings.append("this claim has more than one frozen statement; the first one stands")
+    revised_by = sorted({e["claim"] for e in events if isinstance(e, dict) and e.get("kind") == "statement_frozen"
+                         and isinstance(e.get("data"), dict) and e["data"].get("revises") == claim
+                         and e.get("claim") != claim and not validate_event(e)})
+    statement = None
+    if frozen:
+        first = frozen[0]
+        # Unsigned until S2.3.T3: a frozen statement alone never lifts the ceiling of judged-unreviewed.
+        statement = {"artifact": first["artifact"], "name": first.get("name"), "revises": first.get("revises"),
+                     "signed": False}
+    if revised_by:
+        statement = (statement or {}) | {"revised_by": revised_by}
     budget_stopped, abandoned = bool(of_kind("budget_stop")), bool(of_kind("abandon"))
     search = "budget-stopped" if budget_stopped else "abandoned" if abandoned else "active"
     polarities = {c["polarity"] for c in passing}
@@ -280,6 +294,7 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
     return {
         "claim": claim,
         "statement": created[0]["text"] if created else None,
+        "formal_statement": statement,
         "headline": headline,
         "verdict": verdict,
         "lean_status": lean_status,

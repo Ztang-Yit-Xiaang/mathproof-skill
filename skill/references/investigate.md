@@ -29,7 +29,20 @@ The status line reads like `KERNEL-PASSED (local; negation, fidelity: faithful, 
 
 ## Authoritative judgment
 
-A local check runs on a machine an agent can change. The authoritative judge runs `lake comparator`, in its sandbox, in a GitHub Actions workflow on a clean checkout of `main`. It compares each checked file against a Challenge: the statement alone, proved by `sorry`. Register one per claim and polarity:
+A local check runs on a machine an agent can change. The authoritative judge runs `lake comparator`, in its sandbox, in a GitHub Actions workflow on a clean checkout of `main`. It compares each checked file against a Challenge: the statement alone, proved by `sorry`.
+
+Freeze the claim's formal statement once, and the Challenge is generated from it:
+
+```bash
+python3 scripts/mathproof.py statement --dir <dir> --claim inv/c1 --name main_theorem \
+  --prop-file prop.lean --preamble-file defs.lean --project <lean-project>
+```
+
+`prop.lean` holds the proposition alone, with every variable bound (`∀ n : ℕ, …`); it cannot contain `:=`. `defs.lean` is optional. Each of its commands starts at column 0 with `def`, `theorem`, `lemma`, `abbrev`, `structure`, `inductive`, `class`, `instance` (each may follow `noncomputable`, `private`, or `protected`), a doc comment, or `open` followed by plain names; continuation lines are indented. Neither file may `import`, or use anything that changes how Lean reads what follows or runs code while it compiles (`notation`, `macro`, `simproc`, `set_option`, `variable`, `namespace`, attributes, `run_cmd`, `#` commands, `native_decide`, `IO`, the `Lean` metaprogramming API, and similar). Tactic blocks (`by`) are refused too, because a tactic can elaborate differently on each compile and the judge prints the statement from one compile while the comparator checks another: write local definitions and lemmas as terms; the command names what it refused. The Challenge is the preamble, then `main_theorem : (PROP)` for a proof and `main_theorem_negation : ¬ (PROP)` for a refutation. A fixed Lean program then loads the compiled Challenge at run time and checks that both theorems are declared at the root, by the Challenge, on the lines the generator wrote, and that the second is exactly `Not` of the first. Because it loads the Challenge rather than containing its text, nothing in the statement can change how it runs. The checker's audit then prints the claim's type as Lean elaborated it, without the statement's own notation, once as usual and once with every instance and numeric type shown, and every definition the type reaches that the statement itself defines, with its body. Read the explicit form: `1 = 2` reads as false, but in `Fin 1` it holds. The command prints both and records them with the statement; read them, because a local definition can look like a Mathlib one in the text. The authoritative judge runs the same steps again, in a sandbox with no network that can write only its build directory, and puts what was printed in the report; only the judge's run counts, and a pass on a claim with a statement counts only if the report shows it. A proof must then be checked with `--decl main_theorem` and polarity `claim`, and a refutation with `--decl main_theorem_negation` and polarity `negation`; the judge skips any other target, and authoritative verify ignores a pass for one, or a pass from a report older than the statement. The comparator compares every constant the theorem's type reaches, values included, so a proof that weakens the statement or redefines a local definition under the same name is rejected.
+
+A statement never changes. To change it, add a new claim and freeze its statement with `--revises inv/c1`; the old claim keeps its checks and judgments, and its status names the claim that revised it.
+
+A claim with no frozen statement can still use a hand-written Challenge, one per claim and polarity:
 
 ```bash
 python3 scripts/mathproof.py challenge-file --dir <dir> --claim inv/c1 --polarity claim Statement.lean
@@ -45,7 +58,7 @@ python3 scripts/mathproof.py verify <dir> --authoritative latest --repo OWNER/NA
 
 Run `verify` from a checkout and a `gh` that agents cannot write to: an agent that can change the code, or put its own `gh` first on `PATH`, can forge any result.
 
-What this rests on: GitHub's attestations, and branch protection on `main`, which keeps the workflow file and the committed ledger reviewed. An anchor lasts as long as its run's report artifact, at most 90 days on a public repository, and deleting a run removes it. Challenges are unsigned for now, so a judged result shows `missing: statement signature, fidelity signature`, plus `vacuity witness` for a proof.
+What this rests on: GitHub's attestations, and branch protection on `main`, which keeps the workflow file and the committed ledger reviewed. An anchor lasts as long as its run's report artifact, at most 90 days on a public repository, and deleting a run removes it. Statements and Challenges are unsigned for now, so a judged result shows `missing: statement signature, fidelity signature`, plus `vacuity witness` for a proof.
 
 ## Choosing the polarity
 

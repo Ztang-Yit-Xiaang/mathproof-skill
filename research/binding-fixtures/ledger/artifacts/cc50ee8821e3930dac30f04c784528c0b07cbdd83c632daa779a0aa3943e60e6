@@ -1,0 +1,7 @@
+{
+  "claim": "bind/localdef",
+  "format": "IF-statement-v1",
+  "name": "localdef_thm",
+  "preamble": "def f (n : ℕ) : ℕ := n + 1",
+  "prop": "∀ n : ℕ, f n = n"
+}

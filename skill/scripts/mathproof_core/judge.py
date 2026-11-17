@@ -15,13 +15,16 @@ The workflow has three stages, so untrusted Lean never shares a machine with any
 3. `assemble` (no Lean): recompute the plan from the same checkout, accept each case result only
    if it is the job that index was assigned, and write the IF-judge-report-v0 that is attested.
 
-The judge writes the project files itself, so neither Lean file can change the lakefile, and its
-only Lean command is `lake comparator`, which compiles the Solution inside its sandbox (from its
-help text; the order of builds inside the comparator has not been verified independently). The
-control case tells a broken environment apart from a rejection.
+The judge writes the project files itself, so neither Lean file can change the lakefile. Lean runs
+only in sandboxes: `lake comparator`, which compiles the Solution inside its own (from its help text;
+the order of builds inside the comparator has not been verified independently), and, before the
+Solution exists, a bwrap sandbox that compiles the Challenge alone and, for a frozen statement, runs
+the binding check (statement.py). The control case tells a broken environment apart from a rejection.
 
-Until S2.2.T1, Challenges are unsigned files that anyone with write access to the ledger can
-register, which is why no result here can reach above `judged-unreviewed`.
+A claim with a frozen statement (statement.py) gets its Challenge generated from that statement,
+and a check counts only if it targets the statement's theorem (claim) or its negation theorem. A claim
+without one may still use a hand-registered Challenge in challenges.json. Until statements are
+signed (S2.3.T3), no result here can reach above `judged-unreviewed`.
 """
 
 from __future__ import annotations
@@ -30,6 +33,8 @@ import json
 import posixpath
 import os
 import re
+import shlex
+import shutil
 import signal
 import stat
 import subprocess
@@ -39,10 +44,11 @@ from typing import Callable
 
 from .events import validate_event
 from .ledger import ArtifactCorrupt, Ledger
+from . import statement as statements
 
 FORMAT = "IF-judge-report-v0"
 # Bump on any change to how the judge or its workflow decides, so older reports stop counting.
-JUDGE_VERSION = 2
+JUDGE_VERSION = 3
 CASE_FORMAT = "IF-judge-case-v0"
 CHALLENGES_FILE = "challenges.json"
 PERMITTED_AXIOMS = ["propext", "Quot.sound", "Classical.choice"]
@@ -75,8 +81,35 @@ def pins() -> dict:
     return {"toolchain": toolchain, "mathlib_rev": mathlib}
 
 
-def load_challenges(ledger: Ledger) -> dict:
-    """claim -> {polarity: artifact hash}. Malformed entries are dropped."""
+def load_challenges(ledger: Ledger, notes: list[str] | None = None) -> dict:
+    """claim -> {polarity: Challenge hash}. A frozen statement's generated Challenge replaces any
+    registered one; a claim whose statement cannot be read gets none. Malformed entries are dropped."""
+    table = _registered(ledger)
+    generated, broken = statements.statement_challenges(ledger)
+    for claim, (_, content) in generated.items():
+        if claim in table and notes is not None:
+            notes.append(f"{claim}: the frozen statement replaces its entry in {CHALLENGES_FILE}")
+        digest = Ledger.artifact_hash(content)
+        table[claim] = {"claim": digest, "negation": digest}
+    for claim, note in broken.items():
+        table.pop(claim, None)
+        if notes is not None:
+            notes.append(note)
+    return table
+
+
+def challenge_content(ledger: Ledger, claim: str, digest: str) -> bytes:
+    """The Challenge bytes for a planned job: generated from the statement if the claim has one."""
+    record = statements.load(ledger, claim)
+    if record is not None:
+        content = statements.challenge(record)
+        if Ledger.artifact_hash(content) != digest:
+            raise ValueError("the Challenge no longer matches the claim's statement")
+        return content
+    return ledger.get_artifact(digest)
+
+
+def _registered(ledger: Ledger) -> dict:
     path = ledger.directory / CHALLENGES_FILE
     if not path.exists():
         return {}
@@ -122,9 +155,10 @@ def head(ledger: Ledger) -> tuple[int, str]:
 
 def plan_jobs(ledger: Ledger) -> tuple[list[dict], list[str]]:
     """One job per distinct (artifact, target, polarity, Challenge). Returns (jobs, notes)."""
-    challenges = load_challenges(ledger)
-    jobs: dict[tuple, dict] = {}
     notes: list[str] = []
+    challenges = load_challenges(ledger, notes)
+    records = {claim: record for claim, (record, _) in statements.statement_challenges(ledger)[0].items()}
+    jobs: dict[tuple, dict] = {}
     for event in ledger.read():
         if not isinstance(event, dict) or event.get("kind") != "check" or validate_event(event):
             continue
@@ -138,6 +172,11 @@ def plan_jobs(ledger: Ledger) -> tuple[list[dict], list[str]]:
         challenge = challenges.get(event["claim"], {}).get(polarity)
         if challenge is None:
             notes.append(f"event {event['seq']}: no Challenge registered for {event['claim']} ({polarity})")
+            continue
+        record = records.get(event["claim"])
+        if record is not None and data["target_decl"] != statements.target(record, polarity):
+            notes.append(f"event {event['seq']}: a {polarity} check must target "
+                         f"{statements.target(record, polarity)}, the statement's theorem")
             continue
         key = (event["claim"], data["artifact"], data["target_decl"], polarity, challenge)
         jobs.setdefault(key, {"seq": event["seq"], "claim": event["claim"], "artifact": data["artifact"],
@@ -159,6 +198,22 @@ def lakefile(mathlib_rev: str) -> str:
     return ('name = "judge"\n\n[[require]]\nname = "mathlib"\n'
             f'git = "{MATHLIB_GIT_URL}"\nrev = "{mathlib_rev}"\n\n'
             '[[lean_lib]]\nname = "Challenge"\n\n[[lean_lib]]\nname = "Solution"\n')
+
+
+SANDBOX_STEP_EXIT = 10
+
+
+def sandboxed(steps: list[list[str]], project: Path, writable: list[Path]) -> list[str]:
+    """One bwrap command that runs `steps` in order in `project`. Step k failing exits 10 + k.
+
+    Everything is read-only except `writable` and a private /tmp; there is no network, and the
+    sandbox dies with its parent, so nothing it starts outlives it.
+    """
+    script = "; ".join(f"{shlex.join(step)} || exit {SANDBOX_STEP_EXIT + k}" for k, step in enumerate(steps))
+    binds = [arg for path in writable for arg in ("--bind", str(path), str(path))]
+    return ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", *binds,
+            "--unshare-all", "--die-with-parent", "--new-session", "--chdir", str(project), "--",
+            "sh", "-c", script]
 
 
 def write_case(root: Path, challenge: bytes, solution: bytes, target: str) -> None:
@@ -218,8 +273,9 @@ def judge_case(ledger_dir: str | Path, index: int, project: Path, runner: Runner
         raise JudgeError(f"no job {index!r}")
     job = jobs[index]
     try:
-        challenge, solution = ledger.get_artifact(job["challenge_hash"]), ledger.get_artifact(job["artifact"])
-    except (ArtifactCorrupt, FileNotFoundError, ValueError) as error:
+        challenge = challenge_content(ledger, job["claim"], job["challenge_hash"])
+        solution = ledger.get_artifact(job["artifact"])
+    except (ArtifactCorrupt, FileNotFoundError, ValueError, statements.StatementError) as error:
         return {"format": CASE_FORMAT, "index": index, **job, "result": "error", "seconds": 0,
                 "note": f"artifact unavailable: {error}"}
     prepare_project(project, runner)
@@ -227,10 +283,46 @@ def judge_case(ledger_dir: str | Path, index: int, project: Path, runner: Runner
     control = runner(["lake", "comparator"], project, timeout)
     if control["rc"] != 0:
         raise JudgeError(f"the control case did not pass (rc={control['rc']}): {control['output'][-500:]}")
+    # Before the Solution exists, compile the Challenge alone and, for a frozen statement, run the
+    # binding check and print the statement. A Challenge is Lean code, and elaborating it can run code,
+    # so all of this runs in a bwrap sandbox with no network that can write only the build directory
+    # and an output directory; the build directory is deleted afterwards, so nothing it left there can
+    # reach the comparator. A Challenge that fails here is an error, not a rejection of the proof.
+    (project / "Solution.lean").unlink()
+    (project / "Challenge.lean").write_bytes(challenge)
+    record = statements.load(ledger, job["claim"])
+    out_dir = project.parent / f"{project.name}-statement"
+    out_dir.mkdir()
+    build_dir = project / ".lake" / "build"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "statements.json"
+    steps = [["lake", "build", "Challenge"]]
+    if record is not None:
+        steps += [statements.binding_command(record),
+                  statements.statements_command(build_dir / "lib" / "lean" / "Challenge.olean", out)]
+    checked = runner(sandboxed(steps, project, [build_dir, out_dir]), project, timeout)
+    shutil.rmtree(build_dir)
+    binding = None
+    if checked["rc"] == 0 and record is not None:
+        try:
+            raw = out.read_bytes() if out.stat().st_size <= 1_000_000 else b""
+            binding = statements.read_statements(json.loads(raw), record)
+        except (OSError, ValueError, RecursionError, statements.StatementError):
+            binding = None
+    shutil.rmtree(out_dir)
+    if checked["rc"] != 0 or (record is not None and not _binding_ok(binding)):
+        notes = {SANDBOX_STEP_EXIT: "the Challenge does not compile", SANDBOX_STEP_EXIT + 1: "the statement binding check failed"}
+        note = notes.get(checked["rc"], "the statement could not be printed" if record is not None and checked["rc"] in (0, SANDBOX_STEP_EXIT + 2)
+                         else f"the Challenge step failed (rc={checked['rc']})")
+        return {"format": CASE_FORMAT, "index": index, **job, "result": "error", "seconds": checked["seconds"],
+                "note": note}
     write_case(project, challenge, solution, job["target_decl"])
     outcome = runner(["lake", "comparator"], project, timeout)
-    return {"format": CASE_FORMAT, "index": index, **job, "result": _outcome(outcome["rc"]),
+    case = {"format": CASE_FORMAT, "index": index, **job, "result": _outcome(outcome["rc"]),
             "seconds": outcome["seconds"]}
+    if binding is not None:
+        case["binding"] = binding
+    return case
 
 
 def _read_case(cases_dir: Path, index: int) -> object:
@@ -264,6 +356,7 @@ def assemble(ledger_dir: str | Path, cases_dir: str | Path) -> dict:
     """
     planned = plan(ledger_dir)
     notes = list(planned["notes"])
+    bound = set(statements.statement_challenges(Ledger(ledger_dir))[0])
     results = []
     for index, job in enumerate(planned["jobs"]):
         case = _read_case(Path(cases_dir), index)
@@ -278,12 +371,33 @@ def assemble(ledger_dir: str | Path, cases_dir: str | Path) -> dict:
         else:
             result = case["result"]
             seconds = case.get("seconds") if isinstance(case.get("seconds"), (int, float)) else 0
-        results.append({**job, "result": result, "seconds": seconds})
+        entry = {**job, "result": result, "seconds": seconds}
+        if result != "error" and _binding_ok(case.get("binding")):
+            entry["binding"] = {key: case["binding"][key] for key in
+                                ("type", "type_explicit", "defined_in_statement", "definitions")}
+        elif result != "error" and job["claim"] in bound:
+            # A frozen statement's result counts only with the statement as Lean printed it.
+            entry["result"] = "error"
+            notes.append(f"event {job['seq']}: the case result has no printed statement")
+        results.append(entry)
     return {"format": FORMAT, "judge_version": JUDGE_VERSION, "ledger_path": ledger_path(ledger_dir),
             "ledger_genesis": planned["ledger_genesis"],
             "ledger_seq": planned["ledger_seq"], "ledger_head": planned["ledger_head"],
             **pins(), "sandboxed": True, "permitted_axioms": PERMITTED_AXIOMS, "definition_names": [],
             "results": results, "notes": notes}
+
+
+def _binding_ok(binding: object) -> bool:
+    """A binding is the statement as printed: two types, local names, and their printed definitions."""
+    def text(value: object) -> bool:
+        return isinstance(value, str) and len(value) <= 20000
+    if not isinstance(binding, dict) or not (text(binding.get("type")) and text(binding.get("type_explicit"))):
+        return False
+    names, definitions = binding.get("defined_in_statement"), binding.get("definitions")
+    return (isinstance(names, list) and len(names) <= 1000 and all(text(n) for n in names)
+            and isinstance(definitions, dict) and set(definitions) == set(names)
+            and all(isinstance(d, dict) and set(d) <= {"type", "definition"} and all(text(v) for v in d.values())
+                    for d in definitions.values()))
 
 
 def sandbox_works(runner: Runner = run) -> bool:

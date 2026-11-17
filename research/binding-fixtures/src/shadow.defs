@@ -1,0 +1,4 @@
+namespace Foo
+def Nat.Prime (n : ℕ) : Prop := n = 4
+end Foo
+open Foo

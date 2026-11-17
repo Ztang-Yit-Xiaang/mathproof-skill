@@ -1,0 +1,7 @@
+import Mathlib
+
+theorem weak_thm : (∀ n : ℕ, 0 < n → 2 ≤ n * 2) := by
+  sorry
+
+theorem weak_thm_negation : ¬ (∀ n : ℕ, 0 < n → 2 ≤ n * 2) := by
+  sorry
