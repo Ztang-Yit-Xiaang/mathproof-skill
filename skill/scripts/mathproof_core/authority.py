@@ -34,6 +34,8 @@ from pathlib import Path
 from typing import Callable
 
 from .events import validate_event
+from . import statement as statements
+from .judge import _binding_ok
 from .judge import FORMAT, JUDGE_VERSION, PERMITTED_AXIOMS, JudgeError, ledger_path, load_challenges, pins
 from .ledger import Ledger
 
@@ -122,6 +124,15 @@ def tier_results(content: bytes, ledger: Ledger) -> tuple[list[dict], list[str]]
     except (JudgeError, ValueError, OSError) as error:
         challenges = None
         notes.append(f"the registered Challenges cannot be read: {error}; only rejections are kept")
+    frozen_at: dict[str, tuple[int, dict | None]] = {}
+    for claim in {e.get("claim") for e in events if isinstance(e, dict) and e.get("kind") == "statement_frozen"}:
+        found = statements.frozen(ledger, claim) if isinstance(claim, str) else []
+        if found:
+            try:
+                record = statements.load(ledger, claim)
+            except statements.StatementError:
+                record = None
+            frozen_at[claim] = (found[0]["seq"], record)
     for result in report["results"]:
         if not isinstance(result, dict) or any(f not in result for f in _RESULT_FIELDS):
             notes.append("ignored a malformed result")
@@ -143,6 +154,20 @@ def tier_results(content: bytes, ledger: Ledger) -> tuple[list[dict], list[str]]
         if result["result"] not in ("pass", "fail"):
             notes.append(f"event {where}: the judge could not decide ({result['result']})")
             continue
+        # A frozen statement binds its claim's checks: a pass counts only if the report saw the statement
+        # and the check targets the statement's theorem for its polarity.
+        frozen = frozen_at.get(event["claim"])
+        if frozen is not None and result["result"] == "pass":
+            seq_frozen, record = frozen
+            if seq_frozen > seq:
+                notes.append(f"ignored a pass for event {where}: the claim's statement was frozen after the report")
+                continue
+            if record is None or data["target_decl"] != statements.target(record, data["polarity"]):
+                notes.append(f"ignored a pass for event {where}: it does not target the statement's theorem")
+                continue
+            if not _binding_ok(result.get("binding")):
+                notes.append(f"ignored a pass for event {where}: the report does not show the statement it checked")
+                continue
         # The Challenge registry is outside the chain, so changing it may drop a pass but never a fail.
         current = None if challenges is None else challenges.get(event["claim"], {}).get(data["polarity"])
         if current != result["challenge_hash"]:

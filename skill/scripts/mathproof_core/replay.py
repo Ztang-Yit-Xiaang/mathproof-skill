@@ -19,7 +19,8 @@ from .status import derive_status
 
 DELETION_NOTE = ("This does not detect deletion of events from the end of the ledger, or a whole "
                  "ledger rewritten consistently with honest checks removed, because the ledger's head "
-                 "is not anchored anywhere outside it yet.")
+                 "is not anchored here; `--authoritative` checks it against attested judge reports.")
+ANCHORED_NOTE = "Events after the newest anchor are not covered until the next authoritative judge run."
 
 # Fields that must name a stored file.
 _ARTIFACT_FIELDS = {"check": ("artifact", "report_hash"), "fidelity": ("statement_hash",),
@@ -149,4 +150,4 @@ def verify_investigation(directory: str | os.PathLike[str], project: str | os.Pa
             "environment_errors": environment_errors,
             "statuses": {claim: derive_status(usable, claim, {"judged": judged or []}) for claim in claims},
             "reruns": reruns,
-            "notes": [DELETION_NOTE] + list(judge_notes or [])}
+            "notes": [DELETION_NOTE if judge_notes is None else ANCHORED_NOTE] + list(judge_notes or [])}

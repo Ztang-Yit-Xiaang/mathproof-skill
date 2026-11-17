@@ -1,0 +1,7 @@
+{
+  "claim": "bind/weak",
+  "format": "IF-statement-v1",
+  "name": "weak_thm",
+  "preamble": "",
+  "prop": "∀ n : ℕ, 0 < n → 2 ≤ n * 2"
+}

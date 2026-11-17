@@ -127,7 +127,8 @@ def record_check(ledger: Ledger, claim: str, file: str | os.PathLike[str], decl:
         "report_hash": ledger.put_artifact(json.dumps(report, sort_keys=True, ensure_ascii=False).encode("utf-8")),
         "pins": {key: report.get(key) for key in ("toolchain", "mathlib_rev", "pinned", "checker")},
         "tier": "local",
-        "project": str(project),
+        # Relative to where the check ran, so a committed ledger carries no home directory.
+        "project": os.path.relpath(project),
         "type": target.get("type"),
         "axioms": sorted(target.get("axioms", [])),
         "problems": summarize(reasons),

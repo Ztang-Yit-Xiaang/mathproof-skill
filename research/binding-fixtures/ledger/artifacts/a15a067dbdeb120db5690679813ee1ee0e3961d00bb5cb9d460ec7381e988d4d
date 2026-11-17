@@ -1,0 +1,9 @@
+import Mathlib
+
+def f (n : ℕ) : ℕ := n + 1
+
+theorem localdef_thm : (∀ n : ℕ, f n = n) := by
+  sorry
+
+theorem localdef_thm_negation : ¬ (∀ n : ℕ, f n = n) := by
+  sorry

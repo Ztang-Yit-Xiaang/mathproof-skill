@@ -46,7 +46,9 @@ class GateTests(unittest.TestCase):
         data = event["data"]
         self.assertEqual(data["result"], "pass")
         self.assertEqual(data["tier"], "local")
-        self.assertEqual(data["project"], str(self.project.resolve()))
+        # Relative to where the check ran, so a committed ledger carries no home directory.
+        self.assertEqual(data["project"], os.path.relpath(self.project.resolve()))
+        self.assertFalse(os.path.isabs(data["project"]))
         self.assertEqual(data["axioms"], [])
         self.assertIn("2 + 2 = 4", data["type"])
         self.assertIs(data["pins"]["pinned"], False)

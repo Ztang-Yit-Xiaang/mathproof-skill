@@ -8,6 +8,7 @@ report is matched to the ledger, and that nothing reaches above judged-unreviewe
 import io
 import json
 import random
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -166,14 +167,27 @@ class StatusTests(LedgerCase):
             self.assertTrue(s["verdict"].startswith("UNVERIFIED") or s["verdict"] == "INCOMPLETE", s)
 
 
+PRINTED = {"declarations": [{"name": "foo", "type": "∀ n, f n > n", "type_explicit": "∀ (n : ℕ), f n > n",
+                              "statement_uses": ["f"]}],
+           "statement_context": {"f": {"type": "ℕ → ℕ", "definition": "fun n => n + 1"}}}
+
+
 def fake_runner(log, rcs):
     """Record each call and the project files the comparator would see; return the next rc.
 
-    `lake update` and `lake exe cache get` always succeed and take no rc from the list.
+    `lake update`, `lake exe cache get`, and the sandboxed Challenge step always succeed and take no
+    rc from the list; the Challenge step prints `PRINTED` for a frozen statement.
     """
     def run(cmd, cwd, timeout):
         if cmd[:2] == ["lake", "update"] or cmd[:3] == ["lake", "exe", "cache"]:
             log.append((cmd, {}))
+            return {"rc": 0, "seconds": 0.1, "output": ""}
+        if cmd[0] == "bwrap":
+            log.append((cmd, {"Solution.lean": (Path(cwd) / "Solution.lean").exists()}))
+            for step in cmd[-1].split("; "):
+                words = shlex.split(step.split(" || ")[0])
+                if words[4:5] and words[5:6] == ["statements"]:
+                    Path(words[7]).write_text(json.dumps(PRINTED))
             return {"rc": 0, "seconds": 0.1, "output": ""}
         files = {name: (Path(cwd) / name).read_bytes() for name in ("Challenge.lean", "Solution.lean", "comparator.json")
                  if (Path(cwd) / name).exists()}
@@ -219,9 +233,16 @@ class JudgeTests(LedgerCase):
     def test_case_prepares_then_control_then_only_comparator_with_exact_files(self):
         log = []
         case = judge.judge_case(self.dir, 0, self.project, runner=fake_runner(log, [0, 0]))
-        self.assertEqual([cmd for cmd, _ in log], [["lake", "update"], ["lake", "exe", "cache", "get"],
-                                                   ["lake", "comparator"], ["lake", "comparator"]])
-        control, checked = log[2][1], log[3][1]
+        self.assertEqual([cmd for cmd, _ in log][:3] + [cmd for cmd, _ in log][4:],
+                         [["lake", "update"], ["lake", "exe", "cache", "get"], ["lake", "comparator"], ["lake", "comparator"]])
+        sandbox = log[3][0]
+        self.assertEqual(sandbox[0], "bwrap")
+        self.assertIn("--unshare-all", sandbox)
+        self.assertIn("--die-with-parent", sandbox)
+        self.assertEqual(sandbox[-1], "lake build Challenge || exit 10")
+        self.assertFalse(log[3][1]["Solution.lean"])
+        self.assertFalse((self.project / ".lake" / "build").exists())
+        control, checked = log[2][1], log[4][1]
         self.assertIn(b"judge_control", control["Challenge.lean"])
         self.assertEqual(checked["Challenge.lean"], self.ledger.get_artifact(self.statement))
         self.assertEqual(checked["Solution.lean"], self.ledger.get_artifact(self.proof))
