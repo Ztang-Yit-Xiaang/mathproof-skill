@@ -26,6 +26,7 @@ STATUS_BEARING_KINDS: dict[str, tuple[str, ...]] = {
     "certificate": ("certificate",),
     "dependency": ("from", "to", "source_hash"),
     "bridge": ("card", "hypothesis", "match"),
+    "signature": ("payload", "signature", "identity"),
 }
 
 _ENVELOPE_FIELDS = ("seq", "prev", "ts", "actor", "kind", "claim", "data")

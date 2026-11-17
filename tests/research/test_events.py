@@ -30,6 +30,7 @@ EXAMPLES = {
     "certificate": {"certificate": {}},
     "dependency": {"from": "a/b", "to": "a/c", "source_hash": HASH},
     "bridge": {"card": "c", "hypothesis": "h", "match": "matched"},
+    "signature": {"payload": {}, "signature": "s", "identity": "i"},
 }
 
 

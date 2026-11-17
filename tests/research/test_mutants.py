@@ -18,11 +18,28 @@ from _paths import ROOT
 
 HERE = Path(__file__).resolve().parent
 SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report", "test_replay_stub",
-          "test_authority", "test_binding"]
+          "test_authority", "test_binding", "test_attestation"]
 
 MUTANTS = {
     "status.py": [
-        ('"revises": first.get("revises"),\n                     "signed": False}', '"revises": first.get("revises"),\n                     "signed": True}'),
+        ("return (data[\"result\"] == \"pass\" and event[\"seq\"] not in rejected_seqs", "return (data[\"result\"] == \"pass\""),
+        ("                and not any(e[\"kind\"] == \"check\" and e[\"data\"][\"result\"] == \"pass\" and e[\"data\"][\"polarity\"] == opposite", "                and not any(False"),
+        ('return data["class"] == "faithful"', "return True"),
+        ('return data["result"] == "no-flaw"', "return True"),
+        ('        return not data.get("violations")', "        return True"),
+        ("    return False\n\n\ndef _signed", "    return True\n\n\ndef _signed"),
+        ('and e["data"]["result"] == "flaw" for e in usable)', 'and False for e in usable)'),
+        ('kinds.get(seq) == {(judgment_kind.get(entry.get("judgment")), entry.get("target_event"))}):', 'judgment_kind.get(entry.get("judgment")) in {k for k, _ in kinds.get(seq, ())}):'),
+        ("statement_signed = first_seq in signed", "statement_signed = True"),
+        ('if not isinstance(entry, dict) or entry.get("claim") != claim:', "if not isinstance(entry, dict):"),
+        ('retracted = {e["data"]["target_event"] for e in usable if e["kind"] == "retraction" and e["seq"] in signed}',
+         'retracted = {e["data"]["target_event"] for e in usable if e["kind"] == "retraction"}'),
+        ('signed_audits = [e["data"] for e in audits if e["seq"] in signed]', 'signed_audits = [e["data"] for e in audits]'),
+        ('return ("rejected" if any(a["result"] == "flaw" for a in signed_audits) else "signed-audited"), warnings', 'return "signed-audited", warnings'),
+        ('{id(e["data"]) for e in fidelity_events if e["seq"] in signed})', '{id(e["data"]) for e in fidelity_events})'),
+        ("        if not fidelity[\"signed\"]:\n", "        if False:\n"),
+        ("    signed_accepted = {target: [j for j in js if id(j) in signed] for target, js in accepted.items()}",
+         "    signed_accepted = {target: list(js) for target, js in accepted.items()}"),
         ('if {"claim", "negation"} <= polarities:', "if False:"),
         ('proper = [c for c in passing if c["polarity"] != "step"]', "proper = list(passing)"),
         ('and key(c) not in failed]', "]"),
@@ -163,6 +180,23 @@ MUTANTS = {
         ("if entries != [path] or not stat.S_ISREG(path.lstat().st_mode):", "if not stat.S_ISREG(path.lstat().st_mode):"),
         ("if entries != [path] or not stat.S_ISREG(path.lstat().st_mode):", "if entries != [path]:"),
     ],
+    "signature.py": [
+        ('if event["kind"] == "statement_frozen" and _context(events[:seq + 1], claim)[1] != event["data"]["artifact"]:', "if False:"),
+        ("        return [], [\"the ledger's chain is broken, so no signature counts\"]", "        pass"),
+        ('env = {k: v for k, v in os.environ.items() if k != "SSH_AUTH_SOCK"} if no_agent else None', "env = None"),
+        ("    if ledger.verify().errors:\n        raise SignatureError", "    if False:\n        raise SignatureError"),
+        ('if target is None or target.get("claim") != claim:', "if target is None:"),
+        ('"identity": identity, "claim": claim,', '"claim": claim,'),
+        ('"claim": claim, "informal_text": text,', '"claim": claim, "informal_text": None,'),
+        ("if ledger_dir is not None and Path(ledger_dir).resolve() in signers.parents:", "if False:"),
+        ("if rc != 0:\n            notes.append(f\"signature event {where}: ssh-keygen did not verify", "if False:\n            notes.append(f\"signature event {where}: ssh-keygen did not verify"),
+        ('if event.get("claim") != signed["claim"]:', "if False:"),
+        ("if expected != signed or _context(", "if False and _context("),
+        ('if isinstance(head, int) and not isinstance(head, bool) and head >= where:', "if False:"),
+        ('"-I", identity, "-n", NAMESPACE,', '"-n", NAMESPACE,'),
+        ('    if not isinstance(event, dict) or validate_event(event) or event.get("kind") not in SIGNABLE:', '    if not isinstance(event, dict):'),
+        ('"target_event": Ledger.event_hash(event),', '"target_event": None,'),
+    ],
     "statement.py": [
         ("if not isinstance(name, str) or not _NAME.fullmatch(name):", "if False:"),
         ("if _IMPORT.search(preamble) or _IMPORT.search(prop):", "if False:"),
@@ -241,7 +275,7 @@ MUTANTS = {
     ],
     "cli.py": [
         ('if difference["kind"] in ("anchor", "no-anchor"):', "if False:"),
-        ("anchor_violations=violations)", "anchor_violations=[])"),
+        ("anchor_violations=violations, signed=signed)", "anchor_violations=[], signed=signed)"),
         ('if not authority["anchors"]:', "if False:"),
         ("if not args.ledger_path:", "if False:"),
     ],
