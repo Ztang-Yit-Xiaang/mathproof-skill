@@ -316,9 +316,17 @@ class JudgeTests(Base):
         steps = [shlex.split(step.split(" || ")[0]) for step in sandbox[0][-1].split("; ")]
         self.assertEqual(steps[0], ["lake", "build", "Challenge"])
         self.assertEqual(steps[1], st.binding_command(self.record))
-        self.assertEqual(steps[2][5:7], ["statements", str(self.project / ".lake/build/lib/lean/Challenge.olean")])
-        self.assertIn(str(self.project / ".lake" / "build"), sandbox[0])
+        scratch = Path(str(self.project) + "-challenge")
+        self.assertEqual(steps[2][5:7], ["statements", str(scratch / ".lake/build/lib/lean/Challenge.olean")])
+        cmd = sandbox[0]
+        self.assertEqual(cmd[cmd.index("--chdir") + 1], str(scratch))
+        writable = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--bind"]
+        self.assertEqual(writable, [str(scratch), str(Path(str(self.project) + "-statement"))])
+        i = cmd.index("--ro-bind", cmd.index("--ro-bind") + 1)
+        self.assertEqual(cmd[i + 1:i + 3], [str(self.project / ".lake" / "packages"), str(scratch / ".lake" / "packages")])
+        self.assertGreater(i, max(j for j, arg in enumerate(cmd) if arg == "--bind"))
         self.assertFalse(sandbox[1]["Solution.lean"])
+        self.assertFalse(scratch.exists())
         self.assertFalse((self.project / ".lake" / "build").exists())
         self.assertFalse(Path(str(self.project) + "-statement").exists())
         self.assertEqual(case["binding"], {"type": "∀ n, f n > n", "type_explicit": "∀ (n : ℕ), f n > n",
@@ -353,6 +361,8 @@ class JudgeTests(Base):
                 self.setUp()
                 case = self.step_fails(rc, write)
                 self.assertEqual((case["result"], case["note"]), ("error", note))
+                if rc:
+                    self.assertEqual(case["output"], "error")
                 self.assertNotIn("binding", case)
 
     def test_legacy_challenge_runs_no_binding_check(self):

@@ -203,14 +203,17 @@ def lakefile(mathlib_rev: str) -> str:
 SANDBOX_STEP_EXIT = 10
 
 
-def sandboxed(steps: list[list[str]], project: Path, writable: list[Path]) -> list[str]:
+def sandboxed(steps: list[list[str]], project: Path, writable: list[Path],
+              read_only: list[tuple[Path, Path]] = ()) -> list[str]:
     """One bwrap command that runs `steps` in order in `project`. Step k failing exits 10 + k.
 
-    Everything is read-only except `writable` and a private /tmp; there is no network, and the
-    sandbox dies with its parent, so nothing it starts outlives it.
+    Everything is read-only except `writable` and a private /tmp; each (source, target) in
+    `read_only` is mounted read-only at target, after the writable mounts. There is no network, and
+    the sandbox dies with its parent, so nothing it starts outlives it.
     """
     script = "; ".join(f"{shlex.join(step)} || exit {SANDBOX_STEP_EXIT + k}" for k, step in enumerate(steps))
     binds = [arg for path in writable for arg in ("--bind", str(path), str(path))]
+    binds += [arg for source, target in read_only for arg in ("--ro-bind", str(source), str(target))]
     return ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", *binds,
             "--unshare-all", "--die-with-parent", "--new-session", "--chdir", str(project), "--",
             "sh", "-c", script]
@@ -285,23 +288,29 @@ def judge_case(ledger_dir: str | Path, index: int, project: Path, runner: Runner
         raise JudgeError(f"the control case did not pass (rc={control['rc']}): {control['output'][-500:]}")
     # Before the Solution exists, compile the Challenge alone and, for a frozen statement, run the
     # binding check and print the statement. A Challenge is Lean code, and elaborating it can run code,
-    # so all of this runs in a bwrap sandbox with no network that can write only the build directory
-    # and an output directory; the build directory is deleted afterwards, so nothing it left there can
-    # reach the comparator. A Challenge that fails here is an error, not a rejection of the proof.
-    (project / "Solution.lean").unlink()
-    (project / "Challenge.lean").write_bytes(challenge)
+    # so all of this runs in a bwrap sandbox with no network, in a scratch copy of the project that is
+    # deleted afterwards: it can write only that copy and an output directory, and Mathlib's packages
+    # are mounted read-only. Nothing it writes can reach the comparator's project. A Challenge that
+    # fails here is an error, not a rejection of the proof.
     record = statements.load(ledger, job["claim"])
+    scratch = project.parent / f"{project.name}-challenge"
     out_dir = project.parent / f"{project.name}-statement"
+    scratch.mkdir()
     out_dir.mkdir()
-    build_dir = project / ".lake" / "build"
-    build_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("lean-toolchain", "lakefile.toml", "lake-manifest.json"):
+        if (project / name).exists():
+            shutil.copyfile(project / name, scratch / name)
+    (scratch / "Challenge.lean").write_bytes(challenge)
+    (scratch / ".lake" / "packages").mkdir(parents=True)
     out = out_dir / "statements.json"
     steps = [["lake", "build", "Challenge"]]
     if record is not None:
-        steps += [statements.binding_command(record),
-                  statements.statements_command(build_dir / "lib" / "lean" / "Challenge.olean", out)]
-    checked = runner(sandboxed(steps, project, [build_dir, out_dir]), project, timeout)
-    shutil.rmtree(build_dir)
+        olean = scratch / ".lake" / "build" / "lib" / "lean" / "Challenge.olean"
+        steps += [statements.binding_command(record), statements.statements_command(olean, out)]
+    checked = runner(sandboxed(steps, scratch, [scratch, out_dir],
+                               read_only=[(project / ".lake" / "packages", scratch / ".lake" / "packages")]),
+                     scratch, timeout)
+    shutil.rmtree(scratch)
     binding = None
     if checked["rc"] == 0 and record is not None:
         try:
@@ -314,8 +323,10 @@ def judge_case(ledger_dir: str | Path, index: int, project: Path, runner: Runner
         notes = {SANDBOX_STEP_EXIT: "the Challenge does not compile", SANDBOX_STEP_EXIT + 1: "the statement binding check failed"}
         note = notes.get(checked["rc"], "the statement could not be printed" if record is not None and checked["rc"] in (0, SANDBOX_STEP_EXIT + 2)
                          else f"the Challenge step failed (rc={checked['rc']})")
+        # The end of the sandbox's output, as inert printable text, so a failure can be diagnosed.
+        tail = "".join(ch if 32 <= ord(ch) < 127 else " " for ch in str(checked.get("output", "")))[-400:]
         return {"format": CASE_FORMAT, "index": index, **job, "result": "error", "seconds": checked["seconds"],
-                "note": note}
+                "note": note, "output": " ".join(tail.split())}
     write_case(project, challenge, solution, job["target_decl"])
     outcome = runner(["lake", "comparator"], project, timeout)
     case = {"format": CASE_FORMAT, "index": index, **job, "result": _outcome(outcome["rc"]),
