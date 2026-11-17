@@ -83,7 +83,8 @@ def _claim_of(event) -> str | None:
 def verify_investigation(directory: str | os.PathLike[str], project: str | os.PathLike[str] | None = None,
                          checker: Path = CHECKER, judged: list[dict] | None = None,
                          judge_notes: list[str] | None = None,
-                         anchor_violations: list[tuple[str, str]] | None = None) -> dict:
+                         anchor_violations: list[tuple[str, str]] | None = None,
+                         signed: list[dict] | None = None) -> dict:
     """Returns {ok, differences, environment_errors, statuses, reruns, notes}. Writes nothing.
 
     `judged` comes only from `authority.load_authoritative`, which verified the judge report.
@@ -148,6 +149,6 @@ def verify_investigation(directory: str | os.PathLike[str], project: str | os.Pa
     return {"ok": not differences and not environment_errors,
             "differences": differences,
             "environment_errors": environment_errors,
-            "statuses": {claim: derive_status(usable, claim, {"judged": judged or []}) for claim in claims},
+            "statuses": {claim: derive_status(usable, claim, {"judged": judged or [], "signed": signed or []}) for claim in claims},
             "reruns": reruns,
             "notes": [DELETION_NOTE if judge_notes is None else ANCHORED_NOTE] + list(judge_notes or [])}

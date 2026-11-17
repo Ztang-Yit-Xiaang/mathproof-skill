@@ -81,15 +81,15 @@ class StatusTests(LedgerCase):
         self.assertEqual(s["headline"], "judged-unreviewed")
         self.assertEqual(s["axes"]["kernel"], "judged")
         self.assertEqual(s["verdict"], "UNVERIFIED")
-        self.assertEqual(s["missing"], ["statement signature", "fidelity signature", "vacuity witness"])
-        self.assertIn("missing: statement signature, fidelity signature, vacuity witness", s["lean_status"])
+        self.assertEqual(s["missing"], ["statement signature", "fidelity signature", "assumption audit", "vacuity witness"])
+        self.assertIn("missing: statement signature, fidelity signature, assumption audit, vacuity witness", s["lean_status"])
 
     def test_negation_needs_no_vacuity_witness(self):
         self.ledger.append("check", CLAIM, check_data(self.proof, polarity="negation"), ACTOR)
         self.ledger.append("check", CLAIM, check_data(self.proof, result="fail"), ACTOR)
         s = status(self.ledger, {"judged": [self.judged(polarity="negation", seq=2)]})
         self.assertEqual(s["headline"], "judged-unreviewed")
-        self.assertEqual(s["missing"], ["statement signature", "fidelity signature"])
+        self.assertEqual(s["missing"], ["statement signature", "fidelity signature", "assumption audit"])
 
     def test_judged_fail_is_judge_rejected(self):
         s = status(self.ledger, {"judged": [self.judged(result="fail")]})

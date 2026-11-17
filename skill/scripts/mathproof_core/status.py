@@ -8,11 +8,13 @@ Three rules govern it (planning contract IF-claim-status-v2):
 1. Only the authoritative tier plus a human signature can give VALID or INVALID. Nothing an agent
    writes can stand in for either: a `tier` field, a `judge` field, or a signature field. The
    authoritative tier reaches derivation only through `env["judged"]`, which `authority.py` builds
-   from an attested judge report. No signature can be verified yet, so the strongest headline it
-   gives is `judged-unreviewed`, and the verdict is never VALID or INVALID.
+   from an attested judge report, and a signature only through `env["signed"]`, which
+   `signature.verify` builds from signatures it checked against keys kept outside the ledger.
+   Rows 3 to 5 also need the vacuity, assumption, and dependency gates of later tasks, so the
+   strongest headline is still `judged-unreviewed`, and the verdict is never VALID or INVALID.
 2. A claim's statement never changes.
 3. A retraction needs authority at or above its target, so unsigned retractions and resolutions
-   change nothing. No signature can be verified in M0.
+   change nothing. A verified signed retraction removes the event it names.
 
 The headline is the first row that matches, in the order of the contract's table. Rows 3 to 5
 need signatures, which arrive with S2.3.T3. `compat` already covers them, so that it stays total.
@@ -23,6 +25,7 @@ from __future__ import annotations
 import re
 
 from .events import is_status_bearing, validate_event
+from .ledger import Ledger
 
 DERIVATION_VERSION = "m1-1"
 
@@ -39,8 +42,8 @@ _FIDELITY_ORDER = ("unfaithful", "partial", "instance", "faithful")
 
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 
-# What is never satisfied until signatures can be verified (S2.3.T3).
-_UNSIGNED = ("statement signature", "fidelity signature")
+# Gates of rows 3 to 5 that no task implements yet (S2.4.T1 and later), so they are always missing.
+_NOT_YET = ("assumption audit",)
 
 # The direction a judgment needs depends on what was checked: a proof of F needs F => I, and a
 # refutation (a check of not F) needs I => F.
@@ -122,7 +125,7 @@ def _kernel(checks: list[dict]) -> tuple[str, list[dict], bool, bool, list[str]]
     return axis, proper, any(c["polarity"] == "step" for c in passing), bool(checks), warnings
 
 
-def _fidelity(judgments: list[dict], passing: list[dict]) -> tuple[dict, list[str]]:
+def _fidelity(judgments: list[dict], passing: list[dict], signed: set | frozenset = frozenset()) -> tuple[dict, list[str]]:
     """Combine the judgments of the passing artifacts, worst first. Labels only, in M0.
 
     An artifact with no accepted judgment counts as unjudged, so one judged artifact cannot speak
@@ -149,6 +152,14 @@ def _fidelity(judgments: list[dict], passing: list[dict]) -> tuple[dict, list[st
                 continue
         accepted.setdefault(target, []).append(judgment)
     unjudged = {"class": None, "direction": None, "provenance": "none", "scope": None, "signed": False}
+    # Signed judgments decide, worst-of among them; unsigned ones are shown only when none is signed.
+    signed_accepted = {target: [j for j in js if id(j) in signed] for target, js in accepted.items()}
+    signed_accepted = {target: js for target, js in signed_accepted.items() if js}
+    if signed_accepted and (set(signed_accepted) == set(polarities)
+                            or any(j["class"] == "unfaithful" for js in signed_accepted.values() for j in js)):
+        worst = min((j for js in signed_accepted.values() for j in js), key=lambda j: _FIDELITY_ORDER.index(j["class"]))
+        return {"class": worst["class"], "direction": worst["direction"], "provenance": "signed-human",
+                "scope": worst.get("scope_note") or None, "signed": True}, warnings
     combined = [j for js in accepted.values() for j in js]
     unfaithful = any(j["class"] == "unfaithful" for j in combined)
     if not combined or (not unfaithful and set(accepted) != set(polarities)):
@@ -161,12 +172,16 @@ def _fidelity(judgments: list[dict], passing: list[dict]) -> tuple[dict, list[st
             "scope": worst.get("scope_note") or None, "signed": False}, warnings
 
 
-def _informal(events: list[dict]) -> tuple[str, list[str]]:
+def _informal(events: list[dict], signed: set | frozenset = frozenset()) -> tuple[str, list[str]]:
     proofs = {e["data"]["artifact"] for e in events if e["kind"] == "informal_proof"}
-    audits = [e["data"] for e in events if e["kind"] == "informal_audit" and e["data"]["proof_hash"] in proofs]
-    warnings = [f"an unsigned audit reports a flaw: {a['auditor']}" for a in audits if a["result"] == "flaw"]
+    audits = [e for e in events if e["kind"] == "informal_audit" and e["data"]["proof_hash"] in proofs]
+    signed_audits = [e["data"] for e in audits if e["seq"] in signed]
+    warnings = [f"an unsigned audit reports a flaw: {e['data']['auditor']}" for e in audits
+                if e["data"]["result"] == "flaw" and e["seq"] not in signed]
     if not proofs:
         return "none", []
+    if signed_audits:
+        return ("rejected" if any(a["result"] == "flaw" for a in signed_audits) else "signed-audited"), warnings
     return ("self-audited" if audits else "drafted"), warnings
 
 
@@ -214,16 +229,74 @@ def _judged(env: dict, claim: str, usable: list[dict], passing: list[dict]) -> t
     return accepted - rejected, rejected
 
 
+def _retractable(event: dict, rejected_seqs: set, usable: list[dict]) -> bool:
+    """Whether a signed retraction may remove this event. Removing it must never make the claim look
+    stronger: a retraction can withdraw evidence for the claim, never evidence against it."""
+    kind, data = event["kind"], event["data"]
+    if kind == "check":
+        opposite = {"claim": "negation", "negation": "claim"}.get(data["polarity"])
+        return (data["result"] == "pass" and event["seq"] not in rejected_seqs
+                and not any(e["kind"] == "check" and e["data"]["result"] == "pass" and e["data"]["polarity"] == opposite
+                            for e in usable))
+    if kind == "fidelity":
+        return data["class"] == "faithful"
+    if kind == "informal_audit":
+        return data["result"] == "no-flaw"
+    if kind == "informal_proof":
+        return not any(e["kind"] == "informal_audit" and e["data"]["proof_hash"] == data["artifact"]
+                       and e["data"]["result"] == "flaw" for e in usable)
+    if kind == "experiment":
+        return not data.get("violations")
+    return False
+
+
+def _signed(env: dict, claim: str, usable: list[dict]) -> set[int]:
+    """Seqs of this claim's events with a verified signature (`env["signed"]`, from signature.verify).
+
+    An entry counts only if it names this claim and an event of this claim, by seq and hash, whose
+    kind is the judgment it says it signs. A seq that two different usable events claim counts for
+    neither.
+    """
+    entries = env.get("signed") if isinstance(env, dict) else None
+    if not isinstance(entries, list):
+        return set()
+    kinds: dict[int, set] = {}
+    for e in usable:
+        kinds.setdefault(e["seq"], set()).add((e["kind"], Ledger.event_hash(e)))
+    judgment_kind = {"statement": "statement_frozen", "fidelity": "fidelity", "informal_audit": "informal_audit",
+                     "waiver": "waiver", "retraction": "retraction"}
+    seqs = set()
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("claim") != claim:
+            continue
+        seq = entry.get("target_seq")
+        # The entry names the event by hash too, so another event that claims the same seq gets nothing.
+        if (isinstance(seq, int) and not isinstance(seq, bool)
+                and kinds.get(seq) == {(judgment_kind.get(entry.get("judgment")), entry.get("target_event"))}):
+            seqs.add(seq)
+    return seqs
+
+
 def derive_status(events: list[dict], claim: str, env: dict) -> dict:
     """Derive a claim's status. Only `env["judged"]` can raise it, and only up to judged-unreviewed."""
     env = env or {}
     usable, ignored = usable_events(events, claim)
+    signed = _signed(env, claim, usable)
+    retracted = {e["data"]["target_event"] for e in usable if e["kind"] == "retraction" and e["seq"] in signed}
+    if retracted:
+        # A signed retraction removes the event it names, but only evidence for the claim: never the
+        # claim, its statement, a failure, a judge's rejection, an unfaithful judgment, or a flaw.
+        rejected_seqs = {r.get("seq") for r in (env.get("judged") or []) if isinstance(r, dict)
+                         and r.get("claim") == claim and r.get("result") == "fail"}
+        usable = [e for e in usable if not _retractable(e, rejected_seqs, usable) or Ledger.event_hash(e) not in retracted]
     of_kind = lambda kind: [e["data"] for e in usable if e["kind"] == kind]  # noqa: E731
 
     kernel, passing, step_passed, attempted, warnings = _kernel(of_kind("check"))
-    fidelity, fidelity_warnings = _fidelity(of_kind("fidelity"), passing)
+    fidelity_events = [e for e in usable if e["kind"] == "fidelity"]
+    fidelity, fidelity_warnings = _fidelity([e["data"] for e in fidelity_events], passing,
+                                            {id(e["data"]) for e in fidelity_events if e["seq"] in signed})
     warnings = warnings + fidelity_warnings
-    informal, informal_warnings = _informal(usable)
+    informal, informal_warnings = _informal(usable, signed)
     warnings += informal_warnings
     computational = _computational(usable)
     if "claim" in {c["polarity"] for c in passing} and (computational["candidates"] or of_kind("certificate")):
@@ -238,11 +311,13 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
                          and isinstance(e.get("data"), dict) and e["data"].get("revises") == claim
                          and e.get("claim") != claim and not validate_event(e)})
     statement = None
+    statement_signed = False
     if frozen:
         first = frozen[0]
-        # Unsigned until S2.3.T3: a frozen statement alone never lifts the ceiling of judged-unreviewed.
+        first_seq = next(e["seq"] for e in usable if e["kind"] == "statement_frozen")
+        statement_signed = first_seq in signed
         statement = {"artifact": first["artifact"], "name": first.get("name"), "revises": first.get("revises"),
-                     "signed": False}
+                     "signed": statement_signed}
     if revised_by:
         statement = (statement or {}) | {"revised_by": revised_by}
     budget_stopped, abandoned = bool(of_kind("budget_stop")), bool(of_kind("abandon"))
@@ -256,7 +331,11 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
     missing: list[str] = []
     blocked: list[str] = []
     if judged:
-        missing = list(_UNSIGNED)
+        if not statement_signed:
+            missing.append("statement signature")
+        if not fidelity["signed"]:
+            missing.append("fidelity signature")
+        missing += _NOT_YET
         if "claim" in {polarity for _, _, polarity in judged}:
             missing.append("vacuity witness")
         if fidelity["class"] == "unfaithful":
@@ -289,7 +368,7 @@ def derive_status(events: list[dict], claim: str, env: dict) -> dict:
         judged = f"{fidelity['class']}, {fidelity['provenance']}" if fidelity["class"] else "none"
         label = f"{'+'.join(sorted(polarities))}, fidelity: {judged}"
     verdict, lean_status = compat(headline, kernel_passed=bool(passing), attempted=attempted, label=label,
-                                  missing=tuple(missing))
+                                  missing=tuple(missing), signed_audit=informal == "signed-audited")
 
     return {
         "claim": claim,

@@ -60,6 +60,24 @@ Run `verify` from a checkout and a `gh` that agents cannot write to: an agent th
 
 What this rests on: GitHub's attestations, and branch protection on `main`, which keeps the workflow file and the committed ledger reviewed. An anchor lasts as long as its run's report artifact, at most 90 days on a public repository, and deleting a run removes it. Statements and Challenges are unsigned for now, so a judged result shows `missing: statement signature, fidelity signature`, plus `vacuity witness` for a proof.
 
+## Signing judgments
+
+A person signs what Lean cannot judge: that the frozen statement says what the claim means, a fidelity judgment, an informal audit, a waiver, or a retraction. Sign with an SSH key that has a passphrase and that agent sessions cannot reach (DEC-008). `sign` never signs through an `ssh-agent`, but an agent session could call `ssh-keygen` itself with any key loaded into one, so don't load this key into an agent they share (on macOS, check that `AddKeysToAgent` and `UseKeychain` don't load it). A hardware key that needs a touch (`ssh-keygen -t ed25519-sk -O verify-required`) closes this:
+
+```bash
+python3 scripts/mathproof.py sign --dir <dir> --event <seq> --key ~/.ssh/mathproof_review --identity you@example.com
+```
+
+The command refuses a ledger whose chain does not verify, then shows what you are signing: for a statement, the name, preamble, proposition, and the type the `statement` command recorded (an agent can write that field; the judge's report prints it independently); for a fidelity judgment or an informal audit, the Lean file or the proof text itself; for a retraction, the event it removes. It then asks you to type the claim id. That prompt guards against signing the wrong thing by mistake; it is not a security control, and only the key's passphrase is. The signature covers your identity, the claim id, the hash of its informal text, the hash of its frozen statement, the signed event (for a retraction, also the kind and seq of what it removes), and the ledger head, so it cannot be moved to another claim or event.
+
+A signature counts only when an authoritative verify checks it against an allowed-signers file (the `ssh-keygen` format, namespace `mathproof-review`) that is kept outside the ledger, for example in a protected branch or your home directory:
+
+```bash
+python3 scripts/mathproof.py verify <dir> --authoritative latest --repo OWNER/NAME --ledger-path <path-in-repo> --signers ~/.config/mathproof/allowed_signers
+```
+
+A verified statement signature marks the statement signed; a verified fidelity signature makes that judgment `signed-human`, and signed judgments then decide over unsigned ones; a signed informal audit gives the label "informal proof, human-audited, not machine-confirmed"; a signed retraction removes the event it names only when that can't make the claim look stronger: a passing check that the judge did not reject and that no passing check of the other polarity contradicts, a `faithful` judgment, a no-flaw audit, an informal proof with no flaw found, or an experiment with no violations. Anything else stays. A signature counts only for the exact event it signed, and none counts in a ledger whose chain is broken. An unsigned retraction changes nothing. `established` and `refuted-certified` also need gates later tasks add (the assumption audit, and a vacuity witness for a proof), so a fully signed claim still reads `judged-unreviewed` with `missing: assumption audit`.
+
 ## Choosing the polarity
 
 Say what the checked theorem is, relative to the claim:

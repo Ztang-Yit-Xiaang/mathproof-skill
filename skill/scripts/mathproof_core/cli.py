@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .events import validate_event
 from .experiments import record_experiment, rerun_experiment, run_experiment
 from .authority import load_authoritative
 from .gate import EnvironmentFailure, record_check
@@ -16,7 +17,8 @@ from .ledger import Ledger
 from .judge import JudgeError, assemble, judge_case, plan, register_challenge, sandbox_works
 from .replay import verify_investigation
 from .report import _clean, render_report
-from .statement import NEGATION_SUFFIX, StatementError, record_statement
+from .signature import SignatureError, payload as signature_payload, sign as sign_event, verify as verify_signatures
+from .statement import NEGATION_SUFFIX, StatementError, load as load_statement, record_statement
 from .status import derive_status
 
 GATED_KINDS = frozenset({
@@ -25,6 +27,7 @@ GATED_KINDS = frozenset({
     "witness",
     "challenge",
     "certificate",
+    "signature",
 })
 
 # Kinds with their own route: a claim's statement is set once, and recovery is the ledger's job.
@@ -132,7 +135,9 @@ def _line(text: object) -> str:
 
 def _cmd_verify(args: argparse.Namespace) -> int:
     ledger = _require_initialized_ledger(args.dir)
-    judged, judge_notes, violations = None, None, []
+    judged, judge_notes, violations, signed = None, None, [], None
+    if args.signers and not args.authoritative:
+        return _fail("--signers needs --authoritative: signatures count only on an authoritative verify")
     if args.authoritative:
         if not args.repo:
             return _fail("--authoritative needs --repo OWNER/NAME, the repository whose workflow judged it")
@@ -156,8 +161,19 @@ def _cmd_verify(args: argparse.Namespace) -> int:
             problems.append(("no-anchor", f"no attested judge report anchors this ledger at {path!r}; the path must "
                                            "be repo-relative and spelled exactly as it was given to the workflow"))
         violations = problems
+        if args.signers:
+            try:
+                signed, signature_notes = verify_signatures(ledger.read(), args.signers, ledger.directory)
+            except SignatureError as error:
+                return _fail(str(error))
+            judge_notes += [f"signatures: {note}" for note in signature_notes]
+            for entry in signed:
+                judge_notes.append(f"signatures: {entry['identity']} signed the {entry['judgment']} at event "
+                                   f"{entry['target_seq']} of {entry['claim']}")
+        else:
+            judge_notes.append("signatures: not checked (no --signers), so none counts")
     result = verify_investigation(args.dir, project=args.project, judged=judged, judge_notes=judge_notes,
-                                  anchor_violations=violations)
+                                  anchor_violations=violations, signed=signed)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
@@ -177,6 +193,97 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     if result["differences"]:
         return 1
     return 2 if result["environment_errors"] else 0
+
+
+SIGN_SHOW_LIMIT = 20000
+
+
+def _artifact_text(ledger: Ledger, digest: object) -> str:
+    """An artifact's whole text for a person to read, cleaned of control characters. Raises ValueError
+    if it cannot be shown in full, since nobody should sign what they could not read."""
+    try:
+        content = ledger.get_artifact(digest).decode("utf-8", "replace")
+    except (OSError, ValueError) as error:
+        raise ValueError(f"cannot show it: {error}") from None
+    shown = _clean(content)
+    if len(shown) > SIGN_SHOW_LIMIT:
+        raise ValueError(f"it is {len(shown)} characters, too long to show here; read the artifact itself")
+    return shown
+
+
+def _cmd_sign(args: argparse.Namespace) -> int:
+    ledger = _require_initialized_ledger(args.dir)
+    if ledger.verify().errors:
+        return _fail("the ledger does not verify; fix it before signing anything in it")
+    events = ledger.read()
+    try:
+        signed = signature_payload(events, args.event, args.identity)
+    except SignatureError as error:
+        return _fail(str(error))
+    target = events[args.event]
+    claim = signed["claim"]
+    text = next(e["data"]["text"] for e in events if e.get("kind") == "claim_created" and e.get("claim") == claim
+                and not validate_event(e))
+    print(f"You are signing, as {args.identity}, the {signed['judgment']} at event {args.event} of {claim}.")
+    print(f"Informal claim: {_line(text)}")
+    data = target["data"]
+    if signed["judgment"] == "statement":
+        try:
+            record = load_statement(ledger, claim)
+        except StatementError as error:
+            return _fail(str(error))
+        print(f"Theorem name: {record['name']}")
+        print("Preamble:\n" + (record["preamble"] or "(none)"))
+        print("Proposition:\n" + record["prop"])
+        print("Lean's type as the `statement` command recorded it. An agent can write this field; the judge's "
+              f"report prints it independently: {_line(data.get('elaborated_type'))}")
+    elif signed["judgment"] in ("fidelity", "informal_audit"):
+        digest = data["statement_hash"] if signed["judgment"] == "fidelity" else data["proof_hash"]
+        try:
+            shown = _artifact_text(ledger, digest)
+        except ValueError as error:
+            return _fail(f"not signing: the text it judges cannot be shown in full ({error})")
+        if signed["judgment"] == "fidelity":
+            print(f"Judgment: {_line(data['class'])}, direction {_line(data['direction'])}, "
+                  f"scope: {_line(data.get('scope_note') or 'none')}")
+            covered = [e for e in events if e.get("kind") == "check" and e.get("claim") == claim
+                       and isinstance(e.get("data"), dict) and e["data"].get("artifact") == digest]
+            print("It covers every check of this file, now and later. Now: " + (", ".join(
+                f"event {e['seq']} ({_line(e['data'].get('target_decl'))}, {_line(e['data'].get('polarity'))}, "
+                f"{_line(e['data'].get('result'))})" for e in covered) or "none"))
+            print("The Lean file it judges:\n" + shown)
+        else:
+            print(f"Audit result: {_line(data['result'])}, auditor: {_line(data['auditor'])}")
+            print("The proof it audits:\n" + shown)
+    elif signed["judgment"] == "retraction":
+        subject = signed["subject"]
+        removed = events[subject["target_seq"]]
+        print(f"Reason given: {_line(data['reason'])}")
+        print(f"It removes event {subject['target_seq']}, a {subject['target_kind']} written by "
+              f"{_line(json.dumps(removed.get('actor'), sort_keys=True))}:")
+        print(_line(json.dumps(removed["data"], ensure_ascii=False, sort_keys=True)))
+        print("(A retraction only withdraws evidence for the claim. It has no effect on a failure, a judge's rejection, a "
+              "check that conflicts with one of the other polarity, a fidelity judgment other than faithful, a flaw or "
+              "the proof it was found in, an experiment with violations, an assumption, or a waiver.)")
+    else:
+        print("What it records: " + _line(json.dumps(data, ensure_ascii=False, sort_keys=True)))
+    # A check against signing the wrong thing by mistake. It is not a security control: only the key's
+    # passphrase is, and `sign` never signs through an ssh-agent.
+    try:
+        with open("/dev/tty", "r+", encoding="utf-8") as tty:
+            tty.write(f"Type the claim id ({claim}) to sign, or anything else to stop: ")
+            tty.flush()
+            answer = tty.readline().strip()
+    except OSError:
+        return _fail("signing needs a terminal; run it yourself, not from an agent session")
+    if answer != claim:
+        return _fail("not signed")
+    try:
+        event = sign_event(ledger, args.event, args.key, args.identity, _actor())
+    except SignatureError as error:
+        return _fail(str(error))
+    print(f"signed: event {event['seq']}")
+    return 0
 
 
 def _cmd_challenge_file(args: argparse.Namespace) -> int:
@@ -389,6 +496,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="This ledger's path in the repository, as the workflow was given it. "
                              "Required with --authoritative.")
     verify.add_argument("--repo", metavar="OWNER/NAME", help="The repository whose workflow must have attested it.")
+    verify.add_argument("--signers", metavar="FILE",
+                        help="An ssh-keygen allowed-signers file kept outside the ledger. With --authoritative, "
+                             "signatures that verify against it count.")
     verify.set_defaults(handler=_cmd_verify)
 
     # statement
@@ -406,6 +516,19 @@ def build_parser() -> argparse.ArgumentParser:
     statement.add_argument("--project", required=True, metavar="DIR",
                            help="Lean project the Challenge must compile in before it is recorded.")
     statement.set_defaults(handler=_cmd_statement)
+
+    # sign
+    sign = subparsers.add_parser(
+        "sign", help="Sign a judgment (statement, fidelity, informal audit, waiver, retraction) with your SSH key.",
+        description="Shows what you are signing, asks you to type the claim id on the terminal, and signs with "
+                    "`ssh-keygen -Y sign`. Use a key with a passphrase that agent sessions do not hold, and do not "
+                    "load it into an ssh-agent they can reach (DEC-008).")
+    sign.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
+    sign.add_argument("--event", required=True, type=int, metavar="SEQ", help="The event to sign.")
+    sign.add_argument("--key", required=True, metavar="FILE", help="Your private SSH signing key.")
+    sign.add_argument("--identity", required=True, metavar="ID",
+                      help="Your identity as it appears in the allowed-signers file.")
+    sign.set_defaults(handler=_cmd_sign)
 
     # challenge-file
     challenge_file = subparsers.add_parser(
