@@ -123,7 +123,9 @@ MUTANTS = {
     ],
     "judge.py": [
         ('"--unshare-all", "--die-with-parent",', '"--die-with-parent",'),
-        ("    shutil.rmtree(build_dir)\n", "    pass\n"),
+        ("    shutil.rmtree(scratch)\n", "    pass\n"),
+        ('binds += [arg for source, target in read_only for arg in ("--ro-bind", str(source), str(target))]',
+         'binds += [arg for source, target in read_only for arg in ("--bind", str(source), str(target))]'),
         ("and isinstance(definitions, dict) and set(definitions) == set(names)", "and isinstance(definitions, dict)"),
         ("return isinstance(value, str) and len(value) <= 20000", "return True"),
         ('elif result != "error" and job["claim"] in bound:', "elif False:"),
@@ -134,7 +136,6 @@ MUTANTS = {
          'table.setdefault(claim, {"claim": digest, "negation": digest})'),
         ("        table.pop(claim, None)\n", "        pass\n"),
         ("if Ledger.artifact_hash(content) != digest:", "if False:"),
-        ('(project / "Solution.lean").unlink()', "pass"),
         ('return posixpath.normpath(str(raw).replace("\\\\", "/"))', "return str(raw)"),
         ('"ledger_genesis": planned["ledger_genesis"],', ""),
         ('if polarity not in ("claim", "negation"):\n            continue', "if False:\n            continue"),
