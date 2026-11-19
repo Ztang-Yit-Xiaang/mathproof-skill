@@ -71,7 +71,7 @@ Never present a result whose usefulness rests on a hard-to-reach condition witho
 6. **Machine-check in Lean.** Formalize the claim (or its negation, for a refutation), check that the formal statement matches the informal one, prove it, and run the checker. See [Lean verification](#lean-verification).
 7. **Give a verdict.** Use one of the statuses below, attach the Lean status, and separate diagnosis from any proposed repair.
 
-Read [adversarial-proof-auditing.md](references/adversarial-proof-auditing.md) for the detailed attack battery. Read [proof-techniques-and-heuristics.md](references/proof-techniques-and-heuristics.md) only when selecting or comparing proof techniques.
+Read [adversarial-proof-auditing.md](references/adversarial-proof-auditing.md) for the detailed attack battery. Read [basic-proof-strategies.md](references/basic-proof-strategies.md) when choosing a proof's outer structure (direct, contrapositive, contradiction, cases, induction, existence, uniqueness) or auditing it. Read [proof-techniques-and-heuristics.md](references/proof-techniques-and-heuristics.md) only when selecting or comparing domain techniques.
 
 ## Verdicts
 
