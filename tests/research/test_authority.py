@@ -239,7 +239,11 @@ class JudgeTests(LedgerCase):
         self.assertEqual(sandbox[0], "bwrap")
         self.assertIn("--unshare-all", sandbox)
         self.assertIn("--die-with-parent", sandbox)
-        self.assertEqual(sandbox[-1], "lake build Challenge || exit 10")
+        step = shlex.split(sandbox[-1].split(" || ")[0])
+        self.assertEqual(step[0], "env")
+        self.assertEqual(step[2:4], ["lean", f"--root={self.project}-challenge"])
+        self.assertTrue(sandbox[-1].endswith(" || exit 10"))
+        self.assertNotIn("lake", step)
         self.assertFalse(log[3][1]["Solution.lean"])
         self.assertFalse((self.project / ".lake" / "build").exists())
         control, checked = log[2][1], log[4][1]
