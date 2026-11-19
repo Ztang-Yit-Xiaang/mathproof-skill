@@ -1,24 +1,31 @@
-# Advanced Proof Techniques and Problem-Solving Heuristics
+# Proof Techniques and Problem-Solving Heuristics
 
-This reference guide provides deep tactical patterns for advanced mathematical problem solving across competition mathematics (IMO, Putnam), pure mathematics (Real/Complex Analysis, Abstract Algebra, Topology), and combinatorics.
+This reference gives tactical patterns for advanced mathematical problem solving across competition mathematics (IMO, Putnam), pure mathematics (Real/Complex Analysis, Abstract Algebra, Topology), and combinatorics.
 
 ## Contents
 
-1. Induction
-2. Invariants and monovariants
-3. Extremal principle
-4. Pigeonhole principle
-5. Double counting
-6. Analysis bounds
-7. Algebra and diagram chasing
-8. Matrix and spectral arguments
-9. Probability and concentration
-10. Convexity and optimization
-11. Approximation and asymptotics
+1. Basic proof strategies
+2. Induction
+3. Invariants and monovariants
+4. Extremal principle
+5. Pigeonhole principle
+6. Double counting
+7. Analysis bounds
+8. Algebra and diagram chasing
+9. Matrix and spectral arguments
+10. Probability and concentration
+11. Convexity and optimization
+12. Approximation and asymptotics
 
 ---
 
-## 1. Mathematical Induction & Structural Variants
+## 1. Basic Proof Strategies
+
+The strategies chosen by the logical form of the goal (direct proof, contrapositive, contradiction, cases, exhaustion, equivalence, existence, uniqueness, counterexample, induction, well-ordering) are in [basic-proof-strategies.md](basic-proof-strategies.md). For each one it gives the logical law that makes it valid, a skeleton the written proof must follow, what to audit, and the Lean tactics. Fix the outer structure there first; the sections below fill in the steps.
+
+---
+
+## 2. Mathematical Induction & Structural Variants
 
 ### Weak vs. Strong vs. Structural Induction
 
@@ -29,7 +36,7 @@ This reference guide provides deep tactical patterns for advanced mathematical p
 
 ---
 
-## 2. Invariants & Monovariants
+## 3. Invariants & Monovariants
 
 ### Invariants (State Preservation)
 
@@ -50,7 +57,7 @@ $$M(S_{t+1}) > M(S_t) \quad \text{or} \quad M(S_{t+1}) < M(S_t)$$
 
 ---
 
-## 3. The Extremal Principle
+## 4. The Extremal Principle
 
 When proving a property about a finite or bounded set of mathematical objects, **focus on an extreme element**:
 - The element with the **minimum** or **maximum** value of a chosen metric (e.g., smallest distance, largest angle, degree of highest vertex, minimal counterexample).
@@ -62,7 +69,7 @@ When proving a property about a finite or bounded set of mathematical objects, *
 
 ---
 
-## 4. The Pigeonhole Principle (Dirichlet)
+## 5. The Pigeonhole Principle (Dirichlet)
 
 ### Standard & Generalized Forms
 
@@ -76,7 +83,7 @@ When proving a property about a finite or bounded set of mathematical objects, *
 
 ---
 
-## 5. Double Counting & Fubini Swap
+## 6. Double Counting & Fubini Swap
 
 Double counting proves an equality by evaluating the size of a set $S$ or the sum of an array in two distinct ways:
 
@@ -89,7 +96,7 @@ $$\sum_{x \in A} \sum_{y \in B} I(x,y) = \sum_{y \in B} \sum_{x \in A} I(x,y)$$
 
 ---
 
-## 6. Analysis Bounding Tactics ($\varepsilon$-$\delta$ & Real Analysis)
+## 7. Analysis Bounding Tactics ($\varepsilon$-$\delta$ & Real Analysis)
 
 ### Standard Analysis Toolkit
 1. **Triangle Inequality Bounding:** Split error $|f(x) - L|$ into $|f(x) - g(x)| + |g(x) - L|$ using an intermediate approximant $g(x)$.
@@ -102,7 +109,7 @@ $$\sum_{x \in A} \sum_{y \in B} I(x,y) = \sum_{y \in B} \sum_{x \in A} I(x,y)$$
 
 ---
 
-## 7. Abstract Algebra Diagram Chasing & Exact Sequences
+## 8. Abstract Algebra Diagram Chasing & Exact Sequences
 
 ### Diagram Chasing Steps
 1. **Define Homomorphisms Explicitly:** State kernel and image inclusions ($\ker \varphi$, $\text{im } \varphi$).
@@ -113,28 +120,28 @@ $$\sum_{x \in A} \sum_{y \in B} I(x,y) = \sum_{y \in B} \sum_{x \in A} I(x,y)$$
 
 ---
 
-## 8. Matrix and Spectral Arguments
+## 9. Matrix and Spectral Arguments
 
 - **Spectral decomposition:** For a real symmetric or complex Hermitian matrix, move to an orthonormal eigenbasis and reduce a quadratic-form claim to scalar eigenvalue claims.
 - **PSD ordering:** To prove $A \preceq B$, show $x^*(B-A)x\ge 0$ for every compatible $x$.
 - **Rank/null-space decomposition:** Separate identifiable and null directions before claiming invertibility or uniqueness.
 - **Perturbation:** State the norm, spectral gap, and parameter regime before applying eigenvalue, invariant-subspace, or inverse perturbation bounds.
 
-## 9. Probability and Concentration
+## 10. Probability and Concentration
 
 - **Conditioning:** Use the tower property to isolate dependence or expose a simpler conditional distribution.
 - **Symmetrization:** Compare an empirical process with an independent ghost sample when the hypotheses permit it.
 - **Concentration:** Match boundedness, variance, independence, martingale, or tail assumptions to the exact inequality being used.
 - **Nonlinear expectation:** Check Jensen's direction and equality conditions before exchanging expectation with a nonlinear map.
 
-## 10. Convexity and Optimization
+## 11. Convexity and Optimization
 
 - **First-order convexity:** For differentiable convex $f$, use $f(y)\ge f(x)+\nabla f(x)^\top(y-x)$.
 - **Strong convexity/smoothness:** Track constants and inequality directions; do not infer one property from the other.
 - **Optimality conditions:** Separate necessary conditions from sufficient conditions and verify constraint qualifications.
 - **Coercivity/compactness:** Establish existence before selecting a minimizer.
 
-## 11. Approximation and Asymptotics
+## 12. Approximation and Asymptotics
 
 - Record whether a statement is exact, additive-error, relative-error, high-probability, or asymptotic.
 - Track all quantified parameters and whether constants depend on dimension, confidence, or regularity.
