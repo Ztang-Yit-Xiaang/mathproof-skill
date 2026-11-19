@@ -203,6 +203,25 @@ def lakefile(mathlib_rev: str) -> str:
 SANDBOX_STEP_EXIT = 10
 
 
+def _package_names(project: Path) -> list[str]:
+    """The names of the Lean project's packages, from its lake-manifest.json."""
+    try:
+        manifest = json.loads((project / "lake-manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    packages = manifest.get("packages") if isinstance(manifest, dict) else None
+    return [entry["name"] for entry in packages if isinstance(entry, dict) and isinstance(entry.get("name"), str)
+            and entry["name"] and "/" not in entry["name"] and entry["name"] not in (".", "..")] \
+        if isinstance(packages, list) else []
+
+
+def _plain_lean(cmd: list[str], search: str) -> list[str]:
+    """`lake env lean ...` as plain `lean ...` with the given search path."""
+    if cmd[:3] != ["lake", "env", "lean"]:
+        raise JudgeError(f"not a `lake env lean` command: {cmd[:3]}")
+    return ["env", f"LEAN_PATH={search}", *cmd[2:]]
+
+
 def sandboxed(steps: list[list[str]], project: Path, writable: list[Path],
               read_only: list[tuple[Path, Path]] = ()) -> list[str]:
     """One bwrap command that runs `steps` in order in `project`. Step k failing exits 10 + k.
@@ -303,10 +322,18 @@ def judge_case(ledger_dir: str | Path, index: int, project: Path, runner: Runner
     (scratch / "Challenge.lean").write_bytes(challenge)
     (scratch / ".lake" / "packages").mkdir(parents=True)
     out = out_dir / "statements.json"
-    steps = [["lake", "build", "Challenge"]]
+    # Plain `lean`, not Lake: Lake writes trace files next to the packages' build outputs, which are
+    # read-only here. The packages come first on the search path, so the Challenge shadows no import.
+    build = scratch / ".lake" / "build" / "lib" / "lean"
+    build.mkdir(parents=True)
+    search = ":".join([*(str(scratch / ".lake" / "packages" / name / ".lake" / "build" / "lib" / "lean")
+                         for name in _package_names(project)), str(build)])
+    olean = build / "Challenge.olean"
+    steps = [["env", f"LEAN_PATH={search}", "lean", f"--root={scratch}", "-o", str(olean),
+              "-i", str(build / "Challenge.ilean"), str(scratch / "Challenge.lean")]]
     if record is not None:
-        olean = scratch / ".lake" / "build" / "lib" / "lean" / "Challenge.olean"
-        steps += [statements.binding_command(record), statements.statements_command(olean, out)]
+        steps += [_plain_lean(statements.binding_command(record), search),
+                  _plain_lean(statements.statements_command(olean, out), search)]
     checked = runner(sandboxed(steps, scratch, [scratch, out_dir],
                                read_only=[(project / ".lake" / "packages", scratch / ".lake" / "packages")]),
                      scratch, timeout)

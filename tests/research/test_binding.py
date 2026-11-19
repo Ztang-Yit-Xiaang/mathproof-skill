@@ -308,15 +308,40 @@ class JudgeTests(Base):
         self.assertEqual(judge.load_challenges(self.ledger, notes), {})
         self.assertIn("unavailable", notes[0])
 
+    def test_challenge_search_path_lists_the_manifest_packages_first(self):
+        self.ledger.append("check", CLAIM, check(self.proof, "foo"), GATE)
+        manifest = json.dumps({"packages": [
+            {"name": "mathlib"}, {"name": "../escape"}, {"name": ""}, {"url": "x"}, {"name": "plausible"}]})
+        log = []
+        inner = fake_runner(log, [0, 1])
+
+        def runner(cmd, cwd, timeout):
+            if cmd == ["lake", "update"]:  # what Lake writes when it resolves the packages
+                (Path(cwd) / "lake-manifest.json").write_text(manifest)
+            return inner(cmd, cwd, timeout)
+
+        judge.judge_case(self.dir, 0, self.project, runner=runner)
+        steps = [shlex.split(step.split(" || ")[0]) for step in log[3][0][-1].split("; ")]
+        packages = Path(str(self.project) + "-challenge") / ".lake/packages"
+        search = [str(packages / "mathlib/.lake/build/lib/lean"), str(packages / "plausible/.lake/build/lib/lean"),
+                  str(Path(str(self.project) + "-challenge") / ".lake/build/lib/lean")]
+        for step in steps:
+            self.assertEqual(step[:2], ["env", "LEAN_PATH=" + ":".join(search)])
+            self.assertEqual(step[2], "lean")
+
     def test_case_uses_the_generated_challenge_and_no_definition_holes(self):
         self.ledger.append("check", CLAIM, check(self.proof, "foo"), GATE)
         log = []
         case = judge.judge_case(self.dir, 0, self.project, runner=fake_runner(log, [0, 1]))
         sandbox, checked = log[3], log[4][1]
         steps = [shlex.split(step.split(" || ")[0]) for step in sandbox[0][-1].split("; ")]
-        self.assertEqual(steps[0], ["lake", "build", "Challenge"])
-        self.assertEqual(steps[1], st.binding_command(self.record))
         scratch = Path(str(self.project) + "-challenge")
+        build = scratch / ".lake/build/lib/lean"
+        search = f"LEAN_PATH={build}"
+        self.assertEqual(steps[0], ["env", search, "lean", f"--root={scratch}", "-o", str(build / "Challenge.olean"),
+                                    "-i", str(build / "Challenge.ilean"), str(scratch / "Challenge.lean")])
+        self.assertEqual(steps[1], ["env", search, *st.binding_command(self.record)[2:]])
+        self.assertEqual(steps[2][:3], ["env", search, "lean"])
         self.assertEqual(steps[2][5:7], ["statements", str(scratch / ".lake/build/lib/lean/Challenge.olean")])
         cmd = sandbox[0]
         self.assertEqual(cmd[cmd.index("--chdir") + 1], str(scratch))

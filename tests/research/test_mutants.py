@@ -139,6 +139,8 @@ MUTANTS = {
         ('environment_errors.append({"claim": claim, "seq": seq, "detail": str(error)})', "pass"),
     ],
     "judge.py": [
+        ('            and entry["name"] and "/" not in entry["name"] and entry["name"] not in (".", "..")]', '            ]'),
+        ('    return ["env", f"LEAN_PATH={search}", *cmd[2:]]', "    return cmd"),
         ('"--unshare-all", "--die-with-parent",', '"--die-with-parent",'),
         ("    shutil.rmtree(scratch)\n", "    pass\n"),
         ('binds += [arg for source, target in read_only for arg in ("--ro-bind", str(source), str(target))]',
