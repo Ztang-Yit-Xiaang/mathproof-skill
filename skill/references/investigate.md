@@ -6,7 +6,7 @@ The rule is simple: **record what happened, and let the tool derive the status.*
 
 ## What the status can say
 
-Status is computed from the ledger. At this stage nothing can reach `VALID` or `INVALID` through this tool, because no signature can be verified yet. A local check gives at most `kernel-passed-local`. An authoritative judge report, described below, gives at most `judged-unreviewed`, and `judge-rejected` if the judge failed a check that passed locally. The verdict stays `UNVERIFIED` either way. Report that plainly. Do not upgrade it in your own words.
+Status is computed from the ledger. At this stage nothing can reach `VALID` or `INVALID` through this tool, because no signature can be verified yet. A local check gives at most `kernel-passed-local`. A file with both a passing and a failing check of the same polarity counts as failed: the failure stands, and the status says so in its warnings. An authoritative judge report, described below, gives at most `judged-unreviewed`, and `judge-rejected` if the judge failed a check that passed locally. The verdict stays `UNVERIFIED` either way. Report that plainly. Do not upgrade it in your own words.
 
 Your ordinary verdict in `AUDIT` or `PROVE` is a separate thing. If you give one alongside a record, say which is which.
 

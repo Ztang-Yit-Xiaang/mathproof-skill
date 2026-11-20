@@ -18,10 +18,26 @@ from _paths import ROOT
 
 HERE = Path(__file__).resolve().parent
 SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report", "test_replay_stub",
-          "test_authority", "test_binding", "test_attestation"]
+          "test_authority", "test_binding", "test_attestation", "test_status_exhaustive"]
 
 MUTANTS = {
     "status.py": [
+        # S1.2.T2 table mutant
+        ('    elif rejected:\n        headline = "judge-rejected"', '    elif False:\n        headline = "judge-rejected"'),
+        # S1.2.T2 table mutant
+        ('    if {"claim", "negation"} <= polarities:', '    if False:'),
+        # S1.2.T2 table mutant
+        ('    elif kernel == "passed-local":', '    elif kernel == "passed-local" or computational["runs"]:'),
+        # S1.2.T2 table mutant
+        ('        headline = "unresolved"', '        headline = "refuted-certified"'),
+        # S1.2.T2 table mutant
+        ('        if not statement_signed:\n            missing.append("statement signature")\n        if not fidelity["signed"]:\n            missing.append("fidelity signature")\n        missing += _NOT_YET', '        if not fidelity["signed"]:\n            missing.append("fidelity signature")'),
+        # S1.2.T2 table mutant
+        ('if e["kind"] == "retraction" and e["seq"] in signed}', 'if e["kind"] == "retraction"}'),
+        # S1.2.T2 table mutant
+        ('        if (seq, entry) not in events:\n            continue\n', ''),
+        # S1.2.T2 table mutant
+        ('        if not isinstance(entry, dict) or entry.get("claim") != claim:', '        if not isinstance(entry, dict):'),
         ("return (data[\"result\"] == \"pass\" and event[\"seq\"] not in rejected_seqs", "return (data[\"result\"] == \"pass\""),
         ("                and not any(e[\"kind\"] == \"check\" and e[\"data\"][\"result\"] == \"pass\" and e[\"data\"][\"polarity\"] == opposite", "                and not any(False"),
         ('return data["class"] == "faithful"', "return True"),
