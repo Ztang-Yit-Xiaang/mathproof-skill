@@ -18,7 +18,7 @@ from _paths import ROOT
 
 HERE = Path(__file__).resolve().parent
 SUITES = ["test_status", "test_fidelity", "test_ledger", "test_events", "test_gate_logic", "test_report", "test_replay_stub",
-          "test_authority", "test_binding", "test_attestation", "test_status_exhaustive"]
+          "test_authority", "test_binding", "test_attestation", "test_status_exhaustive", "test_review_packet"]
 
 MUTANTS = {
     "status.py": [
@@ -311,8 +311,26 @@ MUTANTS = {
         ('if unicodedata.category(c)[0] == "C" or unicodedata.category(c) in ("Zl", "Zp") else c', "if False else c"),
         (r""".replace("\n", "\\n")""", ""),
     ],
+    "packet.py": [
+        # S7.1.T2: a step counts as checked with no check
+        ('if not s.get("lean") or s["lean"] not in checked), None)', 'if not s.get("lean")), None)'),
+        # S7.1.T2: a failing check no longer cancels a pass
+        ('and key(check) not in failed:', ':'),
+        # S7.1.T2: any polarity checks a step
+        ('if check["polarity"] == "step" and check["result"] == "pass"', 'if check["result"] == "pass"'),
+        # S7.1.T2: a conflict reads as kernel-passed
+        ('and status["headline"] != "conflict"', ''),
+        # S7.1.T2: a failed kernel check reads as kernel-passed
+        ('in ("passed-local", "judged")', 'in ("passed-local", "judged", "failed")'),
+        # S7.1.T2: step text is not escaped
+        ("lines += [f\"{i}. {_text(step['claim'])}{mark}\"", "lines += [f\"{i}. {step['claim']}{mark}\""),
+        # S7.1.T2: step checks shown in the comparison view
+        ('_proved_section(ledger, [c for c in checks if c["polarity"] != "step"])', '_proved_section(ledger, checks)'),
+        # S7.1.T2: the approval ceiling is dropped
+        ('justification, and find the first step that does not follow.", "", APPROVAL_CEILING, ""]',
+         'justification, and find the first step that does not follow.", ""]'),
+    ],
 }
-
 
 def run_mutant(item):
     filename, old, new = item
