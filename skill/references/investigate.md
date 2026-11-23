@@ -20,6 +20,7 @@ python3 scripts/mathproof.py claim add --dir <dir> --id inv/c1 --text "The infor
 python3 scripts/mathproof.py check --dir <dir> --claim inv/c1 --decl Full.Name.of_theorem --polarity claim --project <lean-project> File.lean
 python3 scripts/mathproof.py status --dir <dir> --claim inv/c1
 python3 scripts/mathproof.py report --dir <dir> --claim inv/c1
+python3 scripts/mathproof.py packet --dir <dir> --claim inv/c1
 python3 scripts/mathproof.py verify <dir>
 ```
 
@@ -113,10 +114,14 @@ Add these with `event add --dir <dir> --claim <id> --kind <kind> --data '<json>'
 | `abandon` | `reason` |
 | `note`, or any kind you invent | anything except a `status` field. A `text` field is shown in the report as an unverified note |
 
+Store an informal proof in step form, so the review packet can number it: a JSON file `{"steps": [{"claim": "...", "because": "...", "lean": "decl_name"}]}`, one entry per step, with `because` saying why the step follows and `lean` (optional) naming a declaration you checked with polarity `step`. A step counts as machine-checked only when a passing `step` check of that declaration is recorded and no failing check of the same file and declaration cancels it. A proof in any other form is shown whole, as unverified.
+
+`packet` prints what a person needs to review the claim. With no passing kernel check, it gives each informal proof as numbered steps, each with its justification and whether Lean checked it, and marks the first step Lean did not check. With a passing check of the claim or its negation, it shows only the intended statement next to the statement Lean checked, since that comparison is the one thing the kernel can't make. A signed no-flaw audit of an informal proof gives the human-audited label; the verdict stays `UNVERIFIED`.
+
 For `fidelity`, `direction` is `F=>I` when a proof of the formal statement gives the claim, and `I=>F` when the claim implies the formal statement, which is what refuting it requires. Use `self-declared` as the judge for your own judgment. Without a verified signature, it stays a label and cannot change the verdict.
 
 You cannot add `check` by hand, and a claim's statement cannot be changed. For a revised statement, add a new claim and record the link in a note.
 
 ## Finishing
 
-Run `verify` before you report. It re-runs every check, loading Mathlib four times per file, so expect minutes per file and much longer on a busy machine. Exit 0 means the ledger is consistent and the checks reproduce, and it does not mean the claim is proved. Give the user the `report` output, the `verify` result, and the Lean status as written.
+Run `verify` before you report. It re-runs every check, loading Mathlib four times per file, so expect minutes per file and much longer on a busy machine. Exit 0 means the ledger is consistent and the checks reproduce, and it does not mean the claim is proved. Give the user the `report` output, the `verify` result, and the Lean status as written. When a person must check the claim, give them the `packet` output too.

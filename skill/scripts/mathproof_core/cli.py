@@ -16,6 +16,7 @@ from .gate import EnvironmentFailure, record_check
 from .ledger import Ledger
 from .judge import JudgeError, assemble, judge_case, plan, register_challenge, sandbox_works
 from .replay import verify_investigation
+from .packet import render_packet
 from .report import _clean, render_report
 from .signature import SignatureError, payload as signature_payload, sign as sign_event, verify as verify_signatures
 from .statement import NEGATION_SUFFIX, StatementError, load as load_statement, record_statement
@@ -125,6 +126,11 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
 def _cmd_report(args: argparse.Namespace) -> int:
     print(render_report(_require_initialized_ledger(args.dir), args.claim))
+    return 0
+
+
+def _cmd_packet(args: argparse.Namespace) -> int:
+    print(render_packet(_require_initialized_ledger(args.dir), args.claim))
     return 0
 
 
@@ -476,7 +482,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     # status, report
     for name, handler, text in (("status", _cmd_status, "Print a claim's derived status as JSON."),
-                                ("report", _cmd_report, "Print a claim's report as Markdown.")):
+                                ("report", _cmd_report, "Print a claim's report as Markdown."),
+                                ("packet", _cmd_packet, "Print a claim's review packet for a person, as Markdown.")):
         command = subparsers.add_parser(name, help=text)
         command.add_argument("--dir", required=True, metavar="DIR", help="Ledger directory path.")
         command.add_argument("--claim", required=True, metavar="ID", help="Claim identifier.")
